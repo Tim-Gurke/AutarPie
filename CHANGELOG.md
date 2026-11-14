@@ -8,6 +8,10 @@ Das bestehende GitHub-Repository heißt jetzt [`Tim-Gurke/AutarPie`](https://git
 
 ## Veröffentlichte Versionen
 
+### 3.0.7 · Vollständige 608PD-Messwerte nach der Anmeldung
+
+Bluetooth-Paketgröße vor Diensterkennung und Anmeldung asynchron aushandeln, damit auch Leerlauf- und vollständige Sechszell-Antworten übertragen werden können. Zu kleine, abgelehnte oder ausbleibende Bestätigungen sowie Dienstabfragefehler gezielt melden; bei Wiederverbindung neu verhandeln und alte Rückrufe ignorieren. Vorhandene private Verbindung und Daten erhalten. Neutraler Testpartner reproduziert den alten Leerlauf-Timeout und prüft den produktiven Adapter mit 57 neuen Prüfungen. Reale Funkverbindung nach dem Update vor Ort bestätigen. [Update, Bedienung und Prüfgrenzen](docs/changes-3.0.7.md).
+
 ### 3.0.6 · Rollerlernen bei Abwesenheit und gemeinsame Kurzwahlfarbe
 
 Energie je erfasster Ladung unabhängig vom ganztägigen BMS-Empfang lernen. Ladehäufigkeit aus vollständig überwachten Ladeweg-Tagen ableiten; unbekannte Häufigkeit mit ausdrücklich gekennzeichneter Wochen- oder eigener Tagesannahme überbrücken. Bestehende Journale wiederverwenden, doppelte/zusammengehörige Fragmente berücksichtigen, unvollständige und externe Ladung ausschließen, Relaisenergie getrennt halten und nach Rückkehr konkrete Ladeplanung einmalig einsetzen. Alle ausgewählten Kurzwahlen einschließlich eigener Dashboards verwenden die gemeinsame App-Akzentfarbe, auch nach Umordnung und bei abweichendem Dashboard-Design. [Installation, Bedienung und Prüfgrenzen](docs/changes-3.0.6.md).

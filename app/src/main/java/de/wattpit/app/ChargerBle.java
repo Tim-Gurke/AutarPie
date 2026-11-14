@@ -14,10 +14,13 @@ final class ChargerBle {
     private static ChargerBle instance;
     static synchronized ChargerBle get(Context context){if(instance==null)instance=new ChargerBle(context.getApplicationContext());return instance;}
     private static final UUID SERVICE=uuid(0xaf00),DATA=uuid(0xaf01),AUTH=uuid(0xaf02),CCCD=uuid(0x2902);
+    // A six-cell status needs 47 value bytes plus the three-byte ATT notification header.
+    private static final int REQUESTED_MTU=247,MINIMUM_MTU=50;
+    private enum Phase { CONNECTING, MTU, SERVICES, AUTH, READY }
     private static UUID uuid(int value){return UUID.fromString(String.format(Locale.ROOT,"%08x-0000-1000-8000-00805f9b34fb",value));}
     private final Context context;private final Repository repo;private final Handler main=new Handler(Looper.getMainLooper());
     private BluetoothGatt gatt;private BluetoothGattCharacteristic data,auth;private boolean enabled,ready,busy;private long lastReceive,lastConnect;private String expected="";private long expectedAt;
-    private final ArrayDeque<Runnable> operations=new ArrayDeque<>();private Runnable nextStage;
+    private final ArrayDeque<Runnable> operations=new ArrayDeque<>();private Phase phase;
     private ChargerBle(Context context){this.context=context;repo=Repository.get(context);}
     static void configure(Context context,String json)throws Exception{
         Repository repo=Repository.get(context);if(json.length()>4000)throw new IllegalArgumentException("Ungültiges Laderprofil.");JSONObject in=new JSONObject(json),old=new JSONObject(repo.prefs.getString(EnergyStore.CHARGER,"{}"));String mac=in.optString("mac").toUpperCase(Locale.ROOT),role=in.optString("role","model");boolean enabled=in.optBoolean("enabled");
@@ -30,8 +33,29 @@ final class ChargerBle {
     }
     static JSONObject publicConfig(Repository repo)throws JSONException{JSONObject value=new JSONObject(repo.prefs.getString(EnergyStore.CHARGER,"{}"));value.put("hasAuth",value.has("secret"));value.remove("secret");return value;}
     private final BluetoothGattCallback callback=new BluetoothGattCallback(){
-        @Override public void onConnectionStateChange(BluetoothGatt g,int status,int state){main.post(()->{if(g!=gatt)return;if(status==0&&state==BluetoothProfile.STATE_CONNECTED){if(!g.discoverServices())fail("Die Laderdienste konnten nicht gelesen werden.");}else if(state==BluetoothProfile.STATE_DISCONNECTED)fail("608PD getrennt; erneuter Versuch folgt.");});}
-        @Override public void onServicesDiscovered(BluetoothGatt g,int status){main.post(()->{if(g!=gatt)return;BluetoothGattService service=g.getService(SERVICE);if(status!=0||service==null){fail("Kein unterstützter 608PD-Dienst.");return;}data=service.getCharacteristic(DATA);auth=service.getCharacteristic(AUTH);if(data==null||auth==null){fail("608PD-Schnittstelle unvollständig.");return;}subscribe(data);subscribe(auth);enqueue(()->authenticate());});}
+        @Override public void onConnectionStateChange(BluetoothGatt g,int status,int state){main.post(()->{
+            if(g!=gatt)return;
+            if(status==BluetoothGatt.GATT_SUCCESS&&state==BluetoothProfile.STATE_CONNECTED){
+                if(phase!=Phase.CONNECTING)return;
+                phase=Phase.MTU;
+                if(!g.requestMtu(REQUESTED_MTU))fail("Die Bluetooth-Paketgröße für den 608PD konnte nicht angefordert werden.");
+            }else if(state==BluetoothProfile.STATE_DISCONNECTED||status!=BluetoothGatt.GATT_SUCCESS)fail("608PD getrennt (Bluetooth-Status "+status+"); erneuter Versuch folgt.");
+        });}
+        @Override public void onMtuChanged(BluetoothGatt g,int mtu,int status){main.post(()->{
+            if(g!=gatt||phase!=Phase.MTU)return;
+            if(status!=BluetoothGatt.GATT_SUCCESS){fail("Die Bluetooth-Paketgröße für den 608PD konnte nicht vereinbart werden (Status "+status+").");return;}
+            if(mtu<MINIMUM_MTU){fail("Die Bluetooth-Paketgröße für den 608PD ist zu klein ("+mtu+"; mindestens "+MINIMUM_MTU+" erforderlich).");return;}
+            phase=Phase.SERVICES;
+            if(!g.discoverServices())fail("Die Laderdienste konnten nicht angefordert werden.");
+        });}
+        @Override public void onServicesDiscovered(BluetoothGatt g,int status){main.post(()->{
+            if(g!=gatt||phase!=Phase.SERVICES)return;
+            if(status!=BluetoothGatt.GATT_SUCCESS){fail("Die 608PD-Dienste konnten nicht gelesen werden (Bluetooth-Status "+status+").");return;}
+            BluetoothGattService service=g.getService(SERVICE);
+            if(service==null){fail("Der erwartete 608PD-Dienst AF00 wurde nicht gefunden.");return;}
+            data=service.getCharacteristic(DATA);auth=service.getCharacteristic(AUTH);if(data==null||auth==null){fail("608PD-Schnittstelle unvollständig.");return;}
+            phase=Phase.AUTH;subscribe(data);subscribe(auth);enqueue(()->authenticate());
+        });}
         @Override public void onDescriptorWrite(BluetoothGatt g,BluetoothGattDescriptor d,int status){main.post(()->complete(g,status));}
         @Override public void onCharacteristicWrite(BluetoothGatt g,BluetoothGattCharacteristic c,int status){main.post(()->complete(g,status));}
         @Override public void onCharacteristicChanged(BluetoothGatt g,BluetoothGattCharacteristic c,byte[] value){main.post(()->{if(g==gatt)receive(c.getUuid(),value);});}
@@ -44,8 +68,8 @@ final class ChargerBle {
     private void tick(){
         main.removeCallbacks(poll);if(!enabled||!repo.running)return;try{
             JSONObject c=new JSONObject(repo.prefs.getString(EnergyStore.CHARGER,"{}"));if(!c.optBoolean("enabled"))return;
-            long now=System.currentTimeMillis();if(gatt==null&&now-lastConnect>=15000){lastConnect=now;BluetoothManager manager=context.getSystemService(BluetoothManager.class);BluetoothAdapter adapter=manager==null?null:manager.getAdapter();if(adapter==null||!adapter.isEnabled()){EnergyStore.error(true,"Bluetooth ist ausgeschaltet.");}else gatt=adapter.getRemoteDevice(c.getString("mac")).connectGatt(context,false,callback,BluetoothDevice.TRANSPORT_LE,BluetoothDevice.PHY_LE_1M_MASK,main);}
-            else if(gatt!=null&&!ready&&now-lastConnect>20000){fail("608PD-Anmeldung wurde nicht rechtzeitig bestätigt.");}
+            long now=System.currentTimeMillis();if(gatt==null&&now-lastConnect>=15000){lastConnect=now;BluetoothManager manager=context.getSystemService(BluetoothManager.class);BluetoothAdapter adapter=manager==null?null:manager.getAdapter();if(adapter==null||!adapter.isEnabled()){EnergyStore.error(true,"Bluetooth ist ausgeschaltet.");}else{phase=Phase.CONNECTING;gatt=adapter.getRemoteDevice(c.getString("mac")).connectGatt(context,false,callback,BluetoothDevice.TRANSPORT_LE,BluetoothDevice.PHY_LE_1M_MASK,main);}}
+            else if(gatt!=null&&!ready&&now-lastConnect>20000){fail(phase==Phase.MTU?"Die Bluetooth-Paketgröße für den 608PD wurde nicht rechtzeitig bestätigt.":phase==Phase.SERVICES?"Die 608PD-Dienste wurden nicht rechtzeitig gelesen.":phase==Phase.CONNECTING?"Der Bluetooth-Verbindungsaufbau zum 608PD wurde nicht rechtzeitig bestätigt.":"608PD-Anmeldung wurde nicht rechtzeitig bestätigt.");}
             else if(ready){if(lastReceive>0&&now-lastReceive>10000){fail("608PD antwortet nicht mehr.");}else enqueue(()->write(data,EnergyProtocol.chargerPoll()));}
             if(!expected.isEmpty()&&now-expectedAt>8000){EnergyStore.error(true,"Der Lader hat den angeforderten Betriebszustand noch nicht bestätigt.");expected="";}
         }catch(Exception e){fail("608PD-Verbindung nicht möglich. Einrichtung und Berechtigungen prüfen.");}
@@ -59,7 +83,7 @@ final class ChargerBle {
     private void authenticate(){try{JSONObject c=new JSONObject(repo.prefs.getString(EnergyStore.CHARGER,"{}"));byte[] key=KeyVault.decrypt(c.getString("secret"));if(key.length!=16)throw new IllegalArgumentException();byte[] packet=new byte[19];packet[0]=0x18;System.arraycopy(key,0,packet,1,16);write(auth,packet);Arrays.fill(key,(byte)0);}catch(Exception e){fail("Private 608PD-Verbindung erneut aus eigener Aufzeichnung übernehmen.");}}
     private void receive(UUID characteristic,byte[] value){try{
         if(AUTH.equals(characteristic)){if(value.length==2&&(value[0]&255)==0x19){if(value[1]!=0){fail("608PD hat die private Verbindung abgelehnt.");return;}enqueue(()->write(auth,new byte[]{(byte)0xe0}));}
-            else if(value.length>=2&&(value[0]&255)==0xe1){ready=true;lastReceive=System.currentTimeMillis();}return;}
+            else if(value.length>=2&&(value[0]&255)==0xe1){ready=true;phase=Phase.READY;lastReceive=System.currentTimeMillis();}return;}
         EnergyProtocol.ChargerSample sample=EnergyProtocol.charger(value);if(sample==null)return;long now=System.currentTimeMillis();lastReceive=now;JSONArray cells=new JSONArray();for(double v:sample.cellVoltages)cells.put(v);
         EnergyStore.charger(new JSONObject().put("at",now).put("mode",sample.mode).put("current",sample.current).put("voltage",sample.voltage).put("elapsed",sample.elapsed).put("capacity",sample.capacity).put("cells",cells));
         if(expected.equals("stop")&&sample.mode==0||expected.equals("start")&&sample.mode==1)expected="";
@@ -71,5 +95,5 @@ final class ChargerBle {
         main.post(()->{expected=action;expectedAt=System.currentTimeMillis();enqueue(()->write(data,action.equals("stop")?EnergyProtocol.chargerStop():EnergyProtocol.chargerStart(3,4210,500)));});
     }
     private void fail(String text){EnergyStore.error(true,text);close();}
-    private void close(){main.removeCallbacks(poll);ready=false;busy=false;operations.clear();BluetoothGatt old=gatt;gatt=null;data=null;auth=null;if(old!=null){try{old.disconnect();old.close();}catch(Exception ignored){}}if(enabled&&repo.running)main.postDelayed(poll,15000);}
+    private void close(){main.removeCallbacks(poll);ready=false;busy=false;phase=null;operations.clear();BluetoothGatt old=gatt;gatt=null;data=null;auth=null;if(old!=null){try{old.disconnect();old.close();}catch(Exception ignored){}}if(enabled&&repo.running)main.postDelayed(poll,15000);}
 }

@@ -29,6 +29,7 @@ jobs:
             NODE_PATH="$RUNNER_TEMP/autarpie-ui/node_modules" node tools/release-304-smoke.cjs
             NODE_PATH="$RUNNER_TEMP/autarpie-ui/node_modules" node tools/learning-recovery-smoke.cjs
             NODE_PATH="$RUNNER_TEMP/autarpie-ui/node_modules" node tools/release-306-smoke.cjs
+            NODE_PATH="$RUNNER_TEMP/autarpie-ui/node_modules" node tools/release-307-smoke.cjs
           done
       - uses: actions/upload-artifact@v4
         if: always()
@@ -92,6 +93,7 @@ jobs:
           deps="$RUNNER_TEMP/wattpit-proof-deps"
           mkdir -p "$deps"
           python3 tools/fetch-proof-deps.py "$deps"
+          python3 tools/prove-charger-ble.py --android-jar "$deps/android-api35.jar" --output app/build/reports/charger-ble-proof
           python3 tools/prove-archive-delta.py --output app/build/reports/archive-delta-proof --sqlite-jar "$deps/sqlite-jdbc-3.46.1.0.jar" --slf4j-jar "$deps/slf4j-api-1.7.36.jar"
           python3 tools/prove-archive-storage.py --output app/build/reports/archive-storage-proof --android-jar "$deps/android-api35.jar" --sqlite-jar "$deps/sqlite-jdbc-3.46.1.0.jar" --slf4j-jar "$deps/slf4j-api-1.7.36.jar"
           mkdir -p "$RUNNER_TEMP/roller-proof"
@@ -142,6 +144,8 @@ jobs:
             app/build/reports/archive-foreground-proof/
             app/build/reports/lan-proof/report.json
             app/build/reports/lan-proof/central-concurrency-results.log
+            app/build/reports/charger-ble-proof/report.json
+            app/build/reports/charger-ble-proof/results.log
             app/build/reports/lan-proof/LearningRetentionProof-results.log
             app/build/reports/lan-proof/RollerObservationProof-results.log
             app/build/reports/lan-proof/LearningRecoveryProof-results.log
@@ -194,12 +198,12 @@ jobs:
             adb shell am instrument -w -e class de.wattpit.app.UnifiedSmokeTest de.wattpit.app.test/androidx.test.runner.AndroidJUnitRunner | tee unified-emulator.log
             python3 -c "from pathlib import Path; s=Path('unified-emulator.log').read_text(); assert 'OK (5 tests)' in s and 'FAILURES' not in s"
             mkdir -p docs/images
-            adb exec-out run-as de.wattpit.app cat files/autarpie-3.0.6-central.png > docs/images/autarpie-3.0.6-central.png
-            adb exec-out run-as de.wattpit.app cat files/autarpie-3.0.6-direct.png > docs/images/autarpie-3.0.6-direct.png
+            adb exec-out run-as de.wattpit.app cat files/autarpie-3.0.7-central.png > docs/images/autarpie-3.0.7-central.png
+            adb exec-out run-as de.wattpit.app cat files/autarpie-3.0.7-direct.png > docs/images/autarpie-3.0.7-direct.png
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: AutarPie-3.0.6-Emulator-${{ matrix.api }}
+          name: AutarPie-3.0.7-Emulator-${{ matrix.api }}
           path: |
             unified-emulator.log
-            docs/images/autarpie-3.0.6-*.png
+            docs/images/autarpie-3.0.7-*.png
