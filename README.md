@@ -55,6 +55,8 @@ Der 608PD vereinbart vor der Anmeldung größere Bluetooth-Pakete, damit vollst�
 
 **Zuerst die Zentrale beziehungsweise das direkt erfassende Handy, danach alle Anzeigen auf 3.0.7 aktualisieren.** Vorhandene private Verbindung, Messdaten und Layouts bleiben erhalten; ein neuer Mitschnitt ist bei bereits übernommener richtiger Verbindung nicht nötig. Die tatsächliche Verbindung nach dem Update am eigenen Lader bestätigen. [Änderungen und Prüfgrenzen 3.0.7](docs/changes-3.0.7.md).
 
+Die Verbundschnittstelle bleibt unverändert: Anzeigen mit 3.0.6 bleiben zur Zentrale mit 3.0.7 kompatibel. Für den ersten Verbindungstest genügt deshalb zunächst das Update des tatsächlich per Bluetooth erfassenden Geräts; anschließend wird derselbe Versionsstand auf allen Geräten empfohlen.
+
 ## Update 3.0.6
 
 Der Roller kann aus kurzen ausreichend vollständig erfassten Ladungen lernen, obwohl er den übrigen Tag außer Reichweite ist. Energie je Ladung und Ladehäufigkeit bleiben getrennt. Nur vollständig überwachte Ladeweg-Tage oder geeignete bekannte Tage belegen die Häufigkeit; eine Funklücke ist keine Nullnutzung. Eine ausdrücklich gekennzeichnete Wochen- oder eigene Tagesannahme kann überbrücken, bis genügend Grundlagen vorliegen. Bei Rückkehr ersetzt eine konkret geplante Ladung aus frischen BMS-Werten die pauschale Annahme für denselben Zeitraum.
