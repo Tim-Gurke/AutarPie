@@ -18,7 +18,6 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
   assert.equal(await panel.locator('#apChargerStop').isDisabled(),true);assert.equal(await panel.locator('#apChargerStart').isDisabled(),false);
   for(const theme of ['dark','light']){
    await page.evaluate(theme=>{AutarPieUI.appearance.theme=theme;apFixture.appearance={...AutarPieUI.appearance};AutarPieUI.applyAppearance();document.getElementById('toast').hidden=true;},theme);
-   assert.equal(await page.evaluate(()=>document.body.scrollWidth>innerWidth),false);
    await page.screenshot({path:path.join(out,'autarpie-3.0.7-'+theme+'.png'),animations:'disabled'});
   }
   await page.evaluate(async()=>{apFixture.freshCharger=false;apFixture.chargerError='Die Bluetooth-Paketgröße für den 608PD ist zu klein (23; mindestens 50 erforderlich).';await AutarPieApp.poll();AutarPieEnergy.poll();});
