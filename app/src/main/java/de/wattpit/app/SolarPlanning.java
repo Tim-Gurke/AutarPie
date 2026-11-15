@@ -155,7 +155,7 @@ final class SolarPlanning extends SQLiteOpenHelper {
         JSONObject clean=checked(new JSONObject(setupJson),repository.equipment()),given=new JSONObject(placeJson);
         android.content.SharedPreferences.Editor edit=repository.prefs.edit().putString("solar-setup-v1",clean.toString());
         if(given.length()>0){JSONObject place=WeatherClient.checkedPlace(given);if(!place.toString().equals(repository.prefs.getString("weatherPlace","")))edit.putString("weatherPlace",place.toString()).remove("weatherCache").remove("weatherError");}
-        if(!edit.commit())throw new java.io.IOException();WeatherClient.refresh(repository,true);
+        if(!edit.commit())throw new java.io.IOException();SuppliesStore.recordSite(repository);WeatherClient.refresh(repository,true);
     }
     private String[] devices()throws JSONException{
         String solar="",shunt="";JSONArray configs=repository.configs();for(int i=0;i<configs.length();i++){JSONObject d=configs.getJSONObject(i);if(d.optString("kind").equals("solar"))solar=d.optString("mac");if(d.optString("kind").equals("shunt"))shunt=d.optString("mac");}return new String[]{solar,shunt};

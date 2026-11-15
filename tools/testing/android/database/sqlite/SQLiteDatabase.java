@@ -9,7 +9,7 @@ import java.util.*;
 /** JVM test adapter only: execute the actual HistoryDb SQL against real SQLite. */
 public final class SQLiteDatabase implements AutoCloseable {
     public interface CursorFactory { }
-    public static final int CONFLICT_IGNORE=4,CONFLICT_REPLACE=5,OPEN_READWRITE=0,NO_LOCALIZED_COLLATORS=0x10;
+    public static final int CONFLICT_IGNORE=4,CONFLICT_REPLACE=5,OPEN_READWRITE=0,OPEN_READONLY=1,NO_LOCALIZED_COLLATORS=0x10;
     public static SQLiteDatabase openDatabase(String path,CursorFactory factory,int flags){return new SQLiteDatabase(path);}
     private final Connection connection;
     private boolean successful;

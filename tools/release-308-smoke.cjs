@@ -39,6 +39,17 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
   await page.locator('#apOpenChargerJournal').click();await wait(page,()=>document.getElementById('apJournalRows').textContent.includes('Messlücke'));assert.match(await page.locator('#apJournalRows').textContent(),/1,25 Wh/);assert.match(await page.locator('#apJournalRows').textContent(),/keine passende Bestätigung/);await page.locator('#apJournalExport').click();assert.equal(await page.evaluate(()=>apFixture.exported.sessions.length),1);assert.equal(await page.evaluate(()=>JSON.stringify(apFixture.exported).includes('secret')),false);
   await page.screenshot({path:path.join(out,'autarpie-3.0.8-journal.png'),animations:'disabled'});await page.evaluate(()=>AutarPieApp.closeModal());await page.setViewportSize({width:412,height:1200});
   for(const theme of ['dark','light']){await page.evaluate(theme=>{AutarPieUI.appearance.theme=theme;AutarPieUI.applyAppearance();document.getElementById('toast').hidden=true;},theme);await page.screenshot({path:path.join(out,'autarpie-3.0.8-'+theme+'.png'),animations:'disabled'});}
-  assert.deepEqual(errors,[]);console.log('PASS 6 scenarios: stale scooter marking, fresh lower SOC, scoped header status, three charger profiles, discovery/confirmation, and journal/export.');
+  await page.evaluate(()=>{
+   const now=Date.now(),day=86400000,hour=3600000,a={key:'neutral-a',name:'Ort A'},b={key:'neutral-b',name:'Ort B'};
+   WattPit.suppliesSnapshot=()=>JSON.stringify({version:1,protocol:1,containerSizeSettings:true,events:[{id:'neutral-swap-a',kind:'gas',type:'swap',at:now-2*day,amount:11,site:a},{id:'neutral-swap-b',kind:'gas',type:'swap',at:now,amount:11,site:b}],sites:[{at:now-2*day,site:a},{at:now-day,site:b}],weather:{version:2,siteKey:b.key,enabled:true,updated:now,history:[{site:a.key,from:now-2*day,to:now,heat:8,windHeat:2,source:'archive'},{site:b.key,from:now-2*day,to:now,heat:14,windHeat:3,source:'archive'}],location:{supported:true,automatic:true,lastAt:now,status:'GPS-Nachführung aktiv'}}});
+   AutarPieApp.showPage('supplies');AutarPieApp.poll();
+  });
+  await wait(page,()=>document.getElementById('supplies-gas').textContent.includes('1 Verbrauchsabschnitt erfasst'));
+  assert.match(await page.locator('#supplies-gas').textContent(),/davon 1 fürs Wetterlernen geeignet/);
+  await page.locator('#supplies-gas details summary').click();assert.match(await page.locator('#supplies-gas').textContent(),/2 Orte · 100 % Wetterabdeckung/);
+  assert.match(await page.locator('#suppliesWeatherHistory').textContent(),/Stunden mit historischem Ortswetter/);
+  await page.screenshot({path:path.join(out,'autarpie-3.0.8-gas-travel.png'),animations:'disabled'});
+  await page.locator('#suppliesSettings').click();assert.equal(await page.locator('#supplyFollowGps').isChecked(),true);assert.match(await page.locator('#modal').textContent(),/erfassende Handy muss beim Wohnwagen bleiben/);await page.evaluate(()=>AutarPieApp.closeModal());
+  assert.deepEqual(errors,[]);console.log('PASS 7 scenarios: stale scooter marking, fresh lower SOC, scoped header status, three charger profiles, discovery/confirmation, journal/export, and travel weather learning.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1)});

@@ -11,6 +11,7 @@ import tempfile
 p=argparse.ArgumentParser()
 p.add_argument('--dependencies',type=Path,required=True)
 p.add_argument('--output',type=Path,required=True)
+p.add_argument('--compile-only',action='store_true')
 a=p.parse_args();root=Path(__file__).resolve().parents[1];out=a.output.resolve();out.mkdir(parents=True,exist_ok=True)
 generated=out/'generated';generated.mkdir(exist_ok=True)
 (generated/'R.java').write_text('package de.wattpit.app; final class R {static final class drawable {static final int ic_bolt=1,ic_launcher_foreground=2;}}')
@@ -18,10 +19,11 @@ version=re.search(r"versionName '([^']+)'",(root/'app/build.gradle').read_text()
 (generated/'BuildConfig.java').write_text('package de.wattpit.app; final class BuildConfig {static final String VERSION_NAME='+json.dumps(version)+';}')
 (generated/'SystemClock.java').write_text('package android.os; public final class SystemClock {public static long elapsedRealtime(){return System.nanoTime()/1000000;}public static long uptimeMillis(){return elapsedRealtime();}public static long elapsedRealtimeNanos(){return System.nanoTime();}}')
 classes=out/'classes';classes.mkdir(exist_ok=True);deps=a.dependencies.resolve()
-sources=list((root/'app/src/main/java').rglob('*.java'))+list((root/'tools/testing').rglob('*.java'))+list(generated.glob('*.java'))+[root/'tools/ChargerJournalProof.java',root/'tools/ChargerCaptureProof.java',root/'tools/LanSyncProof.java']
+sources=list((root/'app/src/main/java').rglob('*.java'))+list((root/'tools/testing').rglob('*.java'))+list(generated.glob('*.java'))+[root/'tools/ChargerJournalProof.java',root/'tools/ChargerCaptureProof.java',root/'tools/LanSyncProof.java',root/'tools/SupplyWeatherProof.java']
 cp=os.pathsep.join(map(str,[deps/'android-api35.jar',*deps.glob('zxing-*.jar')]))
 subprocess.run(['java','com.sun.tools.javac.Main','-source','17','-target','17','-cp',cp,'-d',str(classes),*map(str,sources)],check=True)
 cp=os.pathsep.join(map(str,[classes,deps/'android-api35.jar',deps/'sqlite-jdbc-3.46.1.0.jar',deps/'slf4j-api-1.7.36.jar',*deps.glob('zxing-*.jar')]))
+if a.compile_only:raise SystemExit(0)
 database=Path(tempfile.mkdtemp(prefix='journal-',dir=out));results=[]
 for phase in ['write','resume']:
     run=subprocess.run(['java','-cp',cp,'de.wattpit.app.ChargerJournalProof',str(database),phase],capture_output=True,text=True,timeout=60)

@@ -1,5 +1,6 @@
-(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.WattSuppliesCore=api;})(typeof globalThis==='object'?globalThis:this,function(){
+(function(root,factory){const api=factory(typeof module==='object'&&module.exports?require('./supplies-travel.js'):root.WattSupplyTravel);if(typeof module==='object'&&module.exports)module.exports=api;else root.WattSuppliesCore=api;})(typeof globalThis==='object'?globalThis:this,function(T){
   'use strict';
+  const PREPARED=Symbol('supply-weather-history'),FORECAST=Symbol('supply-weather-forecast');
   const HOUR=3600000,DAY=24*HOUR,finite=n=>typeof n==='number'&&Number.isFinite(n);
   const quantityUnits=kind=>kind==='gas'?['kg','Flaschen']:['L','Kanister'];
   function quantity(value,kind,unit,containerSize,inverse=false){
@@ -26,22 +27,17 @@
     return [days?days+(days===1?' Tag':' Tage'):'',rest?rest+(rest===1?' Stunde':' Stunden'):''].filter(Boolean).join(' ');
   }
   const mean=values=>values.length?values.reduce((sum,n)=>sum+n,0)/values.length:null;
-  function weatherFeatures(rows,from,to,site){
-    if(!site||to<=from)return null;let covered=0,heat=0,windHeat=0;
-    for(const row of rows){if(row.site!==site||!finite(row.heat)||!finite(row.windHeat)||!finite(row.from)||!finite(row.to)||row.to<=row.from)continue;const span=Math.max(0,Math.min(to,row.to)-Math.max(from,row.from));if(!span)continue;covered+=span;heat+=span*row.heat;windHeat+=span*row.windHeat;}
-    return covered/(to-from)>=.9?{heat:heat/covered,windHeat:windHeat/covered,coverage:covered/(to-from)}:null;
-  }
-  function historyRows(weather={}){
-    const unique=new Map();for(const row of weather.history||[]){if(!['archive','recent'].includes(row.source))continue;const key=row.site+'/'+row.from,old=unique.get(key);if(!old||row.source==='archive'||old.source!=='archive')unique.set(key,row);}return [...unique.values()];
-  }
+  function weatherFeatures(rows,from,to,site){return T.features(rows,from,to,site);}
+  function historyRows(weather={}){return weather[PREPARED]||T.canonical(weather.history||[]);}
   function intervals(events,kind,now,weather,sites=[]){
+    const history=kind==='gas'?historyRows(weather):[];
     const journal=events.filter(e=>e.kind===kind&&e.type===(kind==='gas'?'swap':'supply')&&e.at<=now),out=[];
     for(let i=1;i<journal.length;i++){const previous=journal[i-1],next=journal[i],days=(next.at-previous.at)/DAY;if(days<=0||now-next.at>400*DAY||kind==='gas'&&next.empty===false)continue;
       const amount=kind==='gas'?previous.amount:next.amount;
       // A stock correction inside a gas cycle makes its consumed amount unknown.
       if(kind==='gas'&&events.some(e=>e.kind===kind&&e.type==='stock'&&e.at>previous.at&&e.at<next.at))continue;
-      const sameSite=!sites.some(s=>s.at>previous.at&&s.at<next.at&&s.site?.key!==previous.site?.key)&&previous.site?.key&&previous.site.key===next.site?.key&&!events.some(e=>e.site?.key&&e.at>previous.at&&e.at<next.at&&e.site.key!==previous.site.key);
-      out.push({from:previous.at,to:next.at,days,amount,rate:amount/days,features:kind==='gas'&&sameSite?weatherFeatures(historyRows(weather),previous.at,next.at,previous.site.key):null});
+      const route=kind==='gas'?T.route(events,sites,previous.at,next.at,previous.site):[],basis=kind==='gas'?T.across(history,route,previous.at,next.at):null;
+      out.push({from:previous.at,to:next.at,days,amount,rate:amount/days,features:basis?.features||null,weather:basis?{...basis,route}:null});
     }
     return {journal,rows:out.slice(-24)};
   }
@@ -59,41 +55,42 @@
     const slope=daily*.5/(heat+5),provisional={coefficients:[daily-slope*heat,slope],intervals:usable.length,wind:false,provisional:true};
     if(usable.length<3||Math.max(...usable.map(r=>r.features.heat))-Math.min(...usable.map(r=>r.features.heat))<3)return provisional;
     let best=null;for(const dimensions of [2,3]){
-      if(dimensions===3&&usable.length<9)continue;let baseError=0,modelError=0;
+      if(dimensions===3&&(usable.length<9||usable.some(r=>!finite(r.features.windHeat))))continue;let baseError=0,modelError=0;
       for(let i=0;i<usable.length;i++){const training=usable.filter((_,j)=>j!==i),baseline=training.reduce((s,r)=>s+r.amount,0)/training.reduce((s,r)=>s+r.days,0),estimated=predict(fit(training,dimensions),usable[i].features);baseError+=usable[i].days*(usable[i].rate-baseline)**2;modelError+=usable[i].days*(usable[i].rate-estimated)**2;}
       if(baseError>1e-8&&modelError<baseError*.85&&(!best||modelError<best.error*.95))best={coefficients:fit(usable,dimensions),error:modelError,intervals:usable.length,wind:dimensions===3};
     }return best||provisional;
   }
   const correctedRate=(profile,features)=>Math.min(profile.daily*(profile.model.provisional?1.6:5),Math.max(profile.daily*(profile.model.provisional?.65:.15),predict(profile.model.coefficients,features)));
-  const freshForecast=(weather,now)=>weather.enabled!==false&&finite(weather.updated)&&now-weather.updated<30*HOUR;
-  const forecastRows=weather=>(weather.forecast||[]).filter(r=>r.source==='forecast');
+  const freshForecast=(weather,now)=>weather.enabled!==false&&finite(weather.forecastUpdated??weather.updated)&&now-(weather.forecastUpdated??weather.updated)<30*HOUR;
+  const forecastRows=weather=>weather[FORECAST]||T.canonical(weather.forecast||[],['forecast']);
   function rateAt(profile,weather,from,to,currentSite,now){
     const features=weatherFeatures(forecastRows(weather),from,to,currentSite);
-    if(profile.model&&features&&freshForecast(weather,now))return {rate:correctedRate(profile,features),weather:true};
+    if(profile.model&&features&&(!profile.model.wind||finite(features.windHeat))&&freshForecast(weather,now))return {rate:correctedRate(profile,features),weather:true};
     return {rate:profile.daily,weather:false};
   }
-  function consumption(profile,weather,from,to,site,future=false){
-    if(!finite(profile.daily)||profile.daily<=0||to<from)return null;let result=0,cursor=from;
-    const rows=future?forecastRows(weather):historyRows(weather);let corrected=0;
-    while(cursor<to){const end=Math.min(to,cursor+DAY),features=weatherFeatures(rows,cursor,end,site);let rate=profile.daily;
-      if(profile.model&&features&&(!future||freshForecast(weather,from))){rate=correctedRate(profile,features);corrected+=end-cursor;}
+  function consumption(profile,weather,from,to,site,future=false,segments=null){
+    if(!finite(profile.daily)||profile.daily<=0||to<from)return null;let result=0,corrected=0;
+    const rows=future?forecastRows(weather):historyRows(weather),parts=segments||[{from,to,site}];
+    for(const part of parts){let cursor=Math.max(from,part.from),limit=Math.min(to,part.to);while(cursor<limit){const end=Math.min(limit,cursor+DAY),features=weatherFeatures(rows,cursor,end,part.site);let rate=profile.daily;
+      if(profile.model&&features&&(!profile.model.wind||finite(features.windHeat))&&(!future||freshForecast(weather,from))){rate=correctedRate(profile,features);corrected+=end-cursor;}
       result+=rate*(end-cursor)/DAY;cursor=end;
-    }return {amount:result,weather:corrected>0,coverage:(to>from?corrected/(to-from):0)};
+    }}return {amount:result,weather:corrected>0,coverage:to>from?corrected/(to-from):0};
   }
   function weatherStatus(profile,rows,weather,site,now){
     const usable=rows.filter(r=>r.features),count=usable.length,model=profile.model;
-    const status={intervals:rows.length,weatherIntervals:count,temperatureMinimum:1,windMinimum:9,provisional:!!model?.provisional,model:model?(model.provisional?'temperature-provisional':model.wind?'temperature-wind':'temperature'):null};
+    const details=rows.map(r=>({from:r.from,to:r.to,ready:!!r.features,sites:r.weather?.sites||0,coverage:r.weather?.coverage||0,locationCoverage:r.weather?.locationCoverage||0,unknownLocationMillis:r.weather?.unknownLocationMillis||0,missingWeatherMillis:r.weather?.missingWeatherMillis||0,coarseMillis:r.weather?.coarseMillis||0,reason:r.features?'ready':r.weather?.unknownLocationMillis>0?'unknown-location':'missing-weather'}));
+    const status={intervals:rows.length,weatherIntervals:count,details,temperatureMinimum:1,windMinimum:9,provisional:!!model?.provisional,model:model?(model.provisional?'temperature-provisional':model.wind?'temperature-wind':'temperature'):null};
     const baseline='Der übliche Tagesbedarf bleibt der Durchschnitt deiner abgeschlossenen Flaschenabschnitte.';
     let state,title,detail;
     if(!model){
       title='Wetterkorrektur noch nicht aktiv';
       if(!rows.length){state='no-intervals';detail='Noch kein vollständiger Flaschenabschnitt. Zwei Wechsel mit leerer vorheriger Flasche liefern den ersten Abschnitt.';}
-      else if(!count){state='learning';detail='Für die erste vorläufige Temperaturkorrektur braucht ein vollständiger Flaschenabschnitt passende historische Wetterdaten; Wind wird später gesondert geprüft.';if(count<rows.length)detail+=' Für '+(rows.length-count)+' Abschnitte fehlt eine ausreichende Wetterzuordnung zum selben Ort.';}
+      else if(!count){state='learning';detail='Für die erste vorläufige Temperaturkorrektur braucht ein vollständiger Flaschenabschnitt passende historische Wetterdaten; Wind wird später gesondert geprüft.';if(count<rows.length)detail+=' Für '+(rows.length-count)+' Abschnitte fehlt eine ausreichende Wetterzuordnung entlang des damaligen Ortsverlaufs.';}
       else if(Math.max(...usable.map(r=>r.features.heat))-Math.min(...usable.map(r=>r.features.heat))<3){state='similar-weather';detail='Genügend Abschnitte, aber noch zu ähnliche Temperaturen für ein verlässliches Wettermodell.';}
       else{state='not-improved';detail='Das Wettermodell erklärt deine bisherigen Verbräuche noch nicht zuverlässig besser als der Durchschnitt.';}
       detail+=' Bis dahin wird aus den Flaschenwechseln geschätzt.';
     }else if(profile.forecastWeatherCorrected||profile.rangeWeatherCorrected){
-      state='active';title=model.provisional?'Wetterkorrektur vorläufig aktiv · Temperatur':'Wetterkorrektur aktiv · Temperatur'+(model.wind?' und Wind':'');detail=model.provisional?'Vorsichtige Modellannahme anhand von '+count+' vollständigen Flaschenabschnitten mit Wetterdaten. Noch kein persönlich gelernter Temperatureinfluss: die Korrektur bleibt auf −35 % bis +60 % des üblichen Tagesbedarfs begrenzt. Weitere unterschiedliche Wetterabschnitte verbessern das persönliche Modell.':'Bedarf und Reichweite verwenden das gelernte Modell, soweit passende Vorhersagetage vorliegen. Danach gilt der übliche Tagesbedarf.';
+      state='active';title=model.provisional?'Wetterkorrektur vorläufig aktiv · Temperatur':'Wetterkorrektur aktiv · Temperatur'+(model.wind?' und Wind':'');detail=model.provisional?'Vorsichtige Modellannahme anhand von '+count+' Flaschenabschnitten mit ausreichend zugeordnetem damaligem Ortswetter. Noch kein persönlich gelernter Temperatureinfluss: die Korrektur bleibt auf −35 % bis +60 % des üblichen Tagesbedarfs begrenzt. Weitere unterschiedliche Wetterabschnitte verbessern das persönliche Modell.':'Bedarf und Reichweite verwenden das gelernte Modell, soweit passende Vorhersagetage vorliegen. Danach gilt der übliche Tagesbedarf.';
     }else{
       title=(model.provisional?'Vorläufiges Wettermodell':'Wettermodell gelernt')+' · Prognose ohne Wetterkorrektur';
       if(weather.enabled===false){state='disabled';detail='Wettervorhersagen sind ausgeschaltet.';}
@@ -106,13 +103,13 @@
     return {...status,state,title,detail,baseline};
   }
   function build(input={},now=Date.now()){
-    const config=normalize(input),weather=config.weather||{},result={};
+    const config=normalize(input),weather={...(config.weather||{})},result={};weather[PREPARED]=historyRows(weather);weather[FORECAST]=forecastRows(weather);
     for(const kind of ['water','gas']){
       const {journal,rows}=intervals(config.events,kind,now,weather,config.sites||[]),days=rows.reduce((s,r)=>s+r.days,0),amount=rows.reduce((s,r)=>s+r.amount,0),daily=days>0?amount/days:null,model=kind==='gas'?weatherModel(rows):null;
       const profile={kind,daily,model,containerSize:kind==='gas'?config.defaults.gas:config.defaults.waterContainer,intervals:rows.length,intervalHours:mean(rows.map(r=>r.days*24)),lastAt:journal.at(-1)?.at??null,stock:null,remainingHours:null,rangeHours:null,nextSupplyAt:null,needs:{},weatherCorrected:false,historyWeatherCorrected:false,forecastWeatherCorrected:false,rangeWeatherCorrected:false};
       if(profile.lastAt!==null&&finite(profile.intervalHours))profile.nextSupplyAt=profile.lastAt+profile.intervalHours*HOUR;
       const anchors=config.events.filter(e=>e.kind===kind&&e.at<=now&&(e.type==='stock'||kind==='gas'&&e.type==='swap')),anchor=anchors.at(-1),site=weather.siteKey||anchor?.site?.key;
-      if(anchor){let stock=anchor.amount;if(finite(daily)&&daily>0){const moved=(config.sites||[]).some(s=>s.at>anchor.at&&s.at<=now&&s.site?.key!==anchor.site?.key);const used=consumption(moved?{...profile,model:null}:profile,weather,anchor.at,now,anchor.site?.key);stock-=used.amount;profile.historyWeatherCorrected=used.weather;}else if(now-anchor.at>HOUR)stock=null;
+      if(anchor){let stock=anchor.amount;if(finite(daily)&&daily>0){const route=kind==='gas'?T.route(config.events,config.sites||[],anchor.at,now,anchor.site):null;const used=consumption(profile,weather,anchor.at,now,anchor.site?.key,false,route);stock-=used.amount;profile.historyWeatherCorrected=used.weather;}else if(now-anchor.at>HOUR)stock=null;
         if(stock!==null){if(kind==='water')for(const e of journal)if(e.at>anchor.at||e.at===anchor.at&&e.order>anchor.order)stock+=e.amount;profile.stock=Math.max(0,stock);profile.stockEstimated=now>anchor.at;}}
       if(finite(daily)&&daily>0){
         for(const horizon of [3,7,14]){const need=consumption(profile,weather,now,now+horizon*DAY,site,true);profile.needs[horizon]=need.amount;profile.forecastWeatherCorrected=profile.forecastWeatherCorrected||need.weather;}

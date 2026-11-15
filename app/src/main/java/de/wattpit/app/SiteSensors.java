@@ -11,7 +11,7 @@ import android.view.Surface;
 import org.json.*;
 import java.util.function.BiConsumer;
 
-/** Sensors run only during an explicitly opened assistant. GPS never starts with Bluetooth. */
+/** Sensors for the explicitly opened solar assistant; travel recording has its own duty-cycled listener. */
 final class SiteSensors implements SensorEventListener,LocationListener {
     private final Activity activity;
     private final Repository repository;

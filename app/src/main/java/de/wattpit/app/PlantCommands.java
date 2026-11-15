@@ -22,7 +22,7 @@ final class PlantCommands {
         switch(action){
             case "saveSolarInstallation":{
                 arity(args,1);String json=args.getString(0);if(json.length()>70000)throw new IllegalArgumentException("Die Solaranlage ist zu groß.");JSONObject input=new JSONObject(json),equipment=Repository.checkedEquipment(input.getJSONObject("equipment")),setup=SolarPlanning.checked(input.getJSONObject("setup"),equipment),place=input.getJSONObject("place");
-                if(place.length()>0)place=WeatherClient.checkedPlace(place);SharedPreferences.Editor edit=repo.prefs.edit().putString("equipment-v1",equipment.toString()).putString("solar-setup-v1",setup.toString()).remove("weatherCache").remove("weatherError");if(place.length()>0)edit.putString("weatherPlace",place.toString());if(!edit.commit())throw new java.io.IOException();WeatherClient.refresh(repo,true);break;
+                if(place.length()>0)place=WeatherClient.checkedPlace(place);SharedPreferences.Editor edit=repo.prefs.edit().putString("equipment-v1",equipment.toString()).putString("solar-setup-v1",setup.toString()).remove("weatherCache").remove("weatherError");if(place.length()>0)edit.putString("weatherPlace",place.toString());if(!edit.commit())throw new java.io.IOException();SuppliesStore.recordSite(repo);WeatherClient.refresh(repo,true);break;
             }
             case "saveLoadConfiguration":arity(args,1);EnergyStore.configure(repo,args.getString(0));break;
             case "setLoadOutput":arity(args,1);bluetoothReady(context);EnergyStore.manual(context,args.getBoolean(0));break;

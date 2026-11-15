@@ -19,6 +19,8 @@ public final class MonitorService extends Service {
     private static final int NOTIFICATION = 10;
     private Repository repository;
     private RollerBle roller;
+    private SupplyLocationRecorder supplyLocation;
+    private boolean locationForeground;
     private BluetoothLeScanner scanner;
     private boolean scanning;
     private final ScheduledExecutorService worker = Executors.newSingleThreadScheduledExecutor();
@@ -59,7 +61,7 @@ public final class MonitorService extends Service {
     }
 
     @Override public void onCreate() {
-        super.onCreate(); repository = Repository.get(this);roller=new RollerBle(this);
+        super.onCreate(); repository = Repository.get(this);roller=new RollerBle(this);supplyLocation=new SupplyLocationRecorder(repository);
         repository.prefs.registerOnSharedPreferenceChangeListener(archivePreference);
         ensureChannel(this);
         IntentFilter filter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
@@ -82,6 +84,7 @@ public final class MonitorService extends Service {
         SuppliesWeather.refresh(repository,false);
         boolean first = !repository.running;
         repository.running = true;
+        if(enableLocationForeground())supplyLocation.tick();
         roller.start();ChargerBle.get(this).start();
         repository.prefs.edit().putBoolean("recording",true).apply();
         restartScan();
@@ -92,6 +95,7 @@ public final class MonitorService extends Service {
             worker.scheduleWithFixedDelay(() -> main.post(() -> {
             if (!repository.running) return;
             PresenceStore.get(this).tick();
+            if(enableLocationForeground())supplyLocation.tick();else supplyLocation.stop();
             SuppliesWeather.refresh(repository,false);
             if (!scanning) startScan();
             else if(System.currentTimeMillis()-Math.max(lastAdvertisementAt,lastScanAt)>120000)restartScan();
@@ -99,6 +103,13 @@ public final class MonitorService extends Service {
         }),30,30,TimeUnit.SECONDS);
         }
         return START_STICKY;
+    }
+    private boolean enableLocationForeground(){
+        if(Build.VERSION.SDK_INT<31)return true;
+        if(!SupplyLocations.automatic(repository)||!SupplyLocationRecorder.permitted(this))return true;
+        if(locationForeground)return true;
+        try{startForeground(NOTIFICATION,notification(),ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE|ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);locationForeground=true;return true;}
+        catch(SecurityException|IllegalStateException e){repository.prefs.edit().putString("supplies-location-status","GPS-Nachführung wartet: App am erfassenden Handy öffnen und Standortzugriff prüfen.").apply();return false;}
     }
     private int failStart(String reason){
         startFailed=true;repository.status=reason;
@@ -170,6 +181,7 @@ public final class MonitorService extends Service {
                 .addAction(new Notification.Action.Builder(null,"Pausieren",stop).build()).build();
     }
     @Override public void onDestroy() {
+        if(supplyLocation!=null)supplyLocation.stop();
         EnergyStore.shutdown(this);boolean wasRunning=repository.running;repository.running = false;
         if(wasRunning)CentralLog.add(this,"Aufzeichnung","Aufzeichnung pausiert");
         if(roller!=null)roller.stop();ChargerBle.get(this).stop();

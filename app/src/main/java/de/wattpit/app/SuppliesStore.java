@@ -28,6 +28,7 @@ final class SuppliesStore {
             case "defaults":{
                 JSONObject defaults=new JSONObject();for(String kind:new String[]{"water","gas"}){double amount=command.getDouble(kind);checkAmount(amount,kind,false);defaults.put(kind,amount);}
                 double container=command.has("waterContainer")?command.getDouble("waterContainer"):value.getJSONObject("defaults").getDouble("waterContainer");checkAmount(container,"water",false);defaults.put("waterContainer",container);
+                if(command.has("followGps"))value.put("followGps",command.getBoolean("followGps"));
                 value.put("defaults",defaults);break;
             }
             case "delete":{
@@ -42,7 +43,7 @@ final class SuppliesStore {
                 int found=-1;JSONObject old=null;for(int i=0;i<events.length();i++)if(id.equals(events.getJSONObject(i).getString("id"))){found=i;old=events.getJSONObject(i);break;}
                 if(op.equals("edit")&&old!=null&&command.has("baseEvent")&&!same(old,command.getJSONObject("baseEvent")))throw new IllegalArgumentException("Der Eintrag wurde inzwischen geändert. Bitte den Konflikt prüfen.");
                 if(op.equals("edit")&&found<0)throw new IllegalArgumentException("Der Eintrag wurde inzwischen entfernt. Bitte neu laden.");
-                JSONObject location=input.has("site")?site(input.getJSONObject("site")):old!=null?old.optJSONObject("site"):site(new JSONObject(repo.prefs.getString("weatherPlace","{}")));
+                JSONObject location=input.has("site")?site(input.getJSONObject("site")):old!=null?old.optJSONObject("site"):SupplyLocations.current(repo);
                 JSONObject event=new JSONObject().put("id",id).put("kind",kind).put("type",type).put("at",at).put("amount",amount).put("empty",input.optBoolean("empty",true)).put("note",note).put("order",old!=null?old.optLong("order"):value.optLong("revision")+1).put("site",location==null?new JSONObject():location);
                 if(op.equals("add")&&found>=0){if(!same(old,event))throw new IllegalArgumentException("Diese Eintragskennung wurde bereits verwendet.");return;}
                 if(found<0&&events.length()>=5000)throw new IllegalArgumentException("Das Journal enthält bereits 5000 Einträge. Bitte vor weiteren Einträgen sichern.");
@@ -56,21 +57,18 @@ final class SuppliesStore {
         if(!operation.isEmpty()){JSONArray kept=new JSONArray();for(int i=Math.max(0,operations.length()-499);i<operations.length();i++)kept.put(operations.getString(i));kept.put(operation);value.put("operations",kept);}
         value.put("revision",value.optLong("revision")+1).put("updated",System.currentTimeMillis());
         if(!repo.prefs.edit().putString(KEY,value.toString()).commit())throw new java.io.IOException("Der Eintrag konnte nicht gespeichert werden.");
-        SuppliesWeather.refresh(repo,true);
+        SupplyLocations.configured(repo);SuppliesWeather.refresh(repo,true);
     }
     private static boolean same(JSONObject a,JSONObject b){return a.optString("kind").equals(b.optString("kind"))&&a.optString("type").equals(b.optString("type"))&&a.optLong("at")==b.optLong("at")&&Double.compare(a.optDouble("amount"),b.optDouble("amount"))==0&&a.optBoolean("empty",true)==b.optBoolean("empty",true)&&a.optString("note").equals(b.optString("note"))&&a.optJSONObject("site").optString("key").equals(b.optJSONObject("site").optString("key"));}
     private static void checkAmount(double amount,String kind,boolean zero){if(!Double.isFinite(amount)||amount<(zero?0:0.01)||amount>(kind.equals("water")?10000:100))throw new IllegalArgumentException("Bitte eine gültige Menge in "+(kind.equals("water")?"Litern":"Kilogramm")+" eingeben.");}
     static synchronized void recordSite(Repository repo)throws Exception {
-        JSONObject current=site(new JSONObject(repo.prefs.getString("weatherPlace","{}")));JSONArray sites=new JSONArray(repo.prefs.getString("supplies-sites-v1","[]"));
-        JSONObject previous=sites.length()==0?null:sites.getJSONObject(sites.length()-1).optJSONObject("site");
-        if(previous!=null&&previous.optString("key").equals(current.optString("key")))return;
-        sites.put(new JSONObject().put("at",System.currentTimeMillis()).put("site",current));
-        if(!repo.prefs.edit().putString("supplies-sites-v1",sites.toString()).commit())throw new java.io.IOException();
+        SupplyLocations.recover(repo);SupplyLocations.configured(repo);
     }
     static JSONObject snapshot(Repository repo)throws JSONException {
-        JSONObject value=read(repo.prefs).put("sites",new JSONArray(repo.prefs.getString("supplies-sites-v1","[]"))),weather=new JSONObject(repo.prefs.getString(WEATHER,"{}"));weather.remove("forecastArchive");
-        JSONObject chosen=new JSONObject(repo.prefs.getString("weatherPlace","{}"));String chosenKey=chosen.length()==0?"":Math.round(chosen.optDouble("latitude")*1000)+":"+Math.round(chosen.optDouble("longitude")*1000);if(!chosenKey.equals(weather.optString("siteKey")))weather.put("forecast",new JSONArray()).put("siteKey",chosenKey);
-        weather.put("enabled",!repo.prefs.getString("weatherPlace","").isEmpty()).put("pending",SuppliesWeather.busy()).put("error",repo.prefs.getString("suppliesWeatherError",""));
+        JSONObject value=read(repo.prefs).put("sites",new JSONArray(repo.prefs.getString(SupplyLocations.SITES,"[]"))),weather=new JSONObject(repo.prefs.getString(WEATHER,"{}"));weather.remove("forecastArchive");
+        JSONObject chosen;try{chosen=SupplyLocations.current(repo);}catch(Exception e){chosen=new JSONObject();}String chosenKey=chosen.optString("key");if(!chosenKey.equals(weather.optString("siteKey")))weather.put("forecast",new JSONArray()).put("siteKey",chosenKey);
+        weather.put("currentPlace",chosen);
+        weather.put("enabled",SupplyLocations.automatic(repo)||!repo.prefs.getString("weatherPlace","").isEmpty()).put("pending",SuppliesWeather.busy()).put("error",repo.prefs.getString("suppliesWeatherError","")).put("location",SupplyLocations.status(repo));
         return value.put("weather",weather);
     }
     private SuppliesStore(){}

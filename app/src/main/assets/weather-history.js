@@ -1,7 +1,8 @@
-(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.WattWeatherHistory=api;})(typeof globalThis==='object'?globalThis:this,function(){
+(function(root,factory){const api=factory(typeof module==='object'&&module.exports?require('./supplies-travel.js'):root.WattSupplyTravel);if(typeof module==='object'&&module.exports)module.exports=api;else root.WattWeatherHistory=api;})(typeof globalThis==='object'?globalThis:this,function(T){
   'use strict';
   const DAY=86400000,finite=n=>typeof n==='number'&&Number.isFinite(n);
   function coverage(config={},now=Date.now()){
+    if(config.weather?.version>=2)return travelCoverage(config,now);
     const weather=config.weather||{};let timezone=weather.timezone,verifiedZone=true,format;
     try{if(!timezone)throw Error();format=new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit'});}catch(e){timezone='UTC';verifiedZone=false;format=new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit'});}
     const date=t=>{const p=Object.fromEntries(format.formatToParts(t).map(p=>[p.type,p.value]));return `${p.year}-${p.month}-${p.day}`;},today=date(now),limit=date(now-1096*DAY),sites=new Map(),stored=new Map();
@@ -31,6 +32,17 @@
     }).filter(s=>s.first!==null||s.stored);
     const missing=required-available,state=!verifiedZone?'unverified':unknown?'unassigned':!required?'idle':missing?'incomplete':'complete';
     return {state,timezone,required,available,missing,unknown,truncated,sites:summaries,stored:stored.size,rows:[...stored.values()].sort((a,b)=>b.from-a.from),pending:!!weather.pending,error:weather.error||'',updated:weather.updated||null};
+  }
+  function travelCoverage(config,now){
+    const weather=config.weather||{},events=(config.events||[]).filter(e=>finite(e.at)&&e.at<=now).sort((a,b)=>a.at-b.at),first=events[0],end=Math.floor(now/3600000)*3600000,start=first?Math.max(first.at,now-1096*DAY):end;
+    const route=T.route(events,config.sites||[],start,end,first?.site),rows=T.canonical(weather.history||[]),basis=T.across(rows,route,start,end),names=new Map();
+    for(const point of [...events,...config.sites||[]])if(point.site?.key)names.set(point.site.key,point.site.name||'Aufenthaltsort');
+    const sites=[...new Set(route.map(s=>s.site).filter(Boolean))].map(key=>{
+      const spans=route.filter(s=>s.site===key),required=spans.reduce((n,s)=>n+s.to-s.from,0)/3600000,coverage=T.across(rows,spans,start,end),available=(coverage.features?.coverage||coverage.coverage)*(end-start)/3600000;
+      return {key,name:names.get(key)||'Aufenthaltsort',required,available,missing:Math.max(0,required-available),from:spans[0].from,to:spans.at(-1).to};
+    });
+    const required=Math.max(0,end-start)/3600000,available=basis.coverage*required,unknown=basis.unknownLocationMillis/3600000;
+    return {travel:true,state:!required?'idle':unknown>0?'unassigned':required-available>1e-6?'incomplete':'complete',required,available,missing:Math.max(0,required-available),unknown,sites,pending:!!weather.pending,error:weather.error||'',updated:weather.updated||null,truncated:!!first&&first.at<now-1096*DAY};
   }
   return {coverage};
 });

@@ -38,12 +38,12 @@ final class WeatherClient {
         return out;
     }
     static void place(Repository repository,JSONObject input) throws Exception {
-        if(input.optBoolean("off")){repository.prefs.edit().remove("weatherPlace").remove("weatherCache").remove("weatherError").putString("solar-setup-v1",resetSite(repository).toString()).apply();return;}
+        if(input.optBoolean("off")){repository.prefs.edit().remove("weatherPlace").remove("weatherCache").remove("weatherError").putString("solar-setup-v1",resetSite(repository).toString()).apply();SuppliesStore.recordSite(repository);return;}
         JSONObject p=checkedPlace(input);
         android.content.SharedPreferences.Editor edit=repository.prefs.edit().putString("weatherPlace",p.toString()).remove("weatherCache").remove("weatherError");
         JSONObject old=new JSONObject(repository.prefs.getString("weatherPlace","{}"));
         if(Math.abs(old.optDouble("latitude",Double.NaN)-p.getDouble("latitude"))>.001||Math.abs(old.optDouble("longitude",Double.NaN)-p.getDouble("longitude"))>.001||old.length()==0)edit.putString("solar-setup-v1",resetSite(repository).toString());
-        edit.apply();refresh(repository,true);
+        edit.apply();SuppliesStore.recordSite(repository);refresh(repository,true);
     }
     private static JSONObject resetSite(Repository repository)throws Exception{
         JSONObject equipment=repository.equipment(),plan=SolarPlanning.checked(new JSONObject(repository.prefs.getString("solar-setup-v1","{}")),equipment);JSONArray groups=equipment.getJSONArray("groups");
