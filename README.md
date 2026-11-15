@@ -51,6 +51,8 @@ Bis zu drei 608PD erhalten getrennte Profile, private Kennungen und eigene Verbi
 
 ## Update 3.0.8
 
+**Bekannte Grenze:** Der Archivabruf kann bei einer langsamen lokalen Bestandsprüfung weiterhin mit Bluetooth-Status 19 enden. Eine Korrektur mit eigenständiger Bluetooth-Verarbeitung wird als [3.0.9 vorbereitet](docs/changes-3.0.9.md); diese ist noch nicht gebaut oder veröffentlicht. 3.0.8 behebt den Empfangsüberlauf, bestätigt aber noch keinen erfolgreichen vollständigen Archivabruf auf jeder Anlage.
+
 Der Archivempfang gibt Bluetooth-Pufferplatz nach der Verarbeitung frei und unterscheidet einen Transportfehler vom manuellen Abbruch. Gescheiterte Aufzeichnungsstarts bleiben mit Android-Freigaben und Fehlergrund in der Diagnose nachvollziehbar. Die allgemeine **Victron-Liveanzeige sitzt im App-Kopf**; jeder 608PD zeigt seinen eigenen Status.
 
 **Alte Rollerwerte bleiben sichtbar, erscheinen grau und tragen eine Alt-Markierung mit Uhrzeit.** Das Anzeigehandy prüft den ursprünglichen BMS-Zeitpunkt selbst. Erst neue Messwerte heben die Markierung auf. **Modellbau → Journal öffnen** zeigt beobachtete Lade-/Powerbankvorgänge aller gespeicherten Lader, Messlücken und ausschließlich beobachtete Akkuseitenenergie; JSON-Export ist enthalten.

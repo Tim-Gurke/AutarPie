@@ -12,6 +12,8 @@ public final class SQLiteDatabase implements AutoCloseable {
     public static final int CONFLICT_IGNORE=4,CONFLICT_REPLACE=5,OPEN_READWRITE=0,OPEN_READONLY=1,NO_LOCALIZED_COLLATORS=0x10;
     public static SQLiteDatabase openDatabase(String path,CursorFactory factory,int flags){return new SQLiteDatabase(path);}
     private final Connection connection;
+    /** Observe query entry in concurrency proofs; the actual SQLite engine still supplies the lock. */
+    public static volatile java.util.function.Consumer<String> beforeQuery;
     private boolean successful;
     SQLiteDatabase(String path){try{connection=DriverManager.getConnection("jdbc:sqlite:"+path);}catch(SQLException e){throw new IllegalStateException(e);}}
     public void beginTransaction(){try{if(!connection.getAutoCommit())throw new IllegalStateException("Nested test transaction");connection.setAutoCommit(false);successful=false;}catch(SQLException e){throw new IllegalStateException(e);}}
@@ -25,6 +27,7 @@ public final class SQLiteDatabase implements AutoCloseable {
     public void execSQL(String sql,Object[] args){try(PreparedStatement q=statement(sql,args)){q.execute();}catch(SQLException e){throw new IllegalStateException(e);}}
     public Cursor rawQuery(String sql,String[] args){
         try{
+            java.util.function.Consumer<String> observer=beforeQuery;if(observer!=null)observer.accept(sql);
             PreparedStatement q=statement(sql,args);ResultSet r=q.executeQuery();
             return (Cursor)Proxy.newProxyInstance(Cursor.class.getClassLoader(),new Class<?>[]{Cursor.class},(proxy,method,a)->{
                 switch(method.getName()){

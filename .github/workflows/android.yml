@@ -95,6 +95,8 @@ jobs:
           python3 tools/prove-charger-journal.py --dependencies "$deps" --output app/build/reports/charger-journal-proof
           python3 tools/prove-supplies-weather.py --dependencies "$deps" --output app/build/reports/supplies-weather-proof
           python3 tools/prove-archive-backpressure.py --output app/build/reports/archive-backpressure-proof
+          git fetch --no-tags --depth=1 origin c15f75c6b4be0adea1e543b029484a7353d14473
+          python3 tools/prove-archive-io.py --dependencies "$deps" --output app/build/reports/archive-io-proof
           python3 tools/prove-charger-ble.py --android-jar "$deps/android-api35.jar" --output app/build/reports/charger-ble-proof
           python3 tools/prove-archive-delta.py --output app/build/reports/archive-delta-proof --sqlite-jar "$deps/sqlite-jdbc-3.46.1.0.jar" --slf4j-jar "$deps/slf4j-api-1.7.36.jar"
           python3 tools/prove-archive-storage.py --output app/build/reports/archive-storage-proof --android-jar "$deps/android-api35.jar" --sqlite-jar "$deps/sqlite-jdbc-3.46.1.0.jar" --slf4j-jar "$deps/slf4j-api-1.7.36.jar"
@@ -204,12 +206,12 @@ jobs:
             adb shell am instrument -w -e class de.wattpit.app.UnifiedSmokeTest de.wattpit.app.test/androidx.test.runner.AndroidJUnitRunner | tee unified-emulator.log
             python3 -c "from pathlib import Path; s=Path('unified-emulator.log').read_text(); assert 'OK (6 tests)' in s and 'FAILURES' not in s"
             mkdir -p docs/images
-            adb exec-out run-as de.wattpit.app cat files/autarpie-3.0.8-central.png > docs/images/autarpie-3.0.8-central.png
-            adb exec-out run-as de.wattpit.app cat files/autarpie-3.0.8-direct.png > docs/images/autarpie-3.0.8-direct.png
+            adb exec-out run-as de.wattpit.app cat files/autarpie-3.0.9-central.png > docs/images/autarpie-3.0.9-central.png
+            adb exec-out run-as de.wattpit.app cat files/autarpie-3.0.9-direct.png > docs/images/autarpie-3.0.9-direct.png
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: AutarPie-3.0.8-Emulator-${{ matrix.api }}
+          name: AutarPie-3.0.9-Emulator-${{ matrix.api }}
           path: |
             unified-emulator.log
-            docs/images/autarpie-3.0.8-*.png
+            docs/images/autarpie-3.0.9-*.png

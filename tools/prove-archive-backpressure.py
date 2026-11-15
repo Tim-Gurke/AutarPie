@@ -57,6 +57,9 @@ public final class ArchiveBackpressureProof {
  final ArrayDeque<ArchiveCodec.Message> messages=new ArrayDeque<>();
  final ArchiveCodec.Stream stream=new ArchiveCodec.Stream();
  final ArchiveLink link=new ArchiveLink();
+ // This older check isolates receive-window math; blocked SQL and actual GATT callbacks have their own proof.
+ final InlineIo io=new InlineIo();
+ static final class InlineIo { boolean isWorkerThread(){return true;} <T>T call(java.util.concurrent.Callable<T> action)throws Exception{return action.call();} }
  volatile boolean cancelled,connected=true;
  volatile IOException receiveFailure;
  int disconnectStatus,peak,notifications,heartbeats,receiveQueuePeak;
