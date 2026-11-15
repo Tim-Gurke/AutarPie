@@ -1,6 +1,6 @@
-# AutarPie 3.0.8 · Vorbereitung vor der Bau-Freigabe
+# AutarPie 3.0.8 · Archivempfang, Laderjournal und Gaslernen unterwegs
 
-Dieser Quellstand ist vorbereitet. Es wurde noch keine 3.0.8-APK gebaut oder veröffentlicht. Vor Beginn des APK-Baus einschließlich Android-CI wird Tim um Freigabe des konkreten Umfangs gebeten. Die bisherige Veröffentlichung bleibt 3.0.7.
+Dieses Update verbessert den Victron-Archivempfang, macht veraltete Rollerwerte deutlich sichtbar, ergänzt drei getrennte 608PD-Profile mit Nutzungsjournal und berücksichtigt Ortswechsel beim wetterabhängigen Gaslernen.
 
 ## Victron-Archiv und Aufzeichnungsstart
 
@@ -65,10 +65,10 @@ Beide Gerätearten benötigen 3.0.8 für diesen Ablauf: Zentrale beziehungsweise
 
 Technische Quellen: [Open-Meteo-Rückblick](https://open-meteo.com/en/docs), [historisches Wetter](https://open-meteo.com/en/docs/historical-weather-api), [Android-Standortdienste](https://developer.android.com/about/versions/14/changes/fgs-types-required).
 
-## Vorprüfung und nächste Freigabe
+## Prüfungen und Update-Reihenfolge
 
 Lokale Quellcodeprüfungen führen die produktiven Java- und JavaScript-Pfade mit neutralen Daten aus. Dazu gehören die Reproduktion des alten Archivüberlaufs, Rückstau und Fortsetzung, drei getrennte Laderverbindungen, bestätigte und abgelaufene Ersteinrichtung, auf die Adresse begrenzte Befehle, tatsächliche SQLite-Speicherung und Datenbank-Erweiterung, neuer Prozess, wiederholte Viewer-Replikation sowie gefilterter HCI-Import. Die gemeinsamen JavaScript-Tests prüfen zusätzlich die BMS-Altersgrenze und die Rückkehr mit niedrigerem Akkustand. 311 JavaScript-Prüfungen sind erfolgreich; die Reiseszenarien decken mehrere Aufenthalte, Rückkehr, stündliches Ortswetter, Temperatur ohne Wind, GPS-Ablauf, unbekannte Zeiten und den Erhalt des Journals ab. 26 native Wetter-/Standortspeicherprüfungen sowie eine Java→JSON→JavaScript-Prüfung bestätigen kompakte Wetterstunden, schrittweises Ergänzen, Zwischenstopps, beibehaltene Solarausrichtung und Übernahme tatsächlich gespeicherter Ortszeiten.
 
-Browser-Szenarien für die neue Darstellung, Hell-/Dunkelansicht, schmale Bildschirme und Journalbedienung, Reise-Wetterkarte und GPS-Einstellung sowie Android-Emulatorprüfungen sind vorbereitet. Der vollständige Build-/Lint-/Emulatorlauf startet erst nach der ausdrücklich erteilten Bau-Freigabe. Es werden daraus weder reale Funkstabilität noch eine bereits durchgeführte Direktkopplung oder ein erfolgreicher nächtlicher G5-Neustart abgeleitet.
+Browser-Szenarien für die neue Darstellung, Hell-/Dunkelansicht, schmale Bildschirme und Journalbedienung, Reise-Wetterkarte und GPS-Einstellung sowie Android-Emulatorprüfungen sind vorbereitet. Der veröffentlichte APK-Stand wird vor der Freigabe durch Android-Build, Lint, Browser- und Emulatorprüfungen kontrolliert. Es werden daraus weder reale Funkstabilität noch eine bereits durchgeführte Direktkopplung oder ein erfolgreicher nächtlicher G5-Neustart abgeleitet.
 
-Nach erfolgreichem freigegebenem Bau zuerst die **Zentrale beziehungsweise das direkt erfassende Handy**, danach alle Anzeigen aktualisieren. Für neue Einrichtung und Journal ist der gemeinsame Stand 3.0.8 vorgesehen. Die bisherige Verbundschnittstelle bleibt erhalten; ältere Anzeigen nutzen weiterhin das ausgewählte Einzelprofil. Ein aktueller Viewer kann die bisherigen Analysen einer älteren Zentrale weiter lesen, weist beim neuen Journal aber auf das erforderliche Zentralenupdate hin.
+Beim Update zuerst die **Zentrale beziehungsweise das direkt erfassende Handy**, danach alle Anzeigen aktualisieren. Für neue Einrichtung und Journal ist der gemeinsame Stand 3.0.8 vorgesehen. Die bisherige Verbundschnittstelle bleibt erhalten; ältere Anzeigen nutzen weiterhin das ausgewählte Einzelprofil. Ein aktueller Viewer kann die bisherigen Analysen einer älteren Zentrale weiter lesen, weist beim neuen Journal aber auf das erforderliche Zentralenupdate hin.

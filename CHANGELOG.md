@@ -6,9 +6,9 @@ Die Dokumentation bleibt vollständig erhalten, auch wenn ältere GitHub-Release
 
 Das bestehende GitHub-Repository heißt jetzt [`Tim-Gurke/AutarPie`](https://github.com/Tim-Gurke/AutarPie). Download- und Dokumentationslinks sind auf die neue Adresse umgestellt. Diese Änderung betrifft die Projektdokumentation; die veröffentlichte APK bleibt Version 3.0.0.
 
-## In Vorbereitung: 3.0.8 · Archivempfang, drei Lader, alte BMS-Werte und Gaslernen auf Reisen
+## Veröffentlichte Versionen
 
-Noch keine APK gebaut oder veröffentlicht. Der APK-Bau einschließlich CI wartet auf Tims Freigabe des vorbereiteten Umfangs.
+### 3.0.8 · Archivempfang, drei Lader, alte BMS-Werte und Gaslernen auf Reisen
 
 - Empfangsfreigaben erst nach Verarbeitung der Bluetooth-Pakete zurückgeben, damit langsamer lokaler Archivabgleich den Empfangspuffer nicht füllt. Transportfehler, manuellen Abbruch und Vorrang eines Schaltauftrags unterscheiden.
 - Gescheiterte Aufzeichnungsstarts mit ihrem Grund statt als freiwillige Pause dokumentieren; Android-Freigaben und letzten Startfehler exportieren und fehlende Hintergrundfreigabe in der Zentrale sichtbar machen.
@@ -19,9 +19,7 @@ Noch keine APK gebaut oder veröffentlicht. Der APK-Bau einschließlich CI warte
 
 - Gas-Wetterlernen mit nach Aufenthaltsdauer gewichtetem Ortswetter auch bei Ortswechseln und Zwischenstopps. Begrenzte GPS-Nachführung am erfassenden Handy, stündlicher Wetterrückblick einschließlich verlassener Orte und getrennte Anzeige fehlender Ortszeiten beziehungsweise Wetterdaten. Alle Flaschenwechsel bleiben erhalten; reine Temperaturmodelle benötigen keine vollständigen Windwerte.
 
-[Vorbereiteter Umfang, Bedienung und Prüfgrenzen](docs/changes-3.0.8.md).
-
-## Veröffentlichte Versionen
+[Änderungen, Bedienung und Prüfgrenzen](docs/changes-3.0.8.md).
 
 ### 3.0.7 · Vollständige 608PD-Messwerte nach der Anmeldung
 
