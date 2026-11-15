@@ -15,7 +15,8 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
   time+=seconds*1000;await page.clock.setFixedTime(new Date(time));
   await page.evaluate(({time,patch})=>{Object.assign(window.fixture.readings[0],patch,{t:time});window.fixture.readings[1].t=time;poll();},{time,patch});
  };
- const fresh=async patch=>{await page.evaluate(()=>{window.fixture.running=false;poll();window.fixture.running=true;});await advance(1,patch);};
+ // A receiver gap starts an independent input series, even if a hidden UI delays the pause repaint.
+ const fresh=async patch=>{await page.evaluate(()=>{window.fixture.running=false;poll();window.fixture.running=true;});await advance(46,patch);assert.equal(await page.evaluate(()=>dashboard.chargeEstimator.samples.length),1);};
  const resized=async viewport=>{
   await page.setViewportSize(viewport);
   await page.evaluate(()=>new Promise(resolve=>{const observer=new ResizeObserver(()=>{observer.disconnect();requestAnimationFrame(()=>requestAnimationFrame(resolve));});observer.observe(document.getElementById('dashboardBoard'));}));
