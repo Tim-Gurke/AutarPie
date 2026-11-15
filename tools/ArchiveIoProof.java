@@ -50,6 +50,7 @@ public final class ArchiveIoProof {
         }
         final class BluetoothGatt {
             static final int GATT_SUCCESS=0;volatile boolean closed;
+            int disconnectCalls,closeCalls;
             boolean writeCharacteristic(BluetoothGattCharacteristic c){legacyWrites++;return submit(c,c.getValue());}
             int writeCharacteristic(BluetoothGattCharacteristic c,byte[] value,int type){modernWrites++;return submit(c,value)?0:1;}
             boolean submit(BluetoothGattCharacteristic c,byte[] value){
@@ -62,7 +63,23 @@ public final class ArchiveIoProof {
                 main.later(()->{inFlight.decrementAndGet();if(status==0&&!closed)peer.written(c,copy);writeComplete(this,c,status);},8);
                 return true;
             }
-            void disconnect(){closed=true;peer.alive=false;}void close(){closed=true;}
+            void disconnect(){disconnectCalls++;closed=true;peer.alive=false;}void close(){closeCalls++;closed=true;}
+        }
+        final class BluetoothDevice {
+            static final int TRANSPORT_LE=2,PHY_LE_1M_MASK=1;
+            final int[] statuses;final List<BluetoothGatt> clients=new CopyOnWriteArrayList<>();
+            final List<Long> attemptedAt=new CopyOnWriteArrayList<>();
+            final CountDownLatch firstCallback=new CountDownLatch(1);
+            volatile BluetoothGattCallback listener;
+            BluetoothDevice(int... statuses){this.statuses=statuses;}
+            BluetoothGatt connectGatt(Object context,boolean automatic,BluetoothGattCallback callback,int transport,int phy,Handler handler){
+                if(automatic||transport!=TRANSPORT_LE||phy!=PHY_LE_1M_MASK)throw new IllegalArgumentException("Unexpected transport setup");
+                BluetoothGatt fresh=new BluetoothGatt();int index=clients.size();clients.add(fresh);attemptedAt.add(SystemClock.elapsedRealtime());listener=callback;
+                int status=statuses[Math.min(index,statuses.length-1)];
+                handler.later(()->{callback.onConnectionStateChange(fresh,status,status==0?BluetoothProfile.STATE_CONNECTED:BluetoothProfile.STATE_DISCONNECTED);firstCallback.countDown();},8);
+                return fresh;
+            }
+            void late(BluetoothGatt old,int status){main.post(()->listener.onConnectionStateChange(old,status,BluetoothProfile.STATE_DISCONNECTED));}
         }
         final class Peer implements AutoCloseable {
             final ScheduledExecutorService radio=Executors.newSingleThreadScheduledExecutor(r->{Thread t=new Thread(r,"victron-peer-adapter");t.setDaemon(true);return t;});
@@ -108,7 +125,9 @@ public final class ArchiveIoProof {
         volatile IOException receiveFailure;volatile int disconnectStatus,receiveQueuePeak,negotiatedMtu=77;
         volatile CompletableFuture<Integer> operation;volatile String operationType="",cancellationReason="";
         volatile long idlePackets,idleMessages,lastTransportTick,longestDatabaseCall,longestGattOperation,longestAndroidQueueDelay;
-        final List<String> diagnostics=new ArrayList<>();long importStarted=SystemClock.elapsedRealtime();
+        static volatile long lastGattClosedAt=-1;
+        final List<String> diagnostics=new ArrayList<>();long importStarted=SystemClock.elapsedRealtime(),importStartedWall=System.currentTimeMillis();
+        int connectionAttempts;String stage="Verbindung";
         String kind="shunt";int changed,blocks,skipped,missing,unmapped;
         final BluetoothGattCharacteristic control=new BluetoothGattCharacteristic(CONTROL),data=new BluetoothGattCharacteristic(DATA),bulk=new BluetoothGattCharacteristic(BULK);
         volatile BluetoothGatt gatt=new BluetoothGatt();
@@ -122,9 +141,11 @@ public final class ArchiveIoProof {
         abstract void writeComplete(BluetoothGatt g,BluetoothGattCharacteristic c,int status);
         abstract void peerDisconnect(BluetoothGatt g,int status);
         abstract byte[] request()throws Exception;abstract void closeTransport();abstract void maintenance()throws Exception;abstract void snapshot();
+        void openDevice(BluetoothDevice device)throws Exception{throw new UnsupportedOperationException();}
         abstract ArchiveSyncPlan.Availability availability(HistoryDb db,List<ArchiveCodec.Level> levels,ArchiveCodec.Clock c,long at)throws Exception;
         abstract int cancel();abstract int preempt();
         void stopSelf(){}
+        void progress(String label){}
         public void close(){closeTransport();io.close();peer.close();main.executor.shutdownNow();}
     }
 
@@ -169,13 +190,67 @@ public final class ArchiveIoProof {
             try{io.call(()->42);throw new AssertionError("closed transport accepted work");}catch(IOException expected){require(true,"a closed transport rejects subsequent requests");}
         }finally{io.close();callers.shutdownNow();}
     }
+    private static void connection(Environment e,String phase)throws Exception{
+        e.gatt=null;e.sessionReady=false;e.connected=false;e.peer.alive=false;e.peer.unsolicited=false;e.peer.watchdog=false;Environment.lastGattClosedAt=-1;
+        if(phase.equals("connect-recovery")){
+            Environment.BluetoothDevice device=e.new BluetoothDevice(133,0);e.openDevice(device);
+            require(e.connected&&e.connectionAttempts==2,"a real asynchronous status-133 callback is followed by a successful second connection");
+            require(device.clients.size()==2&&device.clients.get(0)!=device.clients.get(1),"recovery creates a fresh Android GATT client");
+            require(device.clients.get(0).disconnectCalls==1&&device.clients.get(0).closeCalls==1,"the failed Android client is disconnected and closed exactly once");
+            require(device.attemptedAt.get(1)-device.attemptedAt.get(0)>=1000,"the second connection respects the bounded release delay");
+            device.late(device.clients.get(0),133);Thread.sleep(40);
+            require(e.connected&&e.disconnectStatus==0,"a delayed callback from the retired client cannot break the new connection");
+            require(e.writes==0,"connection recovery does not replay archive or output commands");
+        }else if(phase.equals("connect-limits")){
+            Environment.BluetoothDevice device=e.new BluetoothDevice(133);
+            try{e.openDevice(device);throw new AssertionError("Persistent 133 succeeded");}catch(IOException expected){require(expected.getMessage().contains("133"),"exhausted retries retain the concrete status 133");}
+            require(device.clients.size()==3&&e.connectionAttempts==3,"persistent status 133 stops after exactly three attempts");
+            require(device.clients.stream().allMatch(c->c.closeCalls==1)&&e.gatt==null,"all exhausted connection clients are released");
+            require(device.attemptedAt.get(2)-device.attemptedAt.get(1)>=2000,"the final retry uses the longer bounded delay");
+            Environment.BluetoothDevice other=e.new BluetoothDevice(19);
+            try{e.openDevice(other);throw new AssertionError("Status 19 succeeded");}catch(IOException expected){require(expected.getMessage().contains("19")&&other.clients.size()==1,"another disconnect reason is not retried as status 133");}
+        }else if(phase.equals("connect-stop")){
+            Environment.BluetoothDevice device=e.new BluetoothDevice(133,0);ExecutorService calls=caller();
+            try{Future<?> pending=calls.submit(()->{e.openDevice(device);return null;});require(device.firstCallback.await(2,TimeUnit.SECONDS),"the first failed connection actually reports its callback before cancellation");
+                long until=System.nanoTime()+1000000000L;while(!device.clients.get(0).closed&&System.nanoTime()<until)Thread.sleep(2);
+                require(device.clients.get(0).closed,"the failed client is already retired before the user cancels the retry delay");
+                e.cancel();Throwable error=failure(pending);Thread.sleep(300);
+                require(error instanceof IOException||error instanceof InterruptedException,"cancellation releases the waiting connection caller");
+                require(device.clients.size()==1&&e.userCancelled,"cancelling the delay prevents the second Android connection attempt");
+            }finally{calls.shutdownNow();}
+        }else if(phase.equals("connect-switch")){
+            Environment.BluetoothDevice first=e.new BluetoothDevice(0);e.openDevice(first);require(e.connected,"the first device connects successfully");
+            e.closeTransport();long closed=Environment.lastGattClosedAt;
+            try(Environment next=new ArchiveIoHarness(e.repository,30)){
+                next.gatt=null;next.sessionReady=false;next.connected=false;next.peer.alive=false;next.peer.watchdog=false;
+                Environment.BluetoothDevice second=next.new BluetoothDevice(0);next.openDevice(second);
+                require(next.connected&&second.attemptedAt.get(0)-closed>=1000,"a new service instance also waits for the previous client's release interval");
+                require(first.clients.get(0).closeCalls==1&&next.connectionAttempts==1,"successful device switching closes the old client and does not add unnecessary retries");
+            }
+        }else throw new IllegalArgumentException(phase);
+    }
+    private static void batch(Repository repo)throws Exception{
+        ArchiveBatch mixed=new ArchiveBatch(2);mixed.add("Solar",true,1517,"Vollständig");mixed.add("Batterie",false,0,"Bluetooth verbinden · Status 133");
+        String text=repo.archiveBatchFinished(mixed,false,"");JSONObject saved=new JSONObject(repo.syncState()).getJSONObject("archive");
+        require(text.contains("teilweise")&&text.contains("1517 Werte insgesamt")&&text.contains("Solar")&&text.contains("Batterie"),"the real repository preserves the successful first device when the second fails with zero values");
+        require(saved.getLong("stored")==1517&&saved.getInt("done")==1&&saved.getInt("total")==2,"the final light status carries correct queue totals");
+        JSONArray outcomes=saved.getJSONArray("outcomes");require(outcomes.length()==2&&outcomes.getJSONObject(0).getBoolean("complete")&&!outcomes.getJSONObject(1).getBoolean("complete"),"success and failure remain associated with their individual device");
+        require(repo.diagnosticText().contains(text),"the native diagnosis exports the same combined outcome as the visible status");
+        ArchiveBatch complete=new ArchiveBatch(2);complete.add("Solar",true,1517,"Vollständig");complete.add("Batterie",true,632,"Vollständig");
+        String finished=repo.archiveBatchFinished(complete,false,"");require(finished.contains("2 von 2")&&finished.contains("2149 Werte insgesamt")&&!finished.contains("133"),"a new successful queue replaces the old failure without accumulating old totals");
+        ArchiveBatch stopped=new ArchiveBatch(2);stopped.add("Solar",true,1517,"Vollständig");
+        String cancelled=repo.archiveBatchFinished(stopped,true,"Import abgebrochen");require(cancelled.startsWith("Import abgebrochen")&&cancelled.contains("1517")&&cancelled.contains("noch nicht abgerufen"),"cancellation retains completed data and identifies the unprocessed device");
+        require(count(repo.db)==41,"publishing batch outcomes does not change any recorded measurement");
+    }
     public static void main(String[] args)throws Exception{
         String phase=args[1];if(phase.equals("actor")){actor();System.out.println("RESULT "+checks+" actor checks");return;}
         Class.forName("org.sqlite.JDBC");Path directory=Path.of(args[0]);LanSyncProof.TestContext context=new LanSyncProof.TestContext(directory);
         Repository repo=LanSyncProof.repository(context);HistoryDb history=repo.db;seed(history);Path database=directory.resolve("wattpit-history.db");
         boolean legacy=phase.equals("legacy");int api=phase.equals("fixed30")?30:35;
         try(Environment e=legacy?new ArchiveLegacyHarness(repo,api):new ArchiveIoHarness(repo,api)){
-            if(phase.startsWith("ack-")){
+            if(phase.startsWith("connect-"))connection(e,phase);
+            else if(phase.equals("batch"))batch(repo);
+            else if(phase.startsWith("ack-")){
                 e.peer.unsolicited=false;e.peer.watchdog=false;
                 if(phase.equals("ack-timeout")){
                     e.peer.silentNext=true;ExecutorService calls=caller();

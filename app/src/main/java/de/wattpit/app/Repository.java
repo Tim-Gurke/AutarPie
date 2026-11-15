@@ -76,6 +76,15 @@ final class Repository {
     synchronized void finishArchiveIfActive(){
         if(archive.optBoolean("active"))archiveState(archive.optString("mac"),false,"Archivimport beendet. Bereits gelesene Werte bleiben gespeichert.",archive.optInt("done"),archive.optInt("total"));
     }
+    synchronized String archiveBatchFinished(de.wattpit.app.core.ArchiveBatch batch,boolean cancelled,String reason){
+        String text=batch.summary(cancelled,reason);
+        try{
+            JSONArray results=new JSONArray();for(de.wattpit.app.core.ArchiveBatch.Result r:batch.results())results.put(new JSONObject().put("device",r.name).put("complete",r.complete).put("stored",r.stored).put("text",r.detail));
+            archive=new JSONObject().put("mac","").put("device","Gerätearchive").put("active",false).put("text",text).put("done",batch.completed()).put("total",batch.expected()).put("stored",batch.stored()).put("outcomes",results).put("updated",System.currentTimeMillis());
+            JSONObject all=new JSONObject(prefs.getString("archiveDiagnostics","{}"));all.put("batch",archive);prefs.edit().putString("archiveDiagnostics",all.toString()).apply();
+        }catch(JSONException ignored){}
+        return text;
+    }
     synchronized void archiveDiagnostics(String kind,JSONObject result)throws JSONException{
         if(!kind.equals("solar")&&!kind.equals("shunt"))return;
         JSONObject all=new JSONObject(prefs.getString("archiveDiagnostics","{}"));all.put(kind,result);prefs.edit().putString("archiveDiagnostics",all.toString()).apply();
@@ -103,8 +112,10 @@ final class Repository {
     private static Double number(JSONObject values,String key){double value=values.optDouble(key,Double.NaN);return Double.isFinite(value)?value:null;}
     synchronized String diagnosticText()throws JSONException{
         JSONObject all=new JSONObject(prefs.getString("archiveDiagnostics","{}"));StringBuilder text=new StringBuilder("AutarPie "+BuildConfig.VERSION_NAME+" · Archivdiagnose\n");
+        JSONObject batch=all.optJSONObject("batch");if(batch!=null)text.append("\nGesamtergebnis · ").append(java.time.Instant.ofEpochMilli(batch.optLong("updated"))).append('\n').append(batch.optString("text")).append('\n');
         for(String kind:new String[]{"solar","shunt"}){
             JSONObject d=all.optJSONObject(kind);if(d==null)continue;text.append(kind.equals("solar")?"\nSolarladeregler\n":"\nBatteriewächter\n");
+            if(d.optLong("startedAt")>0)text.append("Beginn · ").append(java.time.Instant.ofEpochMilli(d.getLong("startedAt"))).append(" · Ende · ").append(java.time.Instant.ofEpochMilli(d.getLong("finishedAt"))).append(" · Verbindungsversuche ").append(d.optInt("connectionAttempts")).append('\n');
             text.append(d.optString("result")).append('\n');JSONArray lines=d.optJSONArray("steps");if(lines!=null)for(int i=0;i<lines.length();i++)text.append("· ").append(lines.getString(i)).append('\n');
         }
         return text.toString();

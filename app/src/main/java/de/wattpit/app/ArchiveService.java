@@ -12,6 +12,7 @@ import de.wattpit.app.core.ArchiveSession;
 import de.wattpit.app.core.ArchiveDiagnostic;
 import de.wattpit.app.core.ArchiveLink;
 import de.wattpit.app.core.ArchiveIo;
+import de.wattpit.app.core.ArchiveBatch;
 import de.wattpit.app.core.ArchiveSyncPlan;
 import de.wattpit.app.core.ArchiveTransferPlan;
 import de.wattpit.app.core.ArchiveTimeReference;
@@ -26,6 +27,7 @@ import java.util.concurrent.*;
 @SuppressLint("MissingPermission")
 public final class ArchiveService extends Service {
     private static final String CHANNEL="wattpit-archive";
+    private static volatile long lastGattClosedAt=-1;
     private static final UUID SERVICE=uuid(1),CONTROL=uuid(2),DATA=uuid(3),BULK=uuid(4),CCCD=UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
     private final ArchiveIo io=new ArchiveIo(this::idleTransport,this::transportFailed);
@@ -53,14 +55,16 @@ public final class ArchiveService extends Service {
     private boolean automatic,liveOnly;
     private String mac="",kind="";
     private int changed,missing,unmapped,processed,total,unknown,blocks,skipped;
-    private long lastNotification,importStarted;
+    private long lastNotification,importStarted,importStartedWall;
+    private int connectionAttempts;
+    private ArchiveBatch batch;
     private static UUID uuid(int n){return UUID.fromString(String.format(Locale.ROOT,"306b%04x-b081-4037-83dc-e59fcc3cdfd0",n));}
     private final BluetoothGattCallback callback=new BluetoothGattCallback(){
         @Override public void onConnectionStateChange(BluetoothGatt g,int status,int state){
             if(g!=gatt)return;
             connected=status==BluetoothGatt.GATT_SUCCESS&&state==BluetoothProfile.STATE_CONNECTED;
             if(connected)complete("connect",0);
-            else if(state==BluetoothProfile.STATE_DISCONNECTED){disconnectStatus=status;trace("Bluetooth getrennt · Status "+status);failOperation(new LinkClosed(status));received.offer(new byte[0]);}
+            else if(status!=BluetoothGatt.GATT_SUCCESS||state==BluetoothProfile.STATE_DISCONNECTED){disconnectStatus=status;trace("Bluetooth getrennt · Status "+status);failOperation(new LinkClosed(status));received.offer(new byte[0]);}
         }
         @Override public void onServicesDiscovered(BluetoothGatt g,int status){if(g==gatt)complete("discover",status);}
         @Override public void onDescriptorWrite(BluetoothGatt g,BluetoothGattDescriptor d,int status){if(g==gatt)complete("descriptor",status);}
@@ -85,15 +89,15 @@ public final class ArchiveService extends Service {
     private void trace(String text){synchronized(diagnostics){if(diagnostics.size()>=80)diagnostics.remove(0);String elapsed=importStarted>0?"+"+Math.max(0,SystemClock.elapsedRealtime()-importStarted)+" ms · ":"";diagnostics.add(elapsed+ArchiveDiagnostic.clean(text));}}
     private void saveDiagnostics(String result){try{
         JSONArray lines;synchronized(diagnostics){lines=new JSONArray(diagnostics);}
-        repository.archiveDiagnostics(kind,new JSONObject().put("result",result).put("steps",lines).put("durationMs",SystemClock.elapsedRealtime()-importStarted).put("stored",changed).put("blocks",blocks).put("skipped",skipped).put("missing",missing).put("unmapped",unmapped).put("sentPackets",link.sent()).put("receivedPackets",link.received()).put("consumedPackets",link.consumed()).put("receiveQueuePeak",receiveQueuePeak).put("receiveGrants",link.grants()).put("idlePackets",idlePackets).put("idleMessages",idleMessages).put("heartbeats",link.heartbeats()).put("maxHeartbeatGapMs",link.maxHeartbeatGap()).put("lastHeartbeatAgeMs",link.heartbeatAge(SystemClock.elapsedRealtime())).put("lastTransportTickAgeMs",lastTransportTick>0?Math.max(0,SystemClock.elapsedRealtime()-lastTransportTick):JSONObject.NULL).put("longestDatabaseCallMs",longestDatabaseCall).put("longestGattOperationMs",longestGattOperation).put("longestAndroidQueueDelayMs",longestAndroidQueueDelay));
+        repository.archiveDiagnostics(kind,new JSONObject().put("result",result).put("steps",lines).put("startedAt",importStartedWall).put("finishedAt",System.currentTimeMillis()).put("connectionAttempts",connectionAttempts).put("durationMs",SystemClock.elapsedRealtime()-importStarted).put("stored",changed).put("blocks",blocks).put("skipped",skipped).put("missing",missing).put("unmapped",unmapped).put("sentPackets",link.sent()).put("receivedPackets",link.received()).put("consumedPackets",link.consumed()).put("receiveQueuePeak",receiveQueuePeak).put("receiveGrants",link.grants()).put("idlePackets",idlePackets).put("idleMessages",idleMessages).put("heartbeats",link.heartbeats()).put("maxHeartbeatGapMs",link.maxHeartbeatGap()).put("lastHeartbeatAgeMs",link.heartbeatAge(SystemClock.elapsedRealtime())).put("lastTransportTickAgeMs",lastTransportTick>0?Math.max(0,SystemClock.elapsedRealtime()-lastTransportTick):JSONObject.NULL).put("longestDatabaseCallMs",longestDatabaseCall).put("longestGattOperationMs",longestGattOperation).put("longestAndroidQueueDelayMs",longestAndroidQueueDelay));
     }catch(JSONException ignored){}}
     private static final class GattFailure extends IOException{
         private static final long serialVersionUID=1;final int status;
         GattFailure(int status){super("GATT "+status);this.status=status;}
     }
     private static final class LinkClosed extends IOException{
-        private static final long serialVersionUID=1;
-        LinkClosed(int status){super("Bluetooth-Verbindung getrennt (Status "+status+")");}
+        private static final long serialVersionUID=1;final int status;
+        LinkClosed(int status){super("Bluetooth-Verbindung getrennt (Status "+status+")");this.status=status;}
     }
     private static final class GattRejected extends IOException{
         private static final long serialVersionUID=1;
@@ -242,6 +246,27 @@ public final class ArchiveService extends Service {
         trace("Ladeeinstellungen · "+values.length()+" von "+fields.size()+" gelesen · nur Lesezugriff");return values.length()>0;
     }
     private byte[] require(int reg) throws Exception{byte[] b=read(reg);if(b==null)throw new IllegalArgumentException("Dieses Gerät stellt kein unterstütztes Trendarchiv bereit.");return b;}
+    private void awaitGattRelease(long minimumDelay)throws Exception{
+        long now=SystemClock.elapsedRealtime(),quiet=lastGattClosedAt<0?0:Math.max(0,lastGattClosedAt+1000-now);
+        long wait=Math.max(quiet,minimumDelay),until=now+wait;
+        if(wait>0)trace("Bluetooth-Freigabe abwarten · "+wait+" ms");
+        while((now=SystemClock.elapsedRealtime())<until){check();Thread.sleep(Math.min(100,until-now));}check();
+    }
+    private void openGatt(BluetoothDevice device)throws Exception{
+        if(!io.isWorkerThread()){io.call(()->{openGatt(device);return null;});return;}
+        for(int attempt=1;attempt<=3;attempt++){
+            awaitGattRelease(attempt==1?0:(attempt-1)*1000L);
+            check();disconnectStatus=0;connectionAttempts++;
+            stage("Bluetooth verbinden · Versuch "+attempt+" von 3");
+            try{op("connect",()->{gatt=device.connectGatt(this,false,callback,BluetoothDevice.TRANSPORT_LE,BluetoothDevice.PHY_LE_1M_MASK,main);return gatt!=null;});return;}
+            catch(LinkClosed e){
+                closeGatt();check();
+                if(e.status!=133||attempt==3)throw e;
+                trace("Verbindungsaufbau · Status 133 · frischen Android-Client für nächsten Versuch verwenden");
+                received.clear();messages.clear();stream=new ArchiveCodec.Stream();link=new ArchiveLink();
+            }
+        }
+    }
     private void connect(BluetoothDevice device) throws Exception {
         if(!io.isWorkerThread()){io.call(()->{connect(device);return null;});return;}
         int bond=device.getBondState();
@@ -262,8 +287,7 @@ public final class ArchiveService extends Service {
             if(device.getBondState()!=BluetoothDevice.BOND_BONDED)throw new IllegalArgumentException("Android-Kopplung nicht abgeschlossen. PIN-Abfrage oder Bluetooth-Kopplungsbenachrichtigung prüfen");
             trace("Neue Android-Kopplung bestätigt");
         }else trace("Android-Kopplung bereits vorhanden · keine erneute PIN-Abfrage nötig");
-        stage("Bluetooth verbinden");
-        op("connect",()->{gatt=device.connectGatt(this,false,callback,BluetoothDevice.TRANSPORT_LE,BluetoothDevice.PHY_LE_1M_MASK,main);return gatt!=null;});
+        openGatt(device);
         stage("Bluetooth-Dienste lesen");op("discover",()->gatt.discoverServices());
         stage("Bluetooth-Paketgröße aushandeln");
         try{op("mtu",()->gatt.requestMtu(517));}catch(GattFailure|TimeoutException e){if(!connected)throw e;trace("Paketgröße 23 · Standardwert verwenden");}
@@ -308,6 +332,7 @@ public final class ArchiveService extends Service {
         try {
             List<String> queue=new ArrayList<>();
             JSONArray configs=repository.requestedArchiveDevices(mac);for(int i=0;i<configs.length();i++)queue.add(configs.getJSONObject(i).getString("mac"));
+            batch=new ArchiveBatch(queue.size());
             if(queue.isEmpty()&&!automatic){repository.archiveState(mac,false,"Keine Geräte zum Nachladen eingerichtet.",0,0);repository.message("Bitte zuerst ein Gerät einrichten.");}
             for(String next:queue){
                 if(cancelled)break;
@@ -315,17 +340,18 @@ public final class ArchiveService extends Service {
                 mac=next;stage="Verbindung";changed=missing=unmapped=processed=total=unknown=blocks=skipped=0;negotiatedMtu=23;synchronized(diagnostics){diagnostics.clear();}runImport();
             }
         }catch(Exception e){repository.archiveState(mac,false,"Import konnte nicht vorbereitet werden.",0,0);}
-        finally{main.post(this::stopSelf);}
+        finally{if(batch!=null&&!batch.results().isEmpty()){String text=repository.archiveBatchFinished(batch,cancelled,cancellationReason);repository.message(text);CentralLog.add(this,"Archiv",text);}main.post(this::stopSelf);}
     }
     private void runImport(){
-        importStarted=SystemClock.elapsedRealtime();
+        importStarted=SystemClock.elapsedRealtime();importStartedWall=System.currentTimeMillis();connectionAttempts=0;
         boolean importComplete=false;
+        String label="Gerät",outcome="Noch nicht abgeglichen";
         try {
             JSONObject cfg=null;JSONArray list=repository.configs();for(int i=0;i<list.length();i++)if(list.getJSONObject(i).getString("mac").equals(mac))cfg=list.getJSONObject(i);
-            if(cfg==null)throw new IllegalArgumentException("Bitte zuerst ein Gerät einrichten.");kind=cfg.getString("kind");
+            if(cfg==null)throw new IllegalArgumentException("Bitte zuerst ein Gerät einrichten.");kind=cfg.getString("kind");label=(kind.equals("solar")?"SmartSolar":"SmartShunt")+" · "+cfg.optString("name");
             BluetoothManager manager=getSystemService(BluetoothManager.class);BluetoothAdapter adapter=manager==null?null:manager.getAdapter();
             if(adapter==null||!adapter.isEnabled())throw new IllegalArgumentException("Bitte Bluetooth einschalten.");
-            if(automatic&&!repository.deviceSettingsDue(cfg,System.currentTimeMillis())&&!repository.archiveNeedsData(cfg,System.currentTimeMillis())){importComplete=true;return;}
+            if(automatic&&!repository.deviceSettingsDue(cfg,System.currentTimeMillis())&&!repository.archiveNeedsData(cfg,System.currentTimeMillis())){importComplete=true;outcome="Lokal vollständig · kein Abruf erforderlich";return;}
             repository.archiveAttemptStarted(mac);
             connect(adapter.getRemoteDevice(mac));
             boolean settingsAvailable=readSettings();
@@ -462,16 +488,17 @@ public final class ArchiveService extends Service {
             if(skipped>0)result+=" · "+skipped+" bereits vorhanden, nicht geladen";
             if(unmapped>0)result+=" · "+unmapped+" ohne Zeitreferenz zurückgestellt";
             if(unknown>0)result+=" · "+unknown+" Kanäle/Abfragen nicht unterstützt";
-            importComplete=true;
+            importComplete=true;outcome=result;
             traceSummary();saveDiagnostics(result);repository.archiveState(mac,false,result,processed,total);repository.message(result);
         }catch(Exception e){
             String reason=receiveFailure!=null?receiveFailure.getMessage():e instanceof GattFailure?"GATT "+((GattFailure)e).status:e instanceof TimeoutException?"Zeitüberschreitung":e instanceof IllegalArgumentException||e instanceof LinkClosed||e instanceof GattRejected||e instanceof IllegalStateException?e.getMessage():e instanceof SecurityException?"Bluetooth-Berechtigung fehlt":"Verbindung beendet";
             reason=ArchiveDiagnostic.clean(reason);
+            outcome=cancelled?cancellationReason:stage+": "+reason;
             String result=(cancelled?cancellationReason:stage+": "+reason)+". "+changed+" Archivwerte übernommen. Weitere Daten unter Geräte → Gerätearchiv ergänzen nachladen.";
             trace(cancelled?cancellationReason:stage+" · "+reason);traceSummary();saveDiagnostics(result);
             CentralLog.add(this,"Archiv",result);
             repository.invalidateStats();repository.archiveState(mac,false,result,processed,total);repository.message(result);
-        }finally{closeGatt();repository.archiveAttemptFinished(mac,userCancelled,importComplete);}
+        }finally{closeGatt();repository.archiveAttemptFinished(mac,userCancelled,importComplete);if(batch!=null)batch.add(label,importComplete,changed,outcome);}
     }
     private void refreshTransfer(int ch,ArchiveTransferPlan transfer,Map<Integer,List<ArchiveCodec.Level>> levels,
                                  Map<Integer,Integer> batches,Map<Integer,Integer> registers,Map<Integer,ArchiveCodec.Field> fields,
@@ -513,7 +540,7 @@ public final class ArchiveService extends Service {
         }
         repository.db.archiveHistory(mac,p);
     }
-    private void closeGatt(){sessionReady=false;BluetoothGatt g=gatt;gatt=null;connected=false;failOperation(new IOException("Archivverbindung beendet"));if(g!=null){try{g.disconnect();}catch(SecurityException ignored){}try{g.close();}catch(SecurityException ignored){}}}
+    private void closeGatt(){sessionReady=false;BluetoothGatt g=gatt;gatt=null;connected=false;failOperation(new IOException("Archivverbindung beendet"));if(g!=null){try{g.disconnect();}catch(SecurityException ignored){}try{g.close();}catch(SecurityException ignored){}finally{lastGattClosedAt=SystemClock.elapsedRealtime();}}}
     @Override public void onDestroy(){if(!cancelled)cancellationReason="Archivdienst beendet; Abgleich unvollständig";cancelled=true;failOperation(new IOException(cancellationReason));closeGatt();io.close();repository.liveBusy=false;if(!liveOnly){repository.archiveBusy=false;repository.finishArchiveIfActive();repository.archiveRun.finish();}worker.shutdownNow();stopForeground(STOP_FOREGROUND_REMOVE);super.onDestroy();}
     @Override public IBinder onBind(Intent intent){return null;}
 }

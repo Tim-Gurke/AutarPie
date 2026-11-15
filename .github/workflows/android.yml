@@ -207,12 +207,12 @@ jobs:
             adb shell am instrument -w -e class de.wattpit.app.UnifiedSmokeTest de.wattpit.app.test/androidx.test.runner.AndroidJUnitRunner | tee unified-emulator.log
             python3 -c "from pathlib import Path; s=Path('unified-emulator.log').read_text(); assert 'OK (6 tests)' in s and 'FAILURES' not in s"
             mkdir -p docs/images
-            adb exec-out run-as de.wattpit.app cat files/autarpie-3.0.9-central.png > docs/images/autarpie-3.0.9-central.png
-            adb exec-out run-as de.wattpit.app cat files/autarpie-3.0.9-direct.png > docs/images/autarpie-3.0.9-direct.png
+            adb exec-out run-as de.wattpit.app cat files/autarpie-3.0.10-central.png > docs/images/autarpie-3.0.10-central.png
+            adb exec-out run-as de.wattpit.app cat files/autarpie-3.0.10-direct.png > docs/images/autarpie-3.0.10-direct.png
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: AutarPie-3.0.9-Emulator-${{ matrix.api }}
+          name: AutarPie-3.0.10-Emulator-${{ matrix.api }}
           path: |
             unified-emulator.log
-            docs/images/autarpie-3.0.9-*.png
+            docs/images/autarpie-3.0.10-*.png

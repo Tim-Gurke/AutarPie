@@ -6,6 +6,14 @@ Die Dokumentation bleibt vollständig erhalten, auch wenn ältere GitHub-Release
 
 Das bestehende GitHub-Repository heißt jetzt [`Tim-Gurke/AutarPie`](https://github.com/Tim-Gurke/AutarPie). Download- und Dokumentationslinks sind auf die neue Adresse umgestellt. Diese Änderung betrifft die Projektdokumentation; die veröffentlichte APK bleibt Version 3.0.0.
 
+## Vorbereitet, noch nicht gebaut
+
+### 3.0.10 · Gerätewechsel und gemeinsames Archivergebnis
+
+Nach dem Schließen eines GATT-Clients vor der nächsten Verbindung eine kurze Freigabephase einhalten, auch über neue Archivdienst-Instanzen hinweg. Ausschließlich beim anfänglichen Verbindungsfehler 133 mit einem frischen Client höchstens dreimal verbinden; weitere Versuche nach begrenzter Wartezeit. Abbruch beendet die Wartephase. Alte Rückrufe bleiben vom neuen Client getrennt, bestehende Kopplungen und bereits gespeicherte Daten erhalten.
+
+Am Ende das Ergebnis aller Geräte gemeinsam zeigen und in der Diagnose erhalten. Ein fehlgeschlagener zweiter Abruf mit 0 Werten verdeckt die Werte des erfolgreichen ersten Geräts nicht mehr. Geräte-Diagnosen erhalten absolute Beginn-/Endzeiten und die Zahl der Verbindungsversuche. 109 lokale Quellprüfschritte erfolgreich; noch kein APK-Bau oder APK erzeugender CI-Lauf gestartet. Der konkrete Umfang wartet auf Bau-Freigabe. Die native Ursache eines realen Status 133 ist durch die begrenzte Wiederholungsstrategie nicht bewiesen. [Änderungen und Prüfgrenzen](docs/changes-3.0.10.md).
+
 ## Veröffentlichte Versionen
 
 ### 3.0.9 · Bluetooth-Verarbeitung während blockierender Archivprüfung

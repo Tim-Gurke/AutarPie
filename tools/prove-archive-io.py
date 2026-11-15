@@ -17,6 +17,7 @@ p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--dependencies', type=Path, required=True)
 p.add_argument('--output', type=Path, required=True)
 p.add_argument('--baseline-ref', default='c15f75c6b4be0adea1e543b029484a7353d14473')
+p.add_argument('--phases', nargs='+', help='Select targeted phases without repeating the full transport proof.')
 a = p.parse_args()
 root = Path(__file__).resolve().parents[1]
 out = a.output.resolve()
@@ -43,7 +44,7 @@ def block(text, signature):
 for name, source, fixed in [('ArchiveIoHarness', current, True), ('ArchiveLegacyHarness', baseline, False)]:
     methods = [block(source, signature) for signature in [
         'private void incoming(', 'private void complete(', 'private void failOperation(',
-        'private void check()', 'private void trace(', 'private void op(',
+        'private void check()', 'private void trace(', 'private void stage(', 'private void op(',
         'private void write(', 'private byte[] receivePacket(',
         'private void replenish()', 'private void maintain()',
         'private byte[] exchange(int reg,byte[] command,java.util.function.Predicate<byte[]> accept,long timeout)',
@@ -56,6 +57,7 @@ for name, source, fixed in [('ArchiveIoHarness', current, True), ('ArchiveLegacy
     if fixed:
         methods.extend(block(source, signature) for signature in [
             'private void transportFailed(', 'private void idleTransport()', 'private <T>T databaseCall(',
+            'private void openGatt(', 'private void awaitGattRelease(',
         ])
     for action, wrapper in [('CANCEL', 'cancel'), ('CONTROL_PREEMPT', 'preempt')]:
         action_block = block(source, 'if("' + action + '".equals(intent.getAction()))')
@@ -80,11 +82,13 @@ final class __NAME__ extends ArchiveIoProof.Environment {
  @Override void closeTransport(){closeGatt();}
  @Override void maintenance()throws Exception{maintain();}
  @Override void snapshot(){traceSummary();saveDiagnostics("IO proof");}
+ __CONNECT__
  @Override ArchiveSyncPlan.Availability availability(HistoryDb history,List<ArchiveCodec.Level> levels,ArchiveCodec.Clock clock,long at)throws Exception{return __AVAILABILITY__;}
  __METHODS__
 }
 '''.replace('__NAME__', name).replace('__IDLE__', 'idleTransport();' if fixed else '')
     wrapper = wrapper.replace('__FAIL__', 'transportFailed(e);' if fixed else 'receiveFailure=new IOException(e);')
+    wrapper = wrapper.replace('__CONNECT__', '@Override void openDevice(BluetoothDevice device)throws Exception{openGatt(device);}' if fixed else '')
     wrapper = wrapper.replace('__AVAILABILITY__', availability).replace('__METHODS__', '\n'.join(methods))
     (generated / (name + '.java')).write_text(wrapper)
 
@@ -107,7 +111,7 @@ subprocess.run(['java', 'com.sun.tools.javac.Main', '-source', '17', '-target', 
 cp = os.pathsep.join(map(str, [classes, deps / 'android-api35.jar', deps / 'sqlite-jdbc-3.46.1.0.jar',
                               deps / 'slf4j-api-1.7.36.jar', *deps.glob('zxing-*.jar')]))
 results = []
-for phase in ['legacy', 'fixed30', 'fixed35', 'cancel', 'preempt', 'disconnect', 'actor', 'ack-failure', 'ack-timeout']:
+for phase in a.phases or ['connect-recovery', 'connect-limits', 'connect-stop', 'connect-switch', 'batch', 'legacy', 'fixed30', 'fixed35', 'cancel', 'preempt', 'disconnect', 'actor', 'ack-failure', 'ack-timeout']:
     run = subprocess.run(['java', '-cp', cp, 'de.wattpit.app.ArchiveIoProof', str(out / phase), phase],
                          capture_output=True, text=True, timeout=60)
     print(run.stdout + run.stderr, end='', flush=True)
