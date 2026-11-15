@@ -22,7 +22,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   await page.evaluate(()=>{apFixture.noVictron=false;apFixture.partial=true;AutarPieApp.poll();});assert.match(await page.locator('#liveStatus').textContent(),/Teilweise live/);
   await page.evaluate(()=>{apFixture.partial=false;AutarPieApp.poll();});assert.equal((await page.locator('#liveStatus').textContent()).trim(),'Victron · Live');
   await page.evaluate(()=>{if(!AutarPieApp.dashboard.config.tiles.some(t=>t.metric==='rollerSoc'))AutarPieApp.dashboard.add('rollerSoc');AutarPieApp.poll();});
-  const cached=page.locator('.cached-reading');assert.ok(await cached.count()>0);assert.match(await cached.first().textContent(),/Letzter Datenstand.*Roller nicht erreichbar/);
+  const cached=page.locator('.cached-reading');assert.ok(await cached.count()>0);assert.match(await cached.first().textContent(),/Letzter Stand.*keine aktuellen BMS-Daten.*Roller nicht erreichbar/);
   await page.getByRole('button',{name:'E-Scooter',exact:true}).click();await page.evaluate(()=>AutarPieEnergy.openRules());assert.equal(await page.locator('#apPowerPath').inputValue(),'direct');
   await page.locator('#apPowerPath').selectOption('relay');await page.locator('#apRuleCancel').click();assert.equal(await page.evaluate(()=>apFixture.output===undefined),true,'cancel never activates relay mode');
   await page.evaluate(()=>AutarPieEnergy.openRules());assert.equal(await page.locator('#apPowerPath').inputValue(),'direct');await page.locator('#apPowerPath').selectOption('relay');await page.locator('#apRuleSave').click();assert.equal(await page.evaluate(()=>apFixture.output.powerPath),'relay');assert.equal(await page.evaluate(()=>apFixture.output.rules.enabled),false);

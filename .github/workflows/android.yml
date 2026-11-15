@@ -22,16 +22,14 @@ jobs:
           WATTPIT_SCREENSHOT_DIR: app/build/reports/autarpie-ui
         run: |
           npm install --no-save --prefix "$RUNNER_TEMP/autarpie-ui" playwright@1.51.1
-          NODE_PATH="$RUNNER_TEMP/autarpie-ui/node_modules" node tools/autarpie-smoke.cjs
+          failed=0
+          NODE_PATH="$RUNNER_TEMP/autarpie-ui/node_modules" node tools/autarpie-smoke.cjs || failed=1
           for attempt in 1 2; do
-            NODE_PATH="$RUNNER_TEMP/autarpie-ui/node_modules" node tools/update-smoke.cjs
-            NODE_PATH="$RUNNER_TEMP/autarpie-ui/node_modules" node tools/dashboard-appearance-smoke.cjs
-            NODE_PATH="$RUNNER_TEMP/autarpie-ui/node_modules" node tools/release-304-smoke.cjs
-            NODE_PATH="$RUNNER_TEMP/autarpie-ui/node_modules" node tools/learning-recovery-smoke.cjs
-            NODE_PATH="$RUNNER_TEMP/autarpie-ui/node_modules" node tools/release-306-smoke.cjs
-            NODE_PATH="$RUNNER_TEMP/autarpie-ui/node_modules" node tools/release-307-smoke.cjs
-            NODE_PATH="$RUNNER_TEMP/autarpie-ui/node_modules" node tools/release-308-smoke.cjs
+            for check in update dashboard-appearance release-304 learning-recovery release-306 release-307 release-308; do
+              NODE_PATH="$RUNNER_TEMP/autarpie-ui/node_modules" node "tools/${check}-smoke.cjs" || failed=1
+            done
           done
+          exit "$failed"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
