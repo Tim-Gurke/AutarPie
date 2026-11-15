@@ -1,6 +1,6 @@
 # AutarPie 3.0.10 · Gerätewechsel, stabile Wetterbalken und kurze Rollerladungen
 
-**Vorbereitet, noch nicht gebaut oder veröffentlicht.** Aktuell veröffentlicht bleibt 3.0.9. Der APK-Bau einschließlich eines APK erzeugenden CI-Laufs benötigt die Freigabe für diesen konkreten Umfang.
+**Update für Gerätewechsel, Wetteranzeige und das Lernen kurzer Rollerladungen.** Tim hat den konkret vorbereiteten Umfang am 15.11.2026 ausdrücklich zum APK-Bau und zur Veröffentlichung nach erfolgreicher Gesamtprüfung freigegeben.
 
 ## Eingegrenzter Fehler
 
@@ -45,7 +45,7 @@ Alle produktiven Java-Quellen lassen sich kompilieren. Die lokale Prüfung beste
 
 Die Verbindungstests führen unverändert extrahierte produktive Aufbau-, Warte-, Callback-, Operations- und Freigabemethoden mit asynchronen Android-/GATT-Adaptern aus. Geprüft sind 133 gefolgt von Erfolg, drei dauerhafte Fehlschläge, ein anderer Fehlerstatus, frische Clients, ignorierte alte Rückrufe, Abbruch während der Wartezeit und der Dienstwechsel. Der Ergebnisnachweis verwendet die tatsächlichen Repository-/JSON-/Diagnosemethoden. Die bisherigen Tests blockieren weiterhin echtes SQLite, übertragen einen auf DATA/BULK geteilten Archivblock und speichern ohne doppelte Zeilen. Die monotone Uhr läuft im Test vierfach beschleunigt; weder Testpartner noch Fehlerfolge sind ein physischer Funknachweis.
 
-Zusätzlich bestehen 323 JavaScript-Prüfungen einschließlich sieben neuer Prüfungen der produktiven Wetter-Anfrage-/Callback-/Balkenmethoden und fünf neuer Rollerprüfungen. Der Wettervergleich reproduziert vier fehlschlagende Fälle vor der Korrektur. 35 native Roller-Prüfschritte mit echtem SQLite sowie eine zusätzliche Prüfung der tatsächlichen JavaScript-Anzeige aus dem nativen Ergebnis sind erfolgreich. Die neue Stichprobenprüfung scheitert am bisherigen Lernfilter und besteht mit der Korrektur. Sie prüft auch den produktiven automatischen Ladestart/-abschluss mit neutralen BMS-Paketen: eine Minute Zwischenladen, weit unter dem Ladeziel, bleibt als eigener kleiner Energiebedarf erhalten. Keine physische Bluetooth-Verbindung wird daraus abgeleitet. Ein zusätzlicher Browserfall für eine absichtlich verzögerte Wetterantwort ist vorbereitet und syntaxgeprüft; seine Ausführung gehört zum freizugebenden Gesamtprüflauf.
+Zusätzlich bestehen 323 JavaScript-Prüfungen einschließlich sieben neuer Prüfungen der produktiven Wetter-Anfrage-/Callback-/Balkenmethoden und fünf neuer Rollerprüfungen. Der Wettervergleich reproduziert vier fehlschlagende Fälle vor der Korrektur. 35 native Roller-Prüfschritte mit echtem SQLite sowie eine zusätzliche Prüfung der tatsächlichen JavaScript-Anzeige aus dem nativen Ergebnis sind erfolgreich. Die neue Stichprobenprüfung scheitert am bisherigen Lernfilter und besteht mit der Korrektur. Sie prüft auch den produktiven automatischen Ladestart/-abschluss mit neutralen BMS-Paketen: eine Minute Zwischenladen, weit unter dem Ladeziel, bleibt als eigener kleiner Energiebedarf erhalten. Keine physische Bluetooth-Verbindung wird daraus abgeleitet. Ein zusätzlicher Browserfall prüft eine absichtlich verzögerte Wetterantwort im vollständigen Gesamtprüflauf. Die sieben lokalen JavaScript-Fälle führen die produktiven Methoden aus; ein DOM-Adapter ersetzt dabei das Browserlayout.
 
 Gezielte Wiederholung ohne APK:
 
@@ -53,7 +53,7 @@ Gezielte Wiederholung ohne APK:
 python3 tools/prove-archive-io.py --dependencies /tmp/autarpie-proof-deps --output /tmp/autarpie-connect-proof --phases connect-recovery connect-limits connect-stop connect-switch batch
 ```
 
-Vor einer Veröffentlichung folgen nach Bau-Freigabe der vollständige APK-/Lint-/Browser-/Android-Prüflauf und die Prüfung der ursprünglichen Updatesignatur. Der tatsächliche Wechsel zwischen Regler und Shunt muss anschließend am Gerät bestätigt werden. Keine Aussage, dass der reale Status 133 damit bereits endgültig behoben ist.
+Vor einer Veröffentlichung müssen der vollständige APK-/Lint-/Browser-/Android-Prüflauf und die Prüfung der ursprünglichen Updatesignatur erfolgreich abgeschlossen sein. Der tatsächliche Wechsel zwischen Regler und Shunt muss anschließend am Gerät bestätigt werden. Keine Aussage, dass der reale Status 133 damit bereits endgültig behoben ist.
 
 ## Vorgesehener Updateweg
 

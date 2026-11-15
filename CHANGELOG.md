@@ -6,7 +6,7 @@ Die Dokumentation bleibt vollständig erhalten, auch wenn ältere GitHub-Release
 
 Das bestehende GitHub-Repository heißt jetzt [`Tim-Gurke/AutarPie`](https://github.com/Tim-Gurke/AutarPie). Download- und Dokumentationslinks sind auf die neue Adresse umgestellt. Diese Änderung betrifft die Projektdokumentation; die veröffentlichte APK bleibt Version 3.0.0.
 
-## Vorbereitet, noch nicht gebaut
+## Aktuelles Update
 
 ### 3.0.10 · Gerätewechsel, stabile Wetterbalken und kurze Rollerladungen
 
@@ -16,7 +16,7 @@ Am Ende das Ergebnis aller Geräte gemeinsam zeigen und in der Diagnose erhalten
 
 Den bekannten Abend-Akkustand in „Heute“ während einer Hintergrundaktualisierung erhalten und den laufenden beziehungsweise gestörten Abruf kennzeichnen. Erfolgreich leere Antworten und ein Anlagen-/Shuntwechsel übernehmen keinen alten Messpunkt. Kurze Roller-Zwischenladungen unabhängig vom Ladeziel lernen; begrenzte Abfragelücken anteilig als Schätzung ergänzen und beobachtete AUS-Zeiten bei der automatischen Enderkennung berücksichtigen. Ladehäufigkeit aus ausreichend überwachten Tagen statt aus unmöglich exakt lückenlosen Abfragezeiten ableiten. Letzte aufgezeichnete und zuletzt zum Lernen verwendete Ladung sowie Ausschlussgründe unterscheiden. Journal-Messwerte bleiben erhalten.
 
-109 Archiv-Prüfschritte, 323 JavaScript-Prüfungen und 35 native Roller-Prüfschritte plus Abgleich mit der produktiven Anzeige erfolgreich. Noch kein APK-Bau oder APK erzeugender CI-Lauf gestartet; der konkrete Umfang wartet auf Bau-Freigabe. Die native Ursache eines realen Status 133 ist durch die begrenzte Wiederholungsstrategie nicht bewiesen. [Änderungen und Prüfgrenzen](docs/changes-3.0.10.md).
+109 Archiv-Prüfschritte, 323 JavaScript-Prüfungen und 35 native Roller-Prüfschritte plus Abgleich mit der produktiven Anzeige erfolgreich. Der konkrete Umfang wurde am 15.11.2026 ausdrücklich zum APK-Bau und zur Veröffentlichung nach erfolgreicher Gesamtprüfung freigegeben. Die native Ursache eines realen Status 133 ist durch die begrenzte Wiederholungsstrategie nicht bewiesen. [Änderungen und Prüfgrenzen](docs/changes-3.0.10.md).
 
 ## Veröffentlichte Versionen
 
