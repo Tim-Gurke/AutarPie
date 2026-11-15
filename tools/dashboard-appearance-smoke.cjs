@@ -46,5 +46,5 @@ function appearanceFixture(){
   await show('overview');await background('#123456','shared update keeps custom overview');await show('solar');await background('#192b3d','shared update keeps custom solar');await show('history');await background('#304a63','history fallback does not borrow custom solar');
   assert.deepEqual(errors,[]);await page.evaluate(()=>document.getElementById('toast').hidden=true);await page.screenshot({path:path.join(out,'autarpie-3.0.3-dashboard-colors.png'),fullPage:false,animations:'disabled'});
   console.log('PASS page colors survive restart and orientation changes; disabling restores only shared defaults');
- }catch(e){await page.screenshot({path:path.join(out,'dashboard-colors-failure.png'),fullPage:true}).catch(()=>{});console.error('Page errors:',errors);throw e;}finally{await browser.close();}
+ }catch(e){await page.screenshot({path:path.join(out,'dashboard-colors-failure.png'),fullPage:true}).catch(()=>{});console.error('Page errors:',errors);console.error('Workspace state:',await page.evaluate(()=>({saved:localStorage.getItem('test-page-workspace'),fixture:window.apFixture?.workspace,visible:window.AutarPieUI?.visiblePage,workspace:window.AutarPieUI?.workspace})).catch(()=>null));throw e;}finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

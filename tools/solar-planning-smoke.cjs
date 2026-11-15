@@ -1,6 +1,6 @@
 const autarpieControls=require('./autarpie-test-controls.cjs');
 /* Synthetic UI/sensor fixtures plus the recorded public Berlin weather contract. No sensor/network is used. */
-const {chromium}=require('playwright'),assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs');
+const {chromium}=require('playwright'),assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),wait=require('./browser-wait.cjs');
 const S=require('../app/src/main/assets/solar-core.js'),D=require('../app/src/main/assets/dashboard-core.js');
 const H=S.HOUR,DAY=S.DAY,now=Date.parse('2026-10-23T10:00:00Z');
 function fixture(){
@@ -59,7 +59,7 @@ function fixture(){
  // A delayed background refresh keeps today's recorded bar and labels the pending read.
  const sunsetWidth=await page.locator('[data-solar-day="0"] .solar-scale-battery .solar-track i').getAttribute('style');
  await page.clock.setFixedTime(new Date('2026-10-23T20:01:00Z'));await page.evaluate(()=>{window.previousSunsetRequest=window.WattPit.requestSunsetSoc;window.WattPit.requestSunsetSoc=(at,id)=>{window.pendingSunset={at,id};};window.fixture.historyRevision++;window.fixture.readings[0].t=Date.now();poll();});
- await page.waitForFunction(()=>!!window.pendingSunset);
+ await wait(page,()=>!!window.pendingSunset);
  assert.equal(await page.locator('[data-solar-day="0"] .solar-scale-battery .solar-track i').getAttribute('style'),sunsetWidth,'starting history refresh cannot erase the existing bar');
  assert.match(await page.locator('.solar-reserve-point').first().textContent(),/Aktualisierung läuft/);
  await page.evaluate(()=>{window.sunsetPoint={t:window.fixture.weather.days[0].sunset-120000,soc:71.2,origin:'archive'};window.onSolarSunsetSoc({id:window.pendingSunset.id,point:window.sunsetPoint});window.WattPit.requestSunsetSoc=window.previousSunsetRequest;});
