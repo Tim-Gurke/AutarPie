@@ -1,12 +1,12 @@
 # AutarPie 3.0.9 · Archivprüfung und Bluetooth unabhängig bedienen
 
-**Vorbereitet, noch nicht gebaut oder veröffentlicht.** Aktuell veröffentlicht bleibt 3.0.8. Der nächste APK-Bau einschließlich eines APK erzeugenden CI-Laufs wartet auf Tims Freigabe für diesen Umfang.
+**Gezieltes Update des Victron-Archivabrufs.** Bluetooth-Verarbeitung und Sitzungserhalt werden unabhängig von blockierenden lokalen Datenbankprüfungen bedient. Der konkrete Umfang wurde am 15.11.2026 zum APK-Bau und zur Veröffentlichung nach erfolgreicher Gesamtprüfung freigegeben.
 
 ## Problem und Änderung
 
 Beim lokalen Bestandsabgleich konnte eine blockierende SQLite-Abfrage den gemeinsamen Arbeitsablauf anhalten. Eingehende Bluetooth-Pakete blieben dabei liegen, der Regler erhielt keine weiteren Empfangsfreigaben und die regelmäßige Sitzungsnachricht konnte ausbleiben. Die Empfangsbegrenzung aus 3.0.8 verhinderte einen Pufferüberlauf, beseitigte diese Warteabhängigkeit aber noch nicht. Die frühere Dokumentation behauptete irrtümlich bereits einen unabhängigen Sitzungserhalt und wurde berichtigt.
 
-3.0.9 bereitet dafür einen eigenen seriellen Bluetooth-Arbeitsablauf vor. Android-GATT-Aufträge, ihre asynchronen Bestätigungen, DATA-/BULK-Verarbeitung, Freigaben und regelmäßige Sitzungsnachrichten werden unabhängig von lokalen Datenbankprüfungen bedient. Ein Steuerauftrag oder eine Archivabfrage wird weiterhin erst nach dem vorherigen GATT-Auftrag begonnen; zwei Threads schreiben nicht gleichzeitig auf dieselbe Verbindung. Zwischen abgeschlossenen Abfragen werden unaufgeforderte oder verspätete Meldungen verarbeitet und verworfen. Sie werden nicht als neue Archivmesswerte verbucht. Fragmente bleiben bis zur vollständigen Dekodierung erhalten.
+3.0.9 verwendet dafür einen eigenen seriellen Bluetooth-Arbeitsablauf. Android-GATT-Aufträge, ihre asynchronen Bestätigungen, DATA-/BULK-Verarbeitung, Freigaben und regelmäßige Sitzungsnachrichten werden unabhängig von lokalen Datenbankprüfungen bedient. Ein Steuerauftrag oder eine Archivabfrage wird weiterhin erst nach dem vorherigen GATT-Auftrag begonnen; zwei Threads schreiben nicht gleichzeitig auf dieselbe Verbindung. Zwischen abgeschlossenen Abfragen werden unaufgeforderte oder verspätete Meldungen verarbeitet und verworfen. Sie werden nicht als neue Archivmesswerte verbucht. Fragmente bleiben bis zur vollständigen Dekodierung erhalten.
 
 Eine ausdrücklich abgebrochene Übertragung und ein vorrangiger manueller Schaltauftrag schließen die Bluetooth-Verbindung auch dann sofort, wenn die lokale SQL-Abfrage noch wartet. Wartende Transportaufrufe werden freigegeben. Ein vom Gerät ausgelöster Verbindungsabbruch bleibt ein Transportfehler mit Status. Ein nicht bestätigter Schreibauftrag beendet die nutzbare Sitzung; ein verspäteter Callback kann keine folgende Schreiboperation bestätigen. Die Datenbankprüfung und die abschließende Vollständigkeitsprüfung bleiben vollständig erhalten.
 
@@ -30,12 +30,12 @@ git fetch --no-tags --depth=1 origin c15f75c6b4be0adea1e543b029484a7353d14473
 python3 tools/prove-archive-io.py --dependencies /tmp/autarpie-proof-deps --output /tmp/autarpie-archive-io-proof
 ```
 
-Diese Vorprüfung ist kein Android-Build, Lint-, Emulator-, Funk- oder nächtlicher Neustarttest. Erst nach Bau-Freigabe folgen die vollständigen APK-/Lint-/Oberflächenprüfungen. Der tatsächliche vollständige Archivabruf an Regler und Shunt muss nach Installation praktisch bestätigt werden. Das kontrollierte Fehlerbild erklärt die Abhängigkeit von langsamen SQL-Abfragen, beweist aber weder Datenbankwachstum als konkreten Auslöser noch den genauen Firmwaregrund des realen Status 19.
+Diese Vorprüfung ist kein Android-Build, Lint-, Emulator-, Funk- oder nächtlicher Neustarttest. Vor Veröffentlichung müssen zusätzlich der vollständige APK-Bau, Lint sowie die Browser- und Android-Oberflächenprüfungen erfolgreich sein. Der Release-Nachweis nennt den dazugehörigen geprüften Quellstand und die erfolgreichen Prüfungen. Der tatsächliche vollständige Archivabruf an Regler und Shunt muss nach Installation praktisch bestätigt werden. Das kontrollierte Fehlerbild erklärt die Abhängigkeit von langsamen SQL-Abfragen, beweist aber weder Datenbankwachstum als konkreten Auslöser noch den genauen Firmwaregrund des realen Status 19.
 
-## Vorgesehener Updateweg nach Freigabe und Prüfung
+## Installation und Update-Reihenfolge
 
 Über die bestehende Installation mit unveränderter Updatesignatur installieren. Die Änderung gehört auf die **Zentrale beziehungsweise das direkt per Bluetooth erfassende Handy**. Anzeigen mit 3.0.8 bleiben kompatibel; weder Datenbankformat noch Verbundprotokoll werden verändert. Zuerst das erfassende Handy aktualisieren, anschließend können die Anzeigen folgen. Gespeicherte Messdaten, Archive, private Verbindungen und eigene Layouts bleiben erhalten. Der bisherige automatische Abrufabstand wird nicht verkürzt.
 
 Danach einmal **Fehlende Archivdaten abrufen** ausführen. Entscheidend sind vollständig abgeschlossene Geräteabrufe und tatsächlich gespeicherte Zeiträume beziehungsweise übernommene Archivwerte, sofern Lücken bestehen. Null neue Werte können bei bereits vollständigem lokalem Bestand richtig sein; eine Trennung mit 0 Werten gilt nicht als erfolgreicher Abgleich. Bei erneutem Fehler enthält die native Diagnose nun die dazugehörigen Schritt-/SQL-/Transportzeiten. Kein Werksreset und keine erneute Kopplung für diese Korrektur vorgesehen.
 
-[Veröffentlichter Stand 3.0.8](changes-3.0.8.md) · [Versionshistorie](../CHANGELOG.md)
+[Vorgängerversion 3.0.8](https://github.com/Tim-Gurke/AutarPie/blob/main/docs/changes-3.0.8.md) · [Versionshistorie](../CHANGELOG.md)

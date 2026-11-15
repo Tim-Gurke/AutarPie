@@ -6,15 +6,13 @@ Die Dokumentation bleibt vollständig erhalten, auch wenn ältere GitHub-Release
 
 Das bestehende GitHub-Repository heißt jetzt [`Tim-Gurke/AutarPie`](https://github.com/Tim-Gurke/AutarPie). Download- und Dokumentationslinks sind auf die neue Adresse umgestellt. Diese Änderung betrifft die Projektdokumentation; die veröffentlichte APK bleibt Version 3.0.0.
 
-## Vorbereitet, noch nicht gebaut
+## Veröffentlichte Versionen
 
 ### 3.0.9 · Bluetooth-Verarbeitung während blockierender Archivprüfung
 
 Eigener serieller Bluetooth-Arbeitsablauf für GATT-Aufträge, Paketverarbeitung, Empfangsfreigaben und Sitzungserhalt. Die lokale Archivprüfung läuft getrennt und kann den Empfang nicht mehr durch eine blockierende SQL-Abfrage anhalten. Abbruch und Vorrang manueller Schaltaufträge schließen die Verbindung sofort; geschlossene oder fehlgeschlagene Schreibaufträge dürfen spätere Antworten nicht fälschlich bestätigen. Diagnose mit relativen Schrittzeiten, SQL-Laufzeiten, Android-Wartezeiten und tatsächlichen Sitzungsabständen. Empfangsfenster, lokale Bestandsprüfung, vollständige Abschlusskontrolle und bisher gespeicherte Messdaten bleiben erhalten.
 
-Quellcode und Vorprüfungen sind vorbereitet. **Kein APK-Bau und keine Veröffentlichung ohne Freigabe des konkreten Umfangs.** Der neue Nachweis sperrt echtes SQLite und verwendet die unveränderten produktiven GATT-Schreib-, Callback-, Empfangs- und Abfragemethoden mit simuliertem Android-Transport. Der Vergleich reproduziert den Ausfall des bisherigen Ablaufs unter dieser kontrollierten Belastung; er bestimmt nicht den Firmware-Auslöser eines realen Status 19. [Umfang, Nachweis und Prüfgrenzen](docs/changes-3.0.9.md).
-
-## Veröffentlichte Versionen
+Der konkrete Umfang wurde am 15.11.2026 zum Bau und zur Veröffentlichung nach erfolgreicher Gesamtprüfung freigegeben. Der neue Nachweis sperrt echtes SQLite und verwendet die unveränderten produktiven GATT-Schreib-, Callback-, Empfangs- und Abfragemethoden mit simuliertem Android-Transport. Der Vergleich reproduziert den Ausfall des bisherigen Ablaufs unter dieser kontrollierten Belastung; er bestimmt nicht den Firmware-Auslöser eines realen Status 19. [Umfang, Nachweis und Prüfgrenzen](docs/changes-3.0.9.md).
 
 ### 3.0.8 · Archivempfang, drei Lader, alte BMS-Werte und Gaslernen auf Reisen
 
