@@ -71,13 +71,14 @@ public final class MonitorService extends Service {
         if(AppRole.viewerOnly(this)||LanSync.get(this).viewer()){stopSelf();return START_NOT_STICKY;}
         if(intent!=null&&"ARCHIVE_SCAN".equals(intent.getAction())){if(repository.running){restartScan();getSystemService(NotificationManager.class).notify(NOTIFICATION,notification());return START_STICKY;}stopSelf();return START_NOT_STICKY;}
         if (intent != null && "STOP".equals(intent.getAction())) { repository.prefs.edit().putBoolean("recording",false).apply(); stopSelf(); return START_NOT_STICKY; }
-        if(intent!=null&&"AUTOSTART".equals(intent.getAction())&&!BackgroundBleAccess.granted(this)){startFailed=true;repository.status="Autostart wartet: Standortberechtigung Immer zulassen erforderlich.";repository.prefs.edit().putString("autostartError",repository.status).apply();stopSelf();return START_NOT_STICKY;}
-        if (!hasPermissions()) { startFailed=true;repository.status = "Bluetooth-Berechtigung fehlt"; stopSelf(); return START_NOT_STICKY; }
+        if(intent!=null&&"AUTOSTART".equals(intent.getAction())&&!BackgroundBleAccess.granted(this))return failStart("Autostart wartet: Standortberechtigung Immer zulassen erforderlich.");
+        if (!hasPermissions()) return failStart("Bluetooth-Berechtigung fehlt");
         try {
             if (Build.VERSION.SDK_INT >= 31) startForeground(NOTIFICATION,notification(),ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE);
             else if (Build.VERSION.SDK_INT >= 29) startForeground(NOTIFICATION,notification(),ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
             else startForeground(NOTIFICATION,notification());
-        } catch (SecurityException e) { startFailed=true;repository.status = "Aufzeichnung konnte nicht gestartet werden. App öffnen und Berechtigungen prüfen."; stopSelf(); return START_NOT_STICKY; }
+        } catch (SecurityException|IllegalStateException e) { return failStart("Aufzeichnung konnte nicht gestartet werden. App öffnen und Berechtigungen prüfen."); }
+        startFailed=false;
         SuppliesWeather.refresh(repository,false);
         boolean first = !repository.running;
         repository.running = true;
@@ -98,6 +99,12 @@ public final class MonitorService extends Service {
         }),30,30,TimeUnit.SECONDS);
         }
         return START_STICKY;
+    }
+    private int failStart(String reason){
+        startFailed=true;repository.status=reason;
+        repository.prefs.edit().putString("autostartError",reason).putString("lastStartFailure",reason).putLong("lastStartFailureAt",System.currentTimeMillis()).apply();
+        CentralLog.add(this,"Aufzeichnung","Aufzeichnung nicht gestartet: "+reason);
+        stopSelf();return START_NOT_STICKY;
     }
 
     /** Reuses the existing missing-data planner even while no console is open. */
@@ -163,8 +170,8 @@ public final class MonitorService extends Service {
                 .addAction(new Notification.Action.Builder(null,"Pausieren",stop).build()).build();
     }
     @Override public void onDestroy() {
-        EnergyStore.shutdown(this);repository.running = false;
-        CentralLog.add(this,"Aufzeichnung","Aufzeichnung pausiert");
+        EnergyStore.shutdown(this);boolean wasRunning=repository.running;repository.running = false;
+        if(wasRunning)CentralLog.add(this,"Aufzeichnung","Aufzeichnung pausiert");
         if(roller!=null)roller.stop();ChargerBle.get(this).stop();
         if(!startFailed)repository.status = "Aufzeichnung pausiert";
         if (scanner != null && scanning && hasPermissions()) {

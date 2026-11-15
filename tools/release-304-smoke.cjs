@@ -20,7 +20,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   for(const name of ['E-Scooter','Modellbau'])assert.equal(await page.getByRole('button',{name,exact:true}).count(),1);
   await page.evaluate(()=>{apFixture.noVictron=true;AutarPieApp.poll();});assert.doesNotMatch(await page.locator('#liveStatus').textContent(),/Live/);
   await page.evaluate(()=>{apFixture.noVictron=false;apFixture.partial=true;AutarPieApp.poll();});assert.match(await page.locator('#liveStatus').textContent(),/Teilweise live/);
-  await page.evaluate(()=>{apFixture.partial=false;AutarPieApp.poll();});assert.equal((await page.locator('#liveStatus').textContent()).trim(),'Live');
+  await page.evaluate(()=>{apFixture.partial=false;AutarPieApp.poll();});assert.equal((await page.locator('#liveStatus').textContent()).trim(),'Victron · Live');
   await page.evaluate(()=>{if(!AutarPieApp.dashboard.config.tiles.some(t=>t.metric==='rollerSoc'))AutarPieApp.dashboard.add('rollerSoc');AutarPieApp.poll();});
   const cached=page.locator('.cached-reading');assert.ok(await cached.count()>0);assert.match(await cached.first().textContent(),/Letzter Datenstand.*Roller nicht erreichbar/);
   await page.getByRole('button',{name:'E-Scooter',exact:true}).click();await page.evaluate(()=>AutarPieEnergy.openRules());assert.equal(await page.locator('#apPowerPath').inputValue(),'direct');

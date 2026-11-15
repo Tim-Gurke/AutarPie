@@ -11,7 +11,7 @@
       for(const [id,title]of [['solar','Solar & Speicher'],['model','Modellbau']]){const page=document.createElement('section');page.id=id;page.className='page';page.innerHTML=`<div class="pagehead"><h1>${title}</h1></div>`;document.querySelector('main').append(page);}
       for(const p of this.workspace.pages)if(!p.builtin)this.makePage(p);
       $('storage').querySelector('h1').textContent='E-Scooter';$('storage').querySelector('.eyebrow').textContent='ROLLER UND ENERGIE';
-      $('themeToggle').hidden=true;const areas=document.createElement('button');areas.id='autarpieAreas';areas.className='quiet';areas.textContent='Menü';areas.onclick=()=>this.areas();this.headerActions=document.createElement('div');this.headerActions.className='ap-header-actions';const live=$('liveStatus');live.replaceWith(this.headerActions);this.headerActions.append(live,areas);
+      $('themeToggle').hidden=true;const areas=document.createElement('button');areas.id='autarpieAreas';areas.className='quiet';areas.textContent='Menü';areas.onclick=()=>this.areas();this.headerActions=document.createElement('div');this.headerActions.className='ap-header-actions';this.headerActions.append(areas);
       this.settings();this.applyAppearance();this.navigation();this.loadBoard('overview');this.afterPage('overview');
       this.board.workspaceSave=board=>{const before=A.clone(this.workspace),p=this.workspace.pages.find(p=>p.id===this.active);if(p)p.board=A.clone(board);const error=this.persist();if(error)this.workspace=before;return error;};
       $('editDashboard').addEventListener('click',()=>{this.toolbar.hidden=!this.board.editing;});

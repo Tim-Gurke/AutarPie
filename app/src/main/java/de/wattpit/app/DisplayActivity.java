@@ -36,6 +36,7 @@ public final class DisplayActivity extends Activity {
     private final ExecutorService historyReads = Executors.newSingleThreadExecutor();
     private CsvCodec.Table pendingImport;
     private volatile String pendingSettingsExport;
+    private String pendingChargerMac="";
     private boolean pageReady;
     private JSONObject pendingSettingsPreview;
     private JSONObject pendingLanScan;
@@ -43,12 +44,13 @@ public final class DisplayActivity extends Activity {
     private String pendingArchive;
     private long stoppedAt;
     private boolean entered,foreground,checkingArchive;
-    private static final int PERMISSIONS = 11, BLUETOOTH = 12, IMPORT = 20, EXPORT = 21, IMPORT_SETTINGS = 22, EXPORT_SETTINGS = 23, EXPORT_DIAGNOSTICS = 25, IMPORT_CHARGER = 26;
+    private static final int PERMISSIONS = 11, BLUETOOTH = 12, IMPORT = 20, EXPORT = 21, IMPORT_SETTINGS = 22, EXPORT_SETTINGS = 23, EXPORT_DIAGNOSTICS = 25, IMPORT_CHARGER = 26, EXPORT_CHARGER_JOURNAL = 27;
     private Object diagnosticOwner;private boolean diagnosticViewer;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if(savedInstanceState!=null)pendingChargerMac=savedInstanceState.getString("pendingChargerMac","");
         if(savedInstanceState!=null)pendingSettingsExport=savedInstanceState.getString("pendingSettingsExport");
         repository = Repository.get(this);
         try{UiPreset.install(this,repository.prefs);if(!repository.prefs.contains("dashboard-v1"))DashboardPreset.install(repository.prefs,DashboardPreset.read(this));}catch(Exception e){repository.message(Repository.safeError(e));}
@@ -91,6 +93,7 @@ public final class DisplayActivity extends Activity {
     }
 
     @Override protected void onSaveInstanceState(Bundle state){
+        state.putString("pendingChargerMac",pendingChargerMac);
         if(pendingSettingsExport!=null)state.putString("pendingSettingsExport",pendingSettingsExport);
         super.onSaveInstanceState(state);
     }
@@ -210,12 +213,14 @@ public final class DisplayActivity extends Activity {
             else { pendingStart = false; pendingArchive=null; repository.message("Bluetooth wurde nicht eingeschaltet."); }
             return;
         }
+        if(requestCode==EXPORT_CHARGER_JOURNAL&&resultCode!=RESULT_OK)new File(getCacheDir(),"608pd-journal-export.json").delete();
         if(requestCode==EXPORT_SETTINGS&&resultCode!=RESULT_OK)pendingSettingsExport=null;
         if (resultCode != RESULT_OK || data == null || data.getData() == null) return;
         Uri uri = data.getData();
+        if(requestCode==EXPORT_CHARGER_JOURNAL)files.execute(()->{File cached=new File(getCacheDir(),"608pd-journal-export.json");try(InputStream input=new FileInputStream(cached);OutputStream output=getContentResolver().openOutputStream(uri,"wt")){if(output==null)throw new IOException();byte[] block=new byte[8192];int count;while((count=input.read(block))!=-1)output.write(block,0,count);repository.message("608PD-Journal gespeichert.");}catch(Exception e){error(e);}finally{cached.delete();}});
         if(requestCode==IMPORT_CHARGER)files.execute(()->{try(InputStream input=getContentResolver().openInputStream(uri)){
-            if(input==null)throw new IOException();byte[] auth=de.wattpit.app.core.ChargerCapture.read(input);StringBuilder hex=new StringBuilder();for(byte b:auth)hex.append(String.format(java.util.Locale.ROOT,"%02x",b&255));java.util.Arrays.fill(auth,(byte)0);
-            JSONObject cfg=lan.viewer()?new JSONObject(lan.snapshot()).getJSONObject("energy").getJSONObject("chargerConfig"):ChargerBle.publicConfig(repository);cfg.put("auth",hex.toString());cfg.put("enabled",false);
+            if(input==null)throw new IOException();byte[] auth=de.wattpit.app.core.ChargerCapture.read(input,pendingChargerMac.isEmpty()?null:pendingChargerMac);StringBuilder hex=new StringBuilder();for(byte b:auth)hex.append(String.format(java.util.Locale.ROOT,"%02x",b&255));java.util.Arrays.fill(auth,(byte)0);
+            JSONObject energy=lan.viewer()?new JSONObject(lan.snapshot()).getJSONObject("energy"):EnergyStore.snapshot(repository),cfg=energy.getJSONObject("chargerConfig");JSONArray profiles=energy.optJSONArray("chargerProfiles");if(!pendingChargerMac.isEmpty()&&profiles!=null)for(int i=0;i<profiles.length();i++)if(pendingChargerMac.equals(profiles.getJSONObject(i).optString("mac")))cfg=profiles.getJSONObject(i);if(!pendingChargerMac.isEmpty()&&!pendingChargerMac.equals(cfg.optString("mac")))throw new IllegalArgumentException("Das Zielprofil wurde geändert. Aufzeichnung erneut für den gewünschten Lader auswählen.");cfg.put("auth",hex.toString());cfg.put("enabled",false);
             if(lan.viewer())lan.control("saveCharger",new JSONArray().put(cfg.toString()),lan.controlRevision());else lan.localControl("saveCharger",new JSONArray().put(cfg.toString()),solarPlanning);
             repository.message("Private 608PD-Verbindung übernommen. Jetzt in den Lader-Einstellungen verbinden.");
         }catch(Exception e){error(e instanceof IOException?new IllegalArgumentException(e.getMessage()):e);}});
@@ -306,7 +311,7 @@ public final class DisplayActivity extends Activity {
                 JSONObject command=new JSONObject(json);result.put("id",command.getLong("id"));
                 if(plant!=lan.identity()||!lan.viewer())throw new IllegalArgumentException("Die Anlage wurde gewechselt. Bitte erneut öffnen.");
                 String action=command.getString("action");JSONArray args=command.getJSONArray("args");
-                lan.control(action,args,command.getLong("revision"));
+                JSONObject confirmed=lan.control(action,args,command.getLong("revision"));result.put("revision",confirmed.optLong("controlRevision",-1));
                 if(plant!=lan.identity())throw new IllegalArgumentException("Die Anlage wurde gewechselt. Bitte erneut öffnen.");
                 if(action.equals("importSettings")){repository.importLocalAppearance(args.getString(0));runOnUiThread(()->applyTheme(repository.prefs.getString("theme","dark")));}
                 result.put("ok",true);
@@ -398,6 +403,7 @@ public final class DisplayActivity extends Activity {
                         if(remote!=lan.viewer()||owner!=lan.identity())return;
                         if(!foreground)throw new java.io.IOException("Anzeige pausiert. Beim Öffnen wird neu geladen.");
                         if(remote)data=lan.query(method,args,message->{try{call("onHistoryProgress",new JSONObject().put("id",id).put("message",message));}catch(JSONException ignored){}});else switch(method){
+                            case "chargerJournal":data=ChargerJournal.query(RollerLedger.get(DisplayActivity.this),ChargerJournal.source(repository),from,to,args.optString(2),System.currentTimeMillis());break;
                             case "loadHistory":data=RollerLedger.get(DisplayActivity.this).loadHistory(RollerLedger.source(repository.prefs),from,to,args.getString(2),args.optString(3));break;
                             case "rollerEnergy":data=RollerLedger.get(DisplayActivity.this).summary(RollerLedger.source(repository.prefs),from,to);break;
                             case "history":data=new JSONObject().put("points",solarPlanning.history(from,to,args.getString(2),args.getString(3)));break;
@@ -444,13 +450,21 @@ public final class DisplayActivity extends Activity {
         @JavascriptInterface public String requestWeatherTrend(){return localControl("requestWeatherTrend",new JSONArray());}
         @JavascriptInterface public String saveAppearance(String json){return localControl("saveAppearance",new JSONArray().put(json));}
         @JavascriptInterface public void chooseChargerCapture(){runOnUiThread(()->{try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_CHARGER);}catch(Exception e){error(e);}});}
+        @JavascriptInterface public void chooseChargerCaptureFor(String mac){pendingChargerMac=mac==null?"":mac.toUpperCase(Locale.ROOT);chooseChargerCapture();}
+        @JavascriptInterface public String exportChargerJournal(String json){try{if(json.length()>2000000)throw new IllegalArgumentException("Journal ist zu groß. Bitte einen kürzeren Zeitraum wählen.");JSONObject report=new JSONObject(json);if(report.optJSONArray("sessions")==null||report.optBoolean("pending"))throw new IllegalArgumentException("Bitte zuerst das Journal vollständig laden.");files.execute(()->{try{File cached=new File(getCacheDir(),"608pd-journal-export.json");try(OutputStream output=new FileOutputStream(cached)){output.write(report.toString(2).getBytes(StandardCharsets.UTF_8));}runOnUiThread(()->{try{startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("application/json").putExtra(Intent.EXTRA_TITLE,"AutarPie-608PD-Journal.json"),EXPORT_CHARGER_JOURNAL);}catch(Exception e){error(e);}});}catch(Exception e){error(e);}});return "";}catch(Exception e){return Repository.safeError(e);}}
+        @JavascriptInterface public String chargerJournal(long from,long to,String mac){return "{}";}
         @JavascriptInterface public String energySnapshot(){if(lan.viewer())try{return new JSONObject(lan.snapshot()).optJSONObject("energy").toString();}catch(Exception e){return "{}";}try{return EnergyStore.snapshot(repository).toString();}catch(Exception e){return "{}";}}
         @JavascriptInterface public String saveSolarInstallation(String json){return localControl("saveSolarInstallation",new JSONArray().put(json));}
         @JavascriptInterface public String saveLoadConfiguration(String json){return localControl("saveLoadConfiguration",new JSONArray().put(json));}
         @JavascriptInterface public String setLoadOutput(boolean on){return localControl("setLoadOutput",new JSONArray().put(on));}
         @JavascriptInterface public void issueChargePlan(String json){files.execute(()->{JSONObject result=new JSONObject();try{if(lan.viewer())lan.control("submitChargePlan",new JSONArray().put(json),lan.controlRevision());else lan.localControl("submitChargePlan",new JSONArray().put(json),solarPlanning);result.put("ok",true);}catch(Exception e){try{result.put("error",Repository.safeError(e));}catch(JSONException ignored){}}call("onChargePlanResult",result);});}
         @JavascriptInterface public String submitChargePlan(String json){return localControl("submitChargePlan",new JSONArray().put(json));}
+        @JavascriptInterface public String searchChargers(){return localControl("searchChargers",new JSONArray());}
+        @JavascriptInterface public String pairCharger(String json){return localControl("pairCharger",new JSONArray().put(json));}
+        @JavascriptInterface public String selectCharger(String mac){return localControl("selectCharger",new JSONArray().put(mac));}
+        @JavascriptInterface public String removeCharger(String mac){return localControl("removeCharger",new JSONArray().put(mac));}
         @JavascriptInterface public String saveCharger(String json){return localControl("saveCharger",new JSONArray().put(json));}
+        @JavascriptInterface public String chargerCommandFor(String mac,String action){return localControl("chargerCommandFor",new JSONArray().put(mac).put(action));}
         @JavascriptInterface public String chargerCommand(String action){return localControl("chargerCommand",new JSONArray().put(action));}
         @JavascriptInterface public String saveCentralSettings(String json){return localControl("saveCentralSettings",new JSONArray().put(json));}
         @JavascriptInterface public int displayScale(){return repository.prefs.getInt("display-scale-v1",100);}

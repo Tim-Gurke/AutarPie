@@ -73,10 +73,10 @@ const path=require('node:path');
    if(await page.locator('html').getAttribute('data-theme')!==theme)await autarpieControls.toggleTheme(page);
    assert.equal(await page.evaluate(()=>document.body.scrollWidth>innerWidth),false,'overview overflow '+width);
    for(const id of ['addTile','layoutProfile','editDashboard','liveStatus']){
-    assert.equal(await page.locator('header #'+id).count(),landscape&&id==='liveStatus'?1:0,id+' in wrong orientation');
+    assert.equal(await page.locator('header #'+id).count(),id==='liveStatus'?1:0,id+' in wrong orientation');
     assert.equal(await page.locator('#'+id).count(),1,'duplicate '+id);
    }
-   const h=await page.locator('header').boundingBox();assert.ok(h.height<=(landscape&&width<760?76:54),'header too high: '+width+' '+h.height);
+   const h=await page.locator('header').boundingBox();assert.ok(h.height<=(width<760?86:60),'header too high: '+width+' '+h.height);
    if(landscape){
     for(const id of ['autarpieAreas','liveStatus']){
      const box=await page.locator('#'+id).boundingBox();assert.ok(box.y>=h.y&&box.y+box.height<=h.y+h.height,id+' outside header');

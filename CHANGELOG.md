@@ -6,6 +6,19 @@ Die Dokumentation bleibt vollständig erhalten, auch wenn ältere GitHub-Release
 
 Das bestehende GitHub-Repository heißt jetzt [`Tim-Gurke/AutarPie`](https://github.com/Tim-Gurke/AutarPie). Download- und Dokumentationslinks sind auf die neue Adresse umgestellt. Diese Änderung betrifft die Projektdokumentation; die veröffentlichte APK bleibt Version 3.0.0.
 
+## In Vorbereitung: 3.0.8 · Archivempfang, drei Lader und erkennbare alte BMS-Werte
+
+Noch keine APK gebaut oder veröffentlicht. Der APK-Bau einschließlich CI wartet auf Tims Freigabe des vorbereiteten Umfangs.
+
+- Empfangsfreigaben erst nach Verarbeitung der Bluetooth-Pakete zurückgeben, damit langsamer lokaler Archivabgleich den Empfangspuffer nicht füllt. Transportfehler, manuellen Abbruch und Vorrang eines Schaltauftrags unterscheiden.
+- Gescheiterte Aufzeichnungsstarts mit ihrem Grund statt als freiwillige Pause dokumentieren; Android-Freigaben und letzten Startfehler exportieren und fehlende Hintergrundfreigabe in der Zentrale sichtbar machen.
+- Allgemeine Victron-Liveanzeige beim App-Namen auf allen Dashboards; pro konfiguriertem Gerät prüfen. Eigene 608PD-Statusanzeigen beibehalten.
+- Drei separate 608PD-Profile mit unverändert übernommener bestehender Verbindung, begrenzter Suche am erfassenden Handy, eigener verschlüsselter Kennung und bestätigter Bedienung je Adresse. Neue direkte Ersteinrichtung benötigt noch praktische Bestätigung am 608PD.
+- Rohbeobachtungen, App-Aufträge und Funklücken der Lader dauerhaft speichern, zu Anzeigen replizieren und dort zu einem Lade-/Powerbankjournal mit ausschließlich beobachteter Akkuseitenenergie auswerten. JSON-Export und vollständige Sicherung erhalten.
+- Veraltete Rollerwerte deutlich grau, mit sichtbarer Alt-Markierung und Messzeitpunkt zeigen. BMS-Zeitstempel auf der Anzeige prüfen, auch bei noch positivem zwischengespeichertem Frischestatus und während des Wartens auf Synchronisation. Neue aktuelle Werte heben die Markierung wieder auf.
+
+[Vorbereiteter Umfang, Bedienung und Prüfgrenzen](docs/changes-3.0.8.md).
+
 ## Veröffentlichte Versionen
 
 ### 3.0.7 · Vollständige 608PD-Messwerte nach der Anmeldung

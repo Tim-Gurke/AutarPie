@@ -32,7 +32,7 @@ test('new scooter and regulator tiles use actual data and retain their additiona
 test('missing, old, unassigned and inconsistent measurements never become a fabricated efficiency',()=>{
  const s=snapshot(),read=()=>M.read({metric:'rollerEfficiency'},s,null,null,()=>null,s.now);
  s.energy.config.exclusiveScooter=false;assert.equal(read().value,null);s.energy.config.exclusiveScooter=true;s.energy.output.at-=11000;assert.equal(read().value,null);s.energy.output.at=s.now;s.roller.live.power=150;assert.equal(read().value,null);
- s.roller.fresh=false;assert.equal(M.read({metric:'rollerRange'},s,null,null,()=>null,s.now).value,null);s.roller.fresh=true;delete s.roller.live.cells;assert.equal(M.read({metric:'rollerCellVoltage'},s,null,null,()=>null,s.now).value,null);
+ s.roller.fresh=false;assert.equal(M.read({metric:'rollerRange'},s,null,null,()=>null,s.now).stale,true);assert.equal(read().value,null);s.roller.fresh=true;delete s.roller.live.cells;assert.equal(M.read({metric:'rollerCellVoltage'},s,null,null,()=>null,s.now).value,null);
  delete s.readings[0].load;assert.equal(M.read({metric:'solarTotalCurrent'},s,null,null,()=>null,s.now).value,null);
 });
 test('offline supply entries survive restart, stay bound to their plant and await explicit acknowledgement',()=>{
@@ -83,4 +83,12 @@ test('the shipped default is presentation only and covers every standard dashboa
  assert.equal(p.dashboard.tiles.length,21);assert.equal(p.viewSettings.displayScale,75);assert.equal(A.normalize(p.workspace,p.dashboard).pages.length,8);
  assert.doesNotMatch(JSON.stringify(p),/([0-9A-F]{2}:){5}[0-9A-F]{2}/i);
  for(const page of p.workspace.pages){const clean=D.normalize(page.board);for(const tile of clean.tiles)assert.equal(tile.device,'');}
+});
+
+test('a delayed BMS packet remains cached in raw tiles and range estimates and cannot enter a live formula',()=>{
+ const s=snapshot();s.roller.live.at=s.now-60000;s.roller.fresh=true;
+ const raw=D.liveValue('rollerSoc',null,null,s,s.now);assert.equal(raw,s.roller.live.soc);
+ const range=M.read({metric:'rollerRange'},s,null,null,()=>null,s.now);assert.equal(range.stale,true);assert.match(range.reason,/gespeichertem Akkustand/);
+ const formula=M.read({metric:'formula',formula:{expression:'A*2',variables:{A:{metric:'rollerSoc'}}}},s,null,null,()=>({value:raw,at:s.roller.live.at}),s.now);assert.equal(formula.value,null);
+ s.roller.live={...s.roller.live,at:s.now,soc:25,remainingAh:6};const actual=M.read({metric:'rollerRange'},s,null,null,()=>null,s.now);assert.equal(actual.stale,false);assert.equal(D.liveValue('rollerSoc',null,null,s,s.now),25);
 });

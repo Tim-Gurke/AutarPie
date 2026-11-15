@@ -9,7 +9,7 @@ import java.util.*;
 /** Typed calculation inputs only. The central phone never builds a plot for this protocol. */
 final class AnalysisExchange {
     static final String[] TABLES={"contexts","display_contexts","model_weather","observations","forecasts","confirmed_setups"};
-    static final String[] ALL={"contexts","display_contexts","model_weather","observations","forecasts","confirmed_setups","device_settings","input_intervals","roller_raw","load_raw","archive_clock_state"};
+    static final String[] ALL={"contexts","display_contexts","model_weather","observations","forecasts","confirmed_setups","device_settings","input_intervals","roller_raw","load_raw","charger_raw","archive_clock_state"};
     static final int PAGE=256;
     static String schema(String table){switch(table){
         case "contexts":return "at:l,key:s,mobile_free:l,source:s,solar_key:s,payload:s";
@@ -19,15 +19,16 @@ final class AnalysisExchange {
         case "forecasts":return "key:s,start:l,end:l,issued:l,payload:s";
         case "confirmed_setups":return "source:s,id:s,start:l,end:l,key:s,solar_key:s,payload:s,weather:s";
         case "device_settings":return "device:s,start:l,end:l,payload:s";
-        case "load_raw":return "source:s,start:l,end:l,payload:s,mac:s";
+        case "charger_raw":case "load_raw":return "source:s,start:l,end:l,payload:s,mac:s";
         case "roller_raw":return "source:s,start:l,end:l,payload:s,mac:s";
         case "input_intervals":return "source:s,start:l,end:l,wh:d,mac:s,session:l";
         case "archive_clock_state":return "device:s,payload:s";
         default:throw new IllegalArgumentException("Unbekannte Datentabelle.");
     }}
-    static boolean incremental(String table){return table.equals("observations")||table.equals("forecasts")||table.equals("roller_raw")||table.equals("load_raw")||table.equals("input_intervals");}
+    static boolean incremental(String table){return table.equals("observations")||table.equals("forecasts")||table.equals("roller_raw")||(table.equals("load_raw")||table.equals("charger_raw"))||table.equals("input_intervals");}
     static JSONObject state(Repository repo,SolarPlanning plan,long controlRevision)throws Exception{
         StringBuilder text=new StringBuilder();for(String key:new String[]{"weatherCache","devices","equipment-v1","solar-setup-v1","weatherPlace","rollerChargeWindows",SpecialUses.KEY})text.append(repo.prefs.getString(key,""));
+        text.append(repo.prefs.getString(ChargerJournal.SOURCE_KEY,""));
         String token=java.util.Base64.getEncoder().encodeToString(java.security.MessageDigest.getInstance("SHA-256").digest(text.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8)));
         String epoch="";try(Cursor c=repo.db.getReadableDatabase().rawQuery("SELECT epoch FROM analysis_meta",null)){if(c.moveToFirst())epoch=c.getString(0);}
         return new JSONObject().put("token",token+":"+plan.modelRevision()+":"+controlRevision).put("epoch",epoch);
@@ -35,14 +36,14 @@ final class AnalysisExchange {
     static SQLiteDatabase database(String table,Repository repo,SolarPlanning plan,RollerLedger ledger,boolean write){
         // schema() is also the table-name whitelist, before any SQL is constructed.
         schema(table);
-        if(table.equals("input_intervals")||table.equals("roller_raw")||table.equals("load_raw"))return write?ledger.getWritableDatabase():ledger.getReadableDatabase();
+        if(table.equals("input_intervals")||table.equals("roller_raw")||(table.equals("load_raw")||table.equals("charger_raw")))return write?ledger.getWritableDatabase():ledger.getReadableDatabase();
         if(table.equals("device_settings")||table.equals("archive_clock_state"))return write?repo.db.getWritableDatabase():repo.db.getReadableDatabase();
         return write?plan.getWritableDatabase():plan.getReadableDatabase();
     }
     static String where(String table,long from,long to){
         long since=LearningWindow.since(System.currentTimeMillis())-10L*86400000;
         if(table.equals("model_weather"))return "end>"+from+" AND end<="+(to+3600000);
-        if(table.equals("input_intervals")||table.equals("roller_raw")||table.equals("load_raw"))return "end>"+from+" AND start<"+to;
+        if(table.equals("input_intervals")||table.equals("roller_raw")||(table.equals("load_raw")||table.equals("charger_raw")))return "end>"+from+" AND start<"+to;
         if(table.equals("device_settings"))return "end>="+Math.max(0,from-de.wattpit.app.core.VictronSettings.MAX_AGE)+" AND start<="+to;
         if(table.equals("observations")||table.equals("forecasts")||table.equals("confirmed_setups"))return "end>="+since;
         return "1=1";
@@ -58,6 +59,7 @@ final class AnalysisExchange {
         for(String table:ALL)versions.put(table,version(table,repo,plan,ledger,from,to));
         for(String key:new String[]{"equipment-v1","solar-setup-v1","weatherPlace","weatherCache","rollerChargeWindows",SpecialUses.KEY})settings.put(key,repo.prefs.getString(key,key.equals("rollerChargeWindows")?"[]":key.equals("equipment-v1")?"{\"version\":1,\"groups\":[]}":"{}"));
         JSONArray devices=new JSONArray(),configs=repo.configs();for(int i=0;i<configs.length();i++){JSONObject d=configs.getJSONObject(i);devices.put(new JSONObject().put("mac",d.optString("mac")).put("kind",d.optString("kind")).put("name",d.optString("name")));}
+        settings.put(ChargerJournal.SOURCE_KEY,ChargerJournal.source(repo));
         settings.put("devices",devices.toString()).put("capacity",repo.prefs.getFloat("capacity",100)).put("sampleSeconds",repo.prefs.getInt("sampleSeconds",10));
         // Seed the existing learning checkpoint; a viewer then advances its own derived ledger.
         JSONObject markers=new JSONObject();for(Map.Entry<String,?> e:repo.prefs.getAll().entrySet())if(e.getKey().startsWith("planningEnergyVersion.")||e.getKey().startsWith("planningArchiveTimeRevision.")||e.getKey().startsWith("planningSpecialUsage.")||e.getKey().startsWith("planningRollerInputEnd."))markers.put(e.getKey(),e.getValue());
@@ -70,7 +72,7 @@ final class AnalysisExchange {
     static JSONObject page(Context context,Repository repo,SolarPlanning plan,String table,long from,long to,String expected,long after)throws Exception{
         if(from<0||to<=from||to-from>376L*86400000||to>System.currentTimeMillis()+86400000||after<0)throw new IllegalArgumentException("Ungültiger Datenzeitraum.");
         RollerLedger ledger=RollerLedger.get(context);SQLiteDatabase db=database(table,repo,plan,ledger,false);String before=version(table,repo,plan,ledger,from,to);
-        boolean bounded=table.equals("roller_raw")||table.equals("load_raw")||table.equals("input_intervals");long highWater=Long.MAX_VALUE;
+        boolean bounded=table.equals("roller_raw")||(table.equals("load_raw")||table.equals("charger_raw"))||table.equals("input_intervals");long highWater=Long.MAX_VALUE;
         if(bounded){if(!expected.matches("[0-9]+:[0-9]+"))throw new IllegalArgumentException("Ungültiger Datenstand.");highWater=Long.parseLong(expected.split(":")[0]);}
         else if(!before.equals(expected))return new JSONObject().put("changed",true);
         String[] fields=schema(table).split(",");List<String> columns=new ArrayList<>();for(String f:fields)columns.add(f.split(":")[0]);JSONArray rows=new JSONArray();long cursor=after;

@@ -1,6 +1,6 @@
 (function(root){
   'use strict';
-  const actions=new Set(['saveSolarInstallation','saveAppearance','saveCentralSettings','saveLoadConfiguration','setLoadOutput','submitChargePlan','saveCharger','chargerCommand','savePresence','saveAbsence','resolveAbsence','saveSolarSetup','saveSolarSite','weatherPlace','refreshWeather','requestWeatherTrend','saveEquipment','saveRoller','saveSupplies','refreshSuppliesWeather','saveSpecialUses','rollerReconnect','saveDevice','removeDevice','importSettings','start','stop','importArchive','importMissingArchive','cancelArchive','backgroundArchive']);
+  const actions=new Set(['saveSolarInstallation','saveAppearance','saveCentralSettings','saveLoadConfiguration','setLoadOutput','submitChargePlan','saveCharger','searchChargers','pairCharger','selectCharger','removeCharger','chargerCommandFor','chargerCommand','savePresence','saveAbsence','resolveAbsence','saveSolarSetup','saveSolarSite','weatherPlace','refreshWeather','requestWeatherTrend','saveEquipment','saveRoller','saveSupplies','refreshSuppliesWeather','saveSpecialUses','rollerReconnect','saveDevice','removeDevice','importSettings','start','stop','importArchive','importMissingArchive','cancelArchive','backgroundArchive']);
   root.WattControlBridge=class{
     constructor(native,notify,changed,revision){
       this.revision=revision;this.native=native;this.notify=notify;this.changed=changed;this.next=0;this.pending=null;this.formRevision=null;
@@ -29,6 +29,7 @@
       const pending=this.pending;if(!pending||pending.id!==result.id)return;
       clearTimeout(pending.timer);this.pending=null;
       const error=result.error||(!result.ok?'Keine Bestätigung vom Hauptgerät.':'');
+      if(!error&&Number.isFinite(result.revision)&&this.formRevision!==null)this.formRevision=result.revision;
       this.status(error||'Vom Hauptgerät bestätigt.',false);this.changed?.();this.native.refreshLan?.();pending.resolve(error);
     }
     status(text,busy){

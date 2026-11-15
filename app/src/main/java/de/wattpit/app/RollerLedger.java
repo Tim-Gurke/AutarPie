@@ -15,7 +15,7 @@ final class RollerLedger extends SQLiteOpenHelper {
     private double wh;
     private String source="",mac="";
     private RollerLedger(Context c){this(c,"wattpit-roller-input.db");}
-    RollerLedger(Context c,String name){super(c,name,null,3);setWriteAheadLoggingEnabled(true);}
+    RollerLedger(Context c,String name){super(c,name,null,4);setWriteAheadLoggingEnabled(true);}
     synchronized void replace(String plant,long from,long to,JSONArray rows)throws Exception{
         SQLiteDatabase db=getWritableDatabase();db.beginTransaction();try{
             db.delete("input_intervals","source=? AND end>? AND start<?",new String[]{plant,""+from,""+to});
@@ -24,9 +24,10 @@ final class RollerLedger extends SQLiteOpenHelper {
         }finally{db.endTransaction();}
     }
     @Override public void onCreate(SQLiteDatabase db){db.execSQL("CREATE TABLE input_intervals(source TEXT NOT NULL,start INTEGER NOT NULL,end INTEGER NOT NULL,wh REAL NOT NULL,mac TEXT NOT NULL,session INTEGER NOT NULL,PRIMARY KEY(source,start))");db.execSQL("CREATE INDEX input_end ON input_intervals(source,end)");rawSchema(db);}
-    private static void rawSchema(SQLiteDatabase db){db.execSQL("CREATE TABLE IF NOT EXISTS roller_raw(source TEXT NOT NULL,start INTEGER NOT NULL,end INTEGER NOT NULL,payload TEXT NOT NULL,mac TEXT NOT NULL,PRIMARY KEY(source,start,mac))");loadSchema(db);}
+    private static void rawSchema(SQLiteDatabase db){db.execSQL("CREATE TABLE IF NOT EXISTS roller_raw(source TEXT NOT NULL,start INTEGER NOT NULL,end INTEGER NOT NULL,payload TEXT NOT NULL,mac TEXT NOT NULL,PRIMARY KEY(source,start,mac))");loadSchema(db);chargerSchema(db);}
+    static void chargerSchema(SQLiteDatabase db){db.execSQL("CREATE TABLE IF NOT EXISTS charger_raw(source TEXT NOT NULL,start INTEGER NOT NULL,end INTEGER NOT NULL,payload TEXT NOT NULL,mac TEXT NOT NULL,PRIMARY KEY(source,start,mac))");db.execSQL("CREATE INDEX IF NOT EXISTS charger_raw_end ON charger_raw(end)");}
     private static void loadSchema(SQLiteDatabase db){db.execSQL("CREATE TABLE IF NOT EXISTS load_raw(source TEXT NOT NULL,start INTEGER NOT NULL,end INTEGER NOT NULL,payload TEXT NOT NULL,mac TEXT NOT NULL,PRIMARY KEY(source,start,mac))");db.execSQL("CREATE INDEX IF NOT EXISTS load_end ON load_raw(end)");db.execSQL("CREATE INDEX IF NOT EXISTS roller_raw_end ON roller_raw(end)");}
-    @Override public void onUpgrade(SQLiteDatabase db,int old,int next){if(old<2)rawSchema(db);if(old<3)loadSchema(db);}
+    @Override public void onUpgrade(SQLiteDatabase db,int old,int next){if(old<2)rawSchema(db);if(old<3)loadSchema(db);if(old<4)chargerSchema(db);}
     synchronized void loadRaw(String plant,String regulator,JSONObject sample,boolean exclusive,String scooter)throws Exception{loadRaw(plant,regulator,sample,exclusive,scooter,exclusive,"load-output");}
     synchronized JSONObject usageLearning(String plant,JSONObject roller,long now,String timezone)throws Exception{return new RollerUsageLearning(this).calculate(plant,roller,now,timezone);}
     synchronized void loadRaw(String plant,String regulator,JSONObject sample,boolean exclusive,String scooter,boolean learningPath,String chargePath)throws Exception{

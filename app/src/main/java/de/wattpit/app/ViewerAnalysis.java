@@ -83,8 +83,9 @@ final class ViewerAnalysis {
             if(m.getInt("algorithm")!=SolarPlanning.ALGORITHM)throw new IOException("Bitte Hauptgerät und Anzeige auf dieselbe AutarPie-Version aktualisieren.");
             JSONObject versions=m.getJSONObject("tables");boolean changed=false;long dirtyRollerFrom=Long.MAX_VALUE,dirtyRollerTo=0;
             for(String table:AnalysisExchange.ALL){
+                if(!versions.has(table)&&table.equals("charger_raw"))continue;
                 if(!versions.has(table))throw new IOException("Bitte Zentrale und Anzeigen auf dieselbe AutarPie-Version aktualisieren.");
-                String version=versions.getString(table),scope=(table.equals("model_weather")||table.equals("device_settings")||table.equals("input_intervals")||table.equals("roller_raw")||table.equals("load_raw"))?":"+from+":"+to:"";
+                String version=versions.getString(table),scope=(table.equals("model_weather")||table.equals("device_settings")||table.equals("input_intervals")||table.equals("roller_raw")||(table.equals("load_raw")||table.equals("charger_raw")))?":"+from+":"+to:"";
                 String key="analysis.table."+table+scope;boolean incremental=AnalysisExchange.incremental(table);
                 if(version.equals(repo.prefs.getString(key,"")))continue;
                 String cursorKey="analysis.cursor."+table+scope;long cursor=incremental?repo.prefs.getLong(cursorKey,0):0;JSONArray rows=new JSONArray();
@@ -149,6 +150,7 @@ final class ViewerAnalysis {
             if(from<0||to<=from||to-from>(method.equals("dailyEnergy")?32L:366L)*86400000||(!method.equals("dailyEnergy")&&to>now+86400000))throw new IOException("Ungültiger Zeitraum.");
             prepare(from,Math.max(from+1,Math.min(to,now)));note("Auswertung auf diesem Handy …");JSONObject result;
             switch(method){
+                case "chargerJournal":if(!metadata.getJSONObject("tables").has("charger_raw"))throw new IOException("Für das Laderjournal zuerst die Zentrale auf 3.0.8 aktualisieren.");result=ChargerJournal.query(ledger,ChargerJournal.source(repo),from,to,args.optString(2),now);break;
                 case "loadHistory":result=ledger.loadHistory(RollerLedger.source(repo.prefs),from,to,args.getString(2),args.optString(3));break;
                             case "rollerEnergy":result=ledger.summary(RollerLedger.source(repo.prefs),from,to);break;
                 case "history":result=new JSONObject().put("points",planning.history(from,to,args.getString(2),args.getString(3)));break;

@@ -97,10 +97,11 @@ public final class ArchiveStorageProof {
             int cut=frame.length/2;
             for(byte[] part:new byte[][]{Arrays.copyOfRange(frame,0,cut),Arrays.copyOfRange(frame,cut,frame.length)}){
                 if(window--<=0)throw new AssertionError("Combined register notification credits exhausted");
-                h.feed((parts++%2)==0?3:4,part);int grant;while((grant=h.link.receiveGrant())>0)window+=grant;
+                h.feed((parts++%2)==0?3:4,part);
                 byte[] bytes;while((bytes=h.received.poll())!=null)for(ArchiveCodec.Message message:stream.feed(bytes)){
                     if(message.reg!=0xec5b||!Arrays.equals(message.data,peer.pairs.get(decoded).response))throw new AssertionError("Merged capture stream changed");decoded++;
                 }
+                h.link.consumedData();int grant;while((grant=h.link.receiveGrant())>0)window+=grant;
             }
         }
         require(decoded==peer.pairs.size()&&h.link.received()==parts&&!h.cancelled,"actual incoming method merges both characteristics and replenishes all 956 captured fragments");

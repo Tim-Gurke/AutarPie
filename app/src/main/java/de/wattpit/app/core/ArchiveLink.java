@@ -4,7 +4,7 @@ package de.wattpit.app.core;
 public final class ArchiveLink {
     public static final int RECEIVE_WINDOW=128,REFILL=65;
     public static final long HEARTBEAT_MS=3000;
-    private int sendCredits,pendingReceive,received,sent,grants;
+    private int sendCredits,pendingReceive,received,consumed,sent,grants;
     private long heartbeat=-1;
 
     public synchronized void control(byte[] packet){
@@ -15,7 +15,9 @@ public final class ArchiveLink {
         sendCredits--;sent++;return true;
     }
     /** Both register characteristics consume the shared notification window. */
-    public synchronized void receivedData(){pendingReceive++;received++;}
+    public synchronized void receivedData(){received++;}
+    /** Release the peer's next credits only after the reader has freed queue space. */
+    public synchronized void consumedData(){pendingReceive++;consumed++;}
     public synchronized int receiveGrant(){
         if(pendingReceive<REFILL)return 0;
         pendingReceive-=REFILL;grants++;return REFILL;
@@ -23,6 +25,7 @@ public final class ArchiveLink {
     public synchronized void heartbeatSent(long now){heartbeat=now;}
     public synchronized boolean heartbeatDue(long now){return heartbeat>=0&&now-heartbeat>=HEARTBEAT_MS;}
     public synchronized int received(){return received;}
+    public synchronized int consumed(){return consumed;}
     public synchronized int sent(){return sent;}
     public synchronized int grants(){return grants;}
 }

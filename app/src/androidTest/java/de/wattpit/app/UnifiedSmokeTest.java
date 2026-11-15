@@ -21,6 +21,25 @@ public final class UnifiedSmokeTest extends TestCase {
     private Instrumentation getInstrumentation(){return androidx.test.platform.app.InstrumentationRegistry.getInstrumentation();}
     private Context target(){return getInstrumentation().getTargetContext();}
     private void stopped()throws Exception{Context c=target();c.stopService(new Intent(c,MonitorService.class));c.stopService(new Intent(c,ArchiveService.class));c.stopService(new Intent(c,LanService.class));Repository repo=Repository.get(c);repo.running=false;repo.archiveBusy=false;repo.prefs.edit().putBoolean("recording",false).remove("weatherPlace").commit();}
+    public void testBackgroundPermissionDiagnosisSurvivesOpeningTheApp()throws Exception{
+        String name="test-background-diagnostic-308";
+        Context denied=new ContextWrapper(target()){
+            @Override public int checkSelfPermission(String permission){return permission.equals(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION)?android.content.pm.PackageManager.PERMISSION_DENIED:android.content.pm.PackageManager.PERMISSION_GRANTED;}
+            @Override public SharedPreferences getSharedPreferences(String key,int mode){return super.getSharedPreferences(name,mode);}
+        };
+        SharedPreferences prefs=denied.getSharedPreferences("wattpit",0);prefs.edit().clear().putBoolean("recording",true).putLong("lastStartFailureAt",1700000000000L).putString("lastStartFailure","Standortberechtigung Immer zulassen erforderlich.").commit();
+        try{
+            boolean required=android.os.Build.VERSION.SDK_INT>=29&&android.os.Build.VERSION.SDK_INT<=30;
+            assertEquals(!required,BackgroundBleAccess.granted(denied));
+            org.json.JSONObject report=BackgroundBleAccess.diagnostic(denied);
+            assertEquals(android.os.Build.VERSION.SDK_INT,report.getInt("androidSdk"));assertTrue(report.getBoolean("fineLocation"));
+            assertEquals(!required,report.getBoolean("backgroundBleAllowed"));assertTrue(report.getBoolean("recordingRequested"));
+            assertEquals(1700000000000L,report.getLong("lastStartFailureAt"));assertTrue(report.getString("lastStartFailure").contains("Immer zulassen"));
+            Context allowed=new ContextWrapper(denied){@Override public int checkSelfPermission(String permission){return android.content.pm.PackageManager.PERMISSION_GRANTED;}};
+            assertTrue(BackgroundBleAccess.granted(allowed));assertTrue(BackgroundBleAccess.diagnostic(allowed).getBoolean("backgroundBleAllowed"));
+            assertEquals("Opening diagnostics must retain the earlier failure",1700000000000L,prefs.getLong("lastStartFailureAt",0));
+        }finally{prefs.edit().clear().commit();}
+    }
     public void testCentralUiDoesNotWaitForRegulatorMonitor()throws Exception{
         stopped();Context c=target();Repository repo=Repository.get(c);String devices=repo.prefs.getString("devices","[]");String mac="00:00:00:00:00:02";
         repo.prefs.edit().putString("devices","[{\"kind\":\"solar\",\"mac\":\"00:00:00:00:00:02\",\"name\":\"Testregler\"}]").commit();
@@ -73,9 +92,9 @@ public final class UnifiedSmokeTest extends TestCase {
     }
     private void screenshot(String name)throws Exception{File file=new File(target().getFilesDir(),name);Bitmap bitmap=getInstrumentation().getUiAutomation().takeScreenshot();try(OutputStream out=new FileOutputStream(file)){assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG,100,out));}bitmap.recycle();}
     public void testThreeRolesAndStandaloneTransport()throws Exception{
-        stopped();Context c=target();Activity display=select("Eigenständig",DisplayActivity.class);assertEquals("direct",AppRole.get(c));assertFalse(LanSync.get(c).host());assertFalse(LanSync.get(c).viewer());assertTrue(web(display.getWindow().getDecorView()));screenshot("autarpie-3.0.7-direct.png");
+        stopped();Context c=target();Activity display=select("Eigenständig",DisplayActivity.class);assertEquals("direct",AppRole.get(c));assertFalse(LanSync.get(c).host());assertFalse(LanSync.get(c).viewer());assertTrue(web(display.getWindow().getDecorView()));screenshot("autarpie-3.0.8-direct.png");
         // Switching is an explicit confirmed action when a role was already set.
-        c.getSharedPreferences(AppRole.PREFS,0).edit().remove(AppRole.KEY).commit();Activity central=select("Zentrale",CentralActivity.class);assertEquals("central",AppRole.get(c));assertTrue(LanSync.get(c).host());assertFalse(web(central.getWindow().getDecorView()));screenshot("autarpie-3.0.7-central.png");String host= c.getSharedPreferences("wattpit-lan",0).getString("config","");
+        c.getSharedPreferences(AppRole.PREFS,0).edit().remove(AppRole.KEY).commit();Activity central=select("Zentrale",CentralActivity.class);assertEquals("central",AppRole.get(c));assertTrue(LanSync.get(c).host());assertFalse(web(central.getWindow().getDecorView()));screenshot("autarpie-3.0.8-central.png");String host= c.getSharedPreferences("wattpit-lan",0).getString("config","");
         c.getSharedPreferences(AppRole.PREFS,0).edit().remove(AppRole.KEY).commit();Activity viewer=select("Anzeigehandy",DisplayActivity.class);assertEquals("viewer",AppRole.get(c));assertTrue(AppRole.viewerOnly(c));assertFalse(LanSync.get(c).host());assertTrue(web(viewer.getWindow().getDecorView()));
         c.startService(new Intent(c,MonitorService.class));Thread.sleep(500);assertFalse(Repository.get(c).running);assertFalse(Repository.get(c).prefs.getBoolean("recording",true));
         AppRole.save(c,"central");assertEquals(host,c.getSharedPreferences("wattpit-lan",0).getString("config",""));AppRole.save(c,"direct");assertFalse(LanSync.get(c).host());assertFalse(LanSync.get(c).viewer());

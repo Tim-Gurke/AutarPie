@@ -28,6 +28,11 @@ final class PlantCommands {
             case "setLoadOutput":arity(args,1);bluetoothReady(context);EnergyStore.manual(context,args.getBoolean(0));break;
             case "submitChargePlan":arity(args,1);EnergyStore.permit(context,args.getString(0));break;
             case "saveCharger":arity(args,1);ChargerBle.configure(context,args.getString(0));break;
+            case "searchChargers":arity(args,0);bluetoothReady(context);ChargerDiscovery.search(context);break;
+            case "pairCharger":arity(args,1);bluetoothReady(context);ChargerBle.pair(context,args.getString(0));break;
+            case "selectCharger":arity(args,1);ChargerBle.select(context,args.getString(0));break;
+            case "removeCharger":arity(args,1);ChargerBle.remove(context,args.getString(0));break;
+            case "chargerCommandFor":arity(args,2);ChargerBle.commandFor(context,args.getString(0),args.getString(1));break;
             case "chargerCommand":arity(args,1);ChargerBle.get(context).command(args.getString(0));break;
             case "saveAppearance":arity(args,1);if(!repo.prefs.edit().putString(AutarPieConfig.APPEARANCE,AutarPieConfig.appearance(args.getString(0)).toString()).commit())throw new java.io.IOException();break;
             case "saveCentralSettings":{

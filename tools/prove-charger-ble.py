@@ -124,7 +124,7 @@ public final class BluetoothGatt {
  public static final List<String> calls=new ArrayList<>();
  public final BluetoothGattCallback callback;private final Handler handler;
  private final BluetoothGattService service=new BluetoothGattService();private final Set<UUID> subscriptions=new HashSet<>();
- public int mtu=23;public boolean closed;
+ public int mtu=23;public boolean closed;public byte[] lastWrite,lastAuth;public static int bindResult;
  public BluetoothGatt(BluetoothGattCallback callback,Handler handler){this.callback=callback;this.handler=handler;}
  public static UUID uuid(int id){return UUID.fromString(String.format(Locale.ROOT,"%08x-0000-1000-8000-00805f9b34fb",id));}
  public boolean requestMtu(int requested){calls.add("mtu:"+requested);if(!requestAccepted)return false;
@@ -136,10 +136,11 @@ public final class BluetoothGatt {
  public boolean writeDescriptor(BluetoothGattDescriptor d){return writeDescriptor(d,new byte[]{1,0})==0;}
  public boolean writeCharacteristic(BluetoothGattCharacteristic c){return writeCharacteristic(c,c.getValue(),2)==0;}
  public int writeCharacteristic(BluetoothGattCharacteristic c,byte[] value,int type){
+  lastWrite=value.clone();if(c.getUuid().equals(uuid(0xaf02))&&value[0]==0x18)lastAuth=value.clone();
   calls.add(c.getUuid().equals(uuid(0xaf02))?"auth:"+(value[0]&255):"poll");
   handler.post(()->callback.onCharacteristicWrite(this,c,0));
   if(c.getUuid().equals(uuid(0xaf02))){
-   if(value[0]==0x18)notifyValue(c,new byte[]{0x19,0});
+   if(value[0]==0x18)notifyValue(c,new byte[]{0x19,(byte)bindResult});
    else if((value[0]&255)==0xe0){byte[] info=new byte[13];info[0]=(byte)0xe1;notifyValue(c,info);}
   }else if(Arrays.equals(value,new byte[]{0x12,(byte)0xe4})){
    byte[] sample=new byte[23+4*cells];sample[0]=0x31;sample[1]=(byte)0xe5;sample[6]=(byte)(cells==0?0:1);sample[22]=(byte)cells;
@@ -150,7 +151,7 @@ public final class BluetoothGatt {
   }
   return 0;
  }
- private void notifyValue(BluetoothGattCharacteristic c,byte[] value){if(!subscriptions.contains(c.getUuid()))return;
+ public void notifyValue(BluetoothGattCharacteristic c,byte[] value){if(!subscriptions.contains(c.getUuid()))return;
   handler.post(()->{c.setValue(value);if(Build.VERSION.SDK_INT>=33)callback.onCharacteristicChanged(this,c,value.clone());else callback.onCharacteristicChanged(this,c);});}
  public void disconnect(){calls.add("disconnect");}
  public void close(){closed=true;}
@@ -179,8 +180,13 @@ import org.json.JSONObject;
 final class EnergyStore {
  static final String CHARGER="synthetic-charger";static String error="";static JSONObject sample;static int samples;
  static void error(boolean charger,String message){error=message;}
+ static void chargerError(String mac,String message){error=message;}
  static void charger(JSONObject value){sample=value;samples++;error="";}
 }
+''',
+'de/wattpit/app/ChargerJournal.java': '''package de.wattpit.app;
+import org.json.JSONObject;
+final class ChargerJournal { static void record(Repository repo,String mac,JSONObject value){} }
 ''',
 'de/wattpit/app/ChargerBleProof.java': '''package de.wattpit.app;
 import android.bluetooth.*;import android.content.Context;import android.os.*;import java.lang.reflect.*;import java.util.*;import org.json.*;
@@ -189,7 +195,7 @@ public final class ChargerBleProof {
  static void check(boolean condition,String message){checks++;if(!condition)throw new AssertionError(message);}
  static ChargerBle fresh(int api)throws Exception{
   Handler.clear();Repository.instance=new Repository();EnergyStore.error="";EnergyStore.samples=0;EnergyStore.sample=null;
-  BluetoothGatt.calls.clear();BluetoothGatt.negotiated=247;BluetoothGatt.mtuStatus=0;BluetoothGatt.serviceStatus=0;BluetoothGatt.cells=0;
+  BluetoothGatt.calls.clear();BluetoothGatt.bindResult=0;BluetoothGatt.negotiated=247;BluetoothGatt.mtuStatus=0;BluetoothGatt.serviceStatus=0;BluetoothGatt.cells=0;
   BluetoothGatt.requestAccepted=true;BluetoothGatt.mtuCallback=true;BluetoothGatt.missingService=false;
   Build.VERSION.SDK_INT=api;Field singleton=ChargerBle.class.getDeclaredField("instance");singleton.setAccessible(true);singleton.set(null,null);
   return ChargerBle.get(new Context());
@@ -211,6 +217,41 @@ public final class ChargerBleProof {
   BluetoothGatt.last.callback.onMtuChanged(BluetoothGatt.last,23,0);Handler.drain();
   check(!BluetoothGatt.last.closed,"Ignore late duplicate MTU callbacks after setup");
   ble.stop();Handler.drain();check(BluetoothGatt.last.closed,"Stopping closes the link");
+ }
+ static Object object(ChargerBle link,String name)throws Exception{Field f=ChargerBle.class.getDeclaredField(name);f.setAccessible(true);return f.get(link);}
+ static void configure(String mac,String role)throws Exception{ChargerBle.configure(new Context(),new JSONObject().put("mac",mac).put("name","Lader "+mac.substring(15)).put("role",role).put("enabled",true).put("auth","000102030405060708090a0b0c0d0e0f").toString());Handler.drain();}
+ static void profilesAndPairing()throws Exception{
+  ChargerBle root=fresh(26);start();tick(root);String first="00:00:00:00:00:04",second="00:00:00:00:00:05",third="00:00:00:00:00:06";
+  String old=ChargerProfiles.find(Repository.instance,first).getString("secret");
+  configure(second,"house-source");configure(third,"model");
+  check(ChargerProfiles.all(Repository.instance).length()==3,"Three independent profiles are retained");
+  check(ChargerProfiles.find(Repository.instance,first).getString("secret").equals(old),"Adding another charger preserves the first private identity");
+  String publicJson=ChargerProfiles.publicList(Repository.instance).toString();check(!publicJson.contains("secret")&&!publicJson.contains(old),"Public profile snapshots omit private credentials");
+  Map<?,?> peers=(Map<?,?>)object(root,"peers");check(peers.size()==2,"A separate connection exists for each other enabled profile");
+  BluetoothGatt primary=(BluetoothGatt)object(root,"gatt");Set<BluetoothGatt> connections=new HashSet<>();connections.add(primary);
+  for(Object value:peers.values()){ChargerBle peer=(ChargerBle)value;connections.add((BluetoothGatt)object(peer,"gatt"));tick(peer);}
+  tick(root);check(connections.size()==3&&connections.stream().noneMatch(g->g.closed),"All three GATT sessions remain distinct and open");
+  root.start();Handler.drain();check(object(root,"gatt")==primary&&connections.stream().noneMatch(g->g.closed),"Repeated collector start does not tear down existing chargers");
+  ChargerBle.select(new Context(),first);check(ChargerBle.publicConfig(Repository.instance).getString("mac").equals(first),"Choosing a charger changes only the selected profile");
+  check(object(root,"gatt")==primary,"Changing the viewed profile keeps existing GATT connections");
+  ChargerBle target=(ChargerBle)peers.get(first);BluetoothGatt targetGatt=(BluetoothGatt)object(target,"gatt");primary.lastWrite=null;targetGatt.lastWrite=null;
+  ChargerBle.commandFor(new Context(),first,"start");Handler.drain();check(targetGatt.lastWrite!=null&&primary.lastWrite==null,"An addressed command is sent only to the intended physical charger");
+  try{ChargerBle.commandFor(new Context(),second,"start");throw new AssertionError("Wrong role accepted");}catch(IllegalArgumentException expected){check(expected.getMessage().contains("Wohnwagenladung"),"House battery profiles cannot receive the observed model-battery start profile");}
+  field(target,"lastSampleAt",System.currentTimeMillis()-11000);try{ChargerBle.commandFor(new Context(),first,"start");throw new AssertionError("Stale status accepted");}catch(IllegalArgumentException expected){check(true,"Commands require a fresh sample from that exact charger");}
+  try{configure("00:00:00:00:00:07","model");throw new AssertionError("Fourth profile accepted");}catch(IllegalArgumentException expected){check(ChargerProfiles.all(Repository.instance).length()==3,"A fourth profile cannot overwrite any of the three stored chargers");}
+  ChargerProfiles.remove(Repository.instance,second);check(ChargerProfiles.all(Repository.instance).length()==2&&ChargerProfiles.find(Repository.instance,first).getString("secret").equals(old),"Removing one profile preserves the other identities");
+  root=fresh(26);BluetoothGatt.bindResult=1;
+  ChargerBle.pair(new Context(),new JSONObject().put("mac",first).put("name","Neuer Lader").put("role","model").toString());Handler.drain();
+  BluetoothGatt pairing=(BluetoothGatt)object(root,"gatt");JSONObject pending=ChargerProfiles.selected(Repository.instance);String newSecret=pending.getString("secret");
+  check(pairing.lastAuth.length==19&&pairing.lastAuth[18]==1,"New pairing requests physical confirmation with a dedicated bind request");
+  check(!ChargerBle.publicConfig(Repository.instance).getBoolean("hasAuth")&&pending.getBoolean("pairingPending"),"Waiting for a button is not reported as a successful connection");
+  check(EnergyStore.error.contains("Taste"),"The waiting response asks for confirmation at the charger");
+  pairing.notifyValue(new BluetoothGattCharacteristic(BluetoothGatt.uuid(0xaf02)),new byte[]{0x19,0});Handler.drain();tick(root);
+  check(ChargerBle.publicConfig(Repository.instance).getBoolean("hasAuth")&&!ChargerProfiles.selected(Repository.instance).getBoolean("pairingPending"),"Actual status reception confirms the locally saved new identity");
+  ChargerBle.pair(new Context(),new JSONObject().put("mac",first).put("name","Neuer Lader").put("role","model").toString());Handler.drain();check(ChargerProfiles.selected(Repository.instance).getString("secret").equals(newSecret),"Reusing a configured charger does not replace its identity");
+  root=fresh(26);BluetoothGatt.bindResult=1;ChargerBle.pair(new Context(),new JSONObject().put("mac",first).put("role","model").toString());Handler.drain();field(root,"lastConnect",System.currentTimeMillis()-46000);tick(root);
+  check(!ChargerProfiles.selected(Repository.instance).getBoolean("enabled")&&!ChargerBle.publicConfig(Repository.instance).getBoolean("hasAuth"),"An unconfirmed pairing times out without enabling automatic retries");
+  check(EnergyStore.error.contains("bestätigt"),"Pairing timeout retains an actionable explanation");
  }
  public static void main(String[] args)throws Exception{
   if(args.length>0&&args[0].equals("legacy")){
@@ -245,6 +286,7 @@ public final class ChargerBleProof {
   previous.callback.onMtuChanged(previous,23,133);previous.callback.onServicesDiscovered(previous,133);Handler.drain();
   check(!BluetoothGatt.last.closed,"Callbacks from a closed connection cannot fail its replacement");
   tick(ble);check(EnergyStore.samples==1,"A reconnected charger delivers fresh idle values");
+  profilesAndPairing();
   System.out.println("Charger BLE transport: "+checks+" checks passed");
  }
 }
@@ -258,7 +300,7 @@ for name, content in files.items():
     sources.append(str(path))
 production = root / 'app/src/main/java'
 source = args.source.resolve() if args.source else production / 'de/wattpit/app/ChargerBle.java'
-sources += [str(source), *[str(production / ('de/wattpit/app/core/' + name + '.java')) for name in ('EnergyProtocol', 'ArchiveCodec', 'ArchiveTimeReference', 'VictronSettings')]]
+sources += [str(production / "de/wattpit/app/ChargerProfiles.java"), str(source), *[str(production / ('de/wattpit/app/core/' + name + '.java')) for name in ('EnergyProtocol', 'ArchiveCodec', 'ArchiveTimeReference', 'VictronSettings')]]
 subprocess.run(['java', 'com.sun.tools.javac.Main', '-source', '17', '-target', '17', '-cp', str(args.android_jar.resolve()), '-d', str(classes), *sources], check=True)
 result = subprocess.run(['java', '-cp', str(classes) + ':' + str(args.android_jar.resolve()), 'de.wattpit.app.ChargerBleProof', *(['legacy'] if args.legacy else [])], text=True, capture_output=True)
 print(result.stdout, end='')

@@ -173,7 +173,7 @@ final class LanSync {
     }catch(Exception e){return "{}";}}
     private String fingerprint()throws Exception{
         JSONArray values=new JSONArray();Map<String,?> all=repository.prefs.getAll();
-        for(String key:new String[]{AutarPieConfig.APPEARANCE,EnergyStore.KEY,EnergyStore.CHARGER,"archiveIntervalMinutes","autostart","devices","equipment-v1","solar-setup-v1","weatherPlace","capacity","sampleSeconds","recording",SpecialUses.KEY,SuppliesStore.KEY})values.put(all.get(key));
+        for(String key:new String[]{AutarPieConfig.APPEARANCE,EnergyStore.KEY,EnergyStore.CHARGER,ChargerProfiles.KEY,"archiveIntervalMinutes","autostart","devices","equipment-v1","solar-setup-v1","weatherPlace","capacity","sampleSeconds","recording",SpecialUses.KEY,SuppliesStore.KEY})values.put(all.get(key));
         ArchiveRun.State run=repository.archiveRun.state();values.put(run.id).put(run.startedAt).put(run.busy);
         values.put(RollerStore.get(context).snapshot().optJSONObject("profile"));values.put(context.getSharedPreferences("wattpit-presence",Context.MODE_PRIVATE).getLong("revision",0));return digest(values.toString());
     }
@@ -240,7 +240,7 @@ final class LanSync {
         return query(method,args,null);
     }
     JSONObject query(String method,JSONArray args,Consumer<String> progress)throws Exception{
-        if(Arrays.asList("rollerEnergy","loadHistory","history","dashboardHistory","energyHistoryWindow","energyHistory","dailyEnergy").contains(method)){analysisPending=true;try{JSONObject result=analysis().query(method,args,progress);analysisAt=result.getJSONObject("analysis").optLong("at");return result;}finally{analysisPending=false;}}
+        if(Arrays.asList("chargerJournal","rollerEnergy","loadHistory","history","dashboardHistory","energyHistoryWindow","energyHistory","dailyEnergy").contains(method)){analysisPending=true;try{JSONObject result=analysis().query(method,args,progress);analysisAt=result.getJSONObject("analysis").optLong("at");return result;}finally{analysisPending=false;}}
         return queryInput(method,args);
     }
     int analysisProtocol(){return remote.optInt("analysisProtocol");}

@@ -14,3 +14,17 @@ test('remote failure remains an error and presentation settings stay local',asyn
 test('standalone methods preserve their synchronous native contract',()=>{
  const b=new Control({isLanViewer:()=>false,saveSolarSetup:q=>'validated:'+q},()=>{});assert.equal(b.bridge.saveSolarSetup('{}'),'validated:{}');
 });
+
+test('charger discovery, pairing, profile selection and addressed commands use the shared confirmation bridge',async()=>{
+ for(const action of ['searchChargers','pairCharger','selectCharger','removeCharger','chargerCommandFor']){
+  const requests=[],raw={isLanViewer:()=>true,controlRevision:()=>7,requestPlantCommand:json=>requests.push(JSON.parse(json)),[action]:()=>{throw Error('Local viewer action must not execute');}};
+  const bridge=new Control(raw,()=>{},()=>{},()=>7),pending=bridge.bridge[action]('00:00:00:00:00:11','stop');
+  assert.equal(requests[0].action,action);assert.equal(requests[0].args[0],'00:00:00:00:00:11');bridge.result({id:requests[0].id,ok:true,revision:8});assert.equal(await pending,'');
+ }
+});
+test('a confirmed search advances its open setup form to the returned revision without accepting later unseen edits',async()=>{
+ global.document={getElementById:id=>id==='modal'?{hidden:false}:null,body:{classList:{toggle(){}}},querySelectorAll:()=>[]};
+ const requests=[],raw={isLanViewer:()=>true,controlRevision:()=>7,requestPlantCommand:json=>requests.push(JSON.parse(json)),searchChargers(){},pairCharger(){}};
+ const bridge=new Control(raw,()=>{},()=>{},()=>7);bridge.capture();const search=bridge.bridge.searchChargers();bridge.result({id:requests[0].id,ok:true,revision:8});await search;
+ const pair=bridge.bridge.pairCharger('{}');assert.equal(requests[1].revision,8);bridge.result({id:requests[1].id,error:'inzwischen geändert'});assert.equal(await pair,'inzwischen geändert');delete global.document;
+});

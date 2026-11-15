@@ -37,7 +37,8 @@ public final class CentralActivity extends Activity {
     private LanSync lan;
     private LinearLayout devices;
     private TextView recording,live,network,roller,archive,message;
-    private TextView historyHint,archivePolicy,suppliesStatus;
+    private TextView historyHint,archivePolicy,suppliesStatus,backgroundHint;
+    private Button backgroundSettings;
     private Button startButton,pauseButton,archiveButton,cancelArchiveButton,pairButton,reconnectButton,historyButton;
     private final SharedPreferences.OnSharedPreferenceChangeListener appearanceChanged=(preferences,key)->{if(AutarPieConfig.APPEARANCE.equals(key))main.post(()->{colors();panels.clear();build();update();});};
     private boolean foreground,pendingStart;
@@ -95,6 +96,8 @@ public final class CentralActivity extends Activity {
         sections=new GridLayout(this);sections.setColumnCount(2);root.addView(sections,new LinearLayout.LayoutParams(-1,-2));
         LinearLayout status=card(root,"Aufzeichnung");recording=text(status,"Bereit",20,TEXT);live=text(status,"Noch keine Messwerte",15,MUTED);
         text(status,"Sammelt, speichert und steuert auch bei ausgeschaltetem Display. Prognosen und Auswertungen berechnen deine Anzeigehandys.",14,MUTED);
+        backgroundHint=text(status,"Autostart benötigt unter Berechtigungen → Standort die Auswahl Immer zulassen.",14,0xffe8bb57);
+        backgroundSettings=button(status,"Berechtigung für Autostart einstellen",()->BackgroundBleAccess.openSettings(this));
         startButton=button(status,"Aufzeichnung starten",()->{startButton.setEnabled(false);repository.prefs.edit().putBoolean("cockpitNotice-v1",true).apply();requestStart(null);});tint(startButton,true);startButton.setEnabled(false);
         pauseButton=button(status,"Aufzeichnung pausieren",()->{pauseButton.setEnabled(false);pendingStart=false;pendingArchive=null;repository.prefs.edit().putBoolean("recording",false).apply();stopService(new Intent(this,MonitorService.class));});pauseButton.setEnabled(false);
         LinearLayout supplies=card(root,"Gas, Wasser und Wetter");suppliesStatus=text(supplies,"Noch keine Einträge",15,TEXT);text(supplies,"AutarPie speichert Beschaffungen, Gaswechsel und Wetterdaten. Einträge, Verbrauchslernen und Reichweiten bedienst du im AutarPie-Cockpit auf dem Anzeigehandy.",14,MUTED);
@@ -134,6 +137,8 @@ public final class CentralActivity extends Activity {
             runOnUiThread(()->{if(!foreground)return;try{
                 if(output!=null){long now=System.currentTimeMillis(),at=o.optLong("at");boolean fresh=at>0&&now>=at&&now-at<=45000;output.setText((!fresh?"Keine aktuellen Ausgangswerte":(o.optInt("state",-1)==1?"An":o.optInt("state",-1)==0?"Aus":"Unbekannt")+" · "+(o.has("current")?String.format(Locale.GERMANY,"%.2f A",o.optDouble("current")):"Strom unbekannt"))+(energy.optString("outputError").isEmpty()?"":"\n"+energy.optString("outputError")));}
                 boolean active=data.optBoolean("running"),busy=new JSONObject(sync).optBoolean("busy");
+                boolean needsBackground=repository.prefs.getBoolean("autostart",true)&&!BackgroundBleAccess.granted(this);
+                backgroundHint.setVisibility(needsBackground?View.VISIBLE:View.GONE);backgroundSettings.setVisibility(needsBackground?View.VISIBLE:View.GONE);
                 JSONObject weather=supply.optJSONObject("weather");long weatherAt=weather==null?0:weather.optLong("updated");suppliesStatus.setText(supply.getJSONArray("events").length()+" gespeicherte Einträge"+(weatherAt>0?" · Wetterstand "+android.text.format.DateFormat.format("dd.MM. HH:mm",weatherAt):" · Wetter noch nicht ergänzt")+(weather!=null&&weather.optBoolean("pending")?" · Abruf läuft …":"")+(weather!=null&&!weather.optString("error").isEmpty()?"\n"+weather.optString("error"):""));
                 recording.setText(active?"Aufzeichnung aktiv":pendingStart?"Start wird vorbereitet …":"Aufzeichnung pausiert");recording.setTextColor(active?ACCENT:0xffe8bb57);
                 startButton.setEnabled(!active&&!pendingStart&&!restoringHistory);pauseButton.setEnabled((active||pendingStart)&&!restoringHistory);
@@ -225,7 +230,7 @@ public final class CentralActivity extends Activity {
             }finally{plan.shutdown();plan.close();}
         }
         if(request==EXPORT_CSV)try(OutputStream out=getContentResolver().openOutputStream(uri,"wt")){if(out==null)throw new IOException();repository.db.exportTo(out);notice("Verlauf gespeichert.");}
-        if(request==DIAGNOSTICS)try(OutputStream out=getContentResolver().openOutputStream(uri,"wt")){if(out==null)throw new IOException();JSONObject diagnostic=new JSONObject().put("app","AutarPie").put("version",BuildConfig.VERSION_NAME).put("at",System.currentTimeMillis()).put("sync",new JSONObject(repository.syncState())).put("archive",repository.diagnosticText()).put("roller",RollerHandover.view(this)).put("events",CentralLog.read(this));try(ZipOutputStream zip=new ZipOutputStream(out)){zip.putNextEntry(new ZipEntry("diagnose.json"));zip.write(diagnostic.toString(2).getBytes(StandardCharsets.UTF_8));zip.closeEntry();}notice("Diagnose gespeichert.");}
+        if(request==DIAGNOSTICS)try(OutputStream out=getContentResolver().openOutputStream(uri,"wt")){if(out==null)throw new IOException();JSONObject diagnostic=new JSONObject().put("app","AutarPie").put("version",BuildConfig.VERSION_NAME).put("at",System.currentTimeMillis()).put("recording",BackgroundBleAccess.diagnostic(this).put("running",repository.running).put("status",repository.status)).put("sync",new JSONObject(repository.syncState())).put("archive",repository.diagnosticText()).put("roller",RollerHandover.view(this)).put("events",CentralLog.read(this));try(ZipOutputStream zip=new ZipOutputStream(out)){zip.putNextEntry(new ZipEntry("diagnose.json"));zip.write(diagnostic.toString(2).getBytes(StandardCharsets.UTF_8));zip.closeEntry();}notice("Diagnose gespeichert.");}
     }catch(Exception e){notice(Repository.safeError(e));}finally{if(request==IMPORT_HISTORY){restoringHistory=false;runOnUiThread(this::update);}}});}
     private void notice(String value){runOnUiThread(()->{if(isDestroyed())return;if(message!=null)message.setText(value);Toast.makeText(this,value,Toast.LENGTH_LONG).show();});}
 }

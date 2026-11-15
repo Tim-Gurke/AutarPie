@@ -144,3 +144,12 @@ test('routine revisions throttle cached reads, but explicit refresh and import c
  b.invalidate(false,true);const old=JSON.parse(b.read('history',args,'tile'));assert.equal(old.stale,true);assert.equal(old.pending,false);assert.equal(requests.length,first);
  b.invalidate();b.invalidate(false,true);b.read('history',args,'tile');assert.equal(requests.length,first+1,'a following routine revision cannot suppress an explicit refresh');reply({points:[{v:2}]});
 });
+
+test('charger journal reads stay asynchronous and cannot reuse another charger under the same modal scope',()=>{
+ const requests=[],bridge=new Bridge({requestHistory:json=>requests.push(JSON.parse(json))},()=>{});
+ assert.equal(JSON.parse(bridge.read('chargerJournal',[0,100000,'charger-a'],'journal')).pending,true);
+ const first=requests[0];bridge.result({id:first.id,data:{sessions:[{id:'a',batteryWh:0,state:'unknown'}],sampleCount:1}});
+ const known=JSON.parse(bridge.read('chargerJournal',[0,100000,'charger-a'],'journal'));assert.equal(known.sessions[0].batteryWh,0);assert.equal(known.sessions[0].state,'unknown');
+ const other=JSON.parse(bridge.read('chargerJournal',[0,100000,'charger-b'],'journal'));assert.equal(other.pending,true);assert.equal(other.sessions,undefined);
+ bridge.result({id:requests[1].id,data:{sessions:[],sampleCount:0}});assert.deepEqual(JSON.parse(bridge.read('chargerJournal',[0,100000,'charger-b'],'journal')).sessions,[]);
+});

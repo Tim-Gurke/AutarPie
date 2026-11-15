@@ -9,6 +9,8 @@ final class EnergyStore {
     static final String KEY="autarpie-energy-v1",CHARGER="autarpie-charger-v1";
     private static final Map<String,JSONObject> solar=new HashMap<>();
     private static JSONObject charger=new JSONObject(),plan=new JSONObject();
+    private static final Map<String,JSONObject> chargers=new HashMap<>();
+    private static final Map<String,String> chargerErrors=new HashMap<>();
     private static String outputError="",chargerError="",authority="";
     private static long requestedAt,autoStarted,lastCommand,authorityUntil,sequence;
     private static Boolean requested,automatic,queuedManual;
@@ -42,14 +44,17 @@ final class EnergyStore {
         try{RollerLedger.get(repo.applicationContext()).loadRaw(RollerLedger.source(repo.prefs),mac,sample,exclusive,RollerStore.get(repo.applicationContext()).mac(),learningPath,path);}
         catch(Exception failure){error(false,"Lastmesswerte empfangen; Archivspeicherung fehlgeschlagen.");}
     }
-    static synchronized void charger(JSONObject value){charger=value;chargerError="";}
+    static synchronized void charger(JSONObject value){charger=value;String mac=value.optString("device");if(!mac.isEmpty()){chargers.put(mac,value);chargerErrors.remove(mac);}chargerError="";}
+    static synchronized void chargerError(String mac,String text){chargerErrors.put(mac,text);}
     static synchronized void error(boolean isCharger,String text){if(isCharger)chargerError=text;else outputError=text;}
     static synchronized String regulator(Repository repo)throws JSONException{String selected=config(repo).optString("regulator");JSONArray configs=repo.configs();for(int i=0;i<configs.length();i++){JSONObject d=configs.getJSONObject(i);if(d.optString("kind").equals("solar")&&(selected.isEmpty()||selected.equals(d.optString("mac"))))return d.getString("mac");}return "";}
     static synchronized JSONObject output(Repository repo)throws JSONException{JSONObject value=solar.get(regulator(repo));return value==null?new JSONObject():new JSONObject(value.toString());}
     static synchronized void overlay(String mac,JSONObject reading,long now)throws JSONException{JSONObject v=solar.get(mac);if(v!=null&&now>=v.optLong("at")&&now-v.optLong("at")<=45000){if(v.has("current"))reading.put("load",v.get("current"));if(v.has("pvVoltage"))reading.put("pvVoltage",v.get("pvVoltage")).put("pvVoltageAt",v.getLong("at"));}}
     static synchronized JSONObject snapshot(Repository repo)throws JSONException{
         JSONArray outputs=new JSONArray();for(java.util.Map.Entry<String,JSONObject> item:solar.entrySet())outputs.put(new JSONObject(item.getValue().toString()).put("device",item.getKey()));
-        JSONObject result=new JSONObject().put("outputs",outputs).put("config",config(repo)).put("output",output(repo)).put("outputError",outputError).put("charger",new JSONObject(charger.toString())).put("chargerError",chargerError).put("chargerConfig",ChargerBle.publicConfig(repo)).put("goalReached",goalReached).put("manualOff",manualOff).put("plan",new JSONObject(plan.toString()));
+        JSONObject selected=ChargerBle.publicConfig(repo);String selectedMac=selected.optString("mac");JSONObject selectedSample=chargers.get(selectedMac);if(selectedSample==null)selectedSample=charger.optString("device").isEmpty()?charger:new JSONObject();
+        JSONArray profiles=ChargerProfiles.publicList(repo);for(int i=0;i<profiles.length();i++){JSONObject profile=profiles.getJSONObject(i);String mac=profile.optString("mac");profile.put("sample",chargers.containsKey(mac)?new JSONObject(chargers.get(mac).toString()):new JSONObject()).put("error",chargerErrors.getOrDefault(mac,""));}
+        JSONObject result=new JSONObject().put("outputs",outputs).put("config",config(repo)).put("output",output(repo)).put("outputError",outputError).put("charger",new JSONObject(selectedSample.toString())).put("chargerError",chargerErrors.getOrDefault(selectedMac,chargerError)).put("chargerConfig",selected).put("chargerProfiles",profiles).put("chargerDiscovery",ChargerDiscovery.snapshot()).put("goalReached",goalReached).put("manualOff",manualOff).put("plan",new JSONObject(plan.toString()));
         if(queuedManual!=null)result.put("queued",queuedManual).put("queuedAt",queuedAt).put("queueReason",repo.archiveBusy?"Archivabruf wird für den Schaltwunsch geordnet beendet":repo.liveBusy?"Laufende Liveabfrage wird abgeschlossen":"Schaltauftrag wartet auf den Regler");
         if(requested!=null)result.put("requested",requested).put("requestedAt",requestedAt).put("automatic",Boolean.TRUE.equals(automatic));return result;
     }

@@ -35,3 +35,19 @@ test('sensor choices remain available before connection and retain a selected ad
  const options=C.displayOptions({},['temperature:4']);assert.ok(options.some(([key])=>key==='temperature:0'));assert.ok(options.some(([key])=>key==='temperature:1'));assert.ok(options.some(([key])=>key==='temperature:4'));
  assert.equal(C.normalizeDisplay(['temperature:116'])[0],'stored');
 });
+
+test('BMS freshness expires from the measurement timestamp even while a cached snapshot still says fresh',()=>{
+ const now=1700000000000,live={at:now-10001,soc:88,voltage:53},state={fresh:true,live,lastKnown:{at:now-60000,soc:91}};
+ const old=C.readingState(state,now);assert.equal(old.fresh,false);assert.deepEqual(old.live,{});assert.equal(old.lastKnown.soc,88);assert.equal(old.lastKnown.at,live.at);assert.equal(state.fresh,true);assert.equal(state.live.soc,88);
+});
+test('returning with a lower current SOC replaces the visibly stale high SOC and its timestamp',()=>{
+ const now=1700000000000,saved={at:now-3600000,soc:87};
+ const parked=C.readingState({fresh:false,live:{},lastKnown:saved},now);assert.equal(parked.fresh,false);assert.equal(parked.lastKnown.soc,87);
+ const returned=C.readingState({fresh:true,live:{at:now,soc:36},lastKnown:saved},now);assert.equal(returned.fresh,true);assert.equal(returned.live.soc,36);assert.equal(returned.lastKnown.soc,36);assert.equal(saved.soc,87);
+ assert.equal(C.readingState(returned,now+10001).fresh,false);
+});
+test('missing and future BMS timestamps cannot gain freshness from opening the app or polling again',()=>{
+ const now=1700000000000;for(const at of [undefined,0,NaN,now+1])assert.equal(C.readingState({fresh:true,live:{at,soc:80}},now).fresh,false);
+ const current={fresh:true,live:{at:now-10000,soc:50}};assert.equal(C.readingState(current,now).fresh,true);assert.equal(C.readingState(current,now+1).fresh,false);
+ const lost={fresh:false,live:{at:now,soc:50}};assert.equal(C.readingState(lost,now).fresh,false);
+});

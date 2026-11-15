@@ -3,6 +3,12 @@
   const defaults={chargePath:'inverter',planCharge:false,autoSpecialUse:false,name:'Roller',mac:'',technology:'Li-Ion',capacityAh:26,nominalVoltage:48.1,reservePercent:20,targetPercent:90,idleWatts:21,conversionEfficiency:96/117,chargeWatts:96,rideKm:0,whPerKm:19,rideReservePercent:20,departure:0,returnAt:0};
   const input=(watts,p)=>watts>0?p.idleWatts+watts/p.conversionEfficiency:0;
   const displayDefaults=['stored','soc','power','charged','input','temperature'];
+  function readingState(state={},now=Date.now()){
+    const live=state.live||{},saved=state.lastKnown||{},valid=v=>typeof v==='number'&&Number.isFinite(v)&&v>0;
+    const latest=valid(live.at)&&(!valid(saved.at)||live.at>=saved.at)?live:saved;
+    const fresh=state.fresh===true&&valid(live.at)&&now>=live.at&&now-live.at<=10000;
+    return {...state,fresh,live:fresh?live:{},lastKnown:latest};
+  }
   const displayMetrics={
     stored:{label:'Enthaltene Energie · geschätzt',unit:'Wh'},soc:{label:'Ladezustand · BMS',unit:'%'},power:{label:'Batterieleistung · BMS',unit:'W'},
     charged:{label:'Geladen · gemessene Abschnitte',unit:'Wh'},input:{label:'Wohnwagenanteil · geschätzt',unit:'Wh'},temperature:{label:'Temperatur · BMS',unit:'°C'},
@@ -41,5 +47,5 @@
     const end=now+r.hours*3600000;if(p.departure>0&&p.departure<end&&p.departure>now)return [];
     return [{from:now,to:end,watts:input(p.chargeWatts,p)}];
   }
-  return {defaults,input,storedEnergy,plan,loads,displayDefaults,displayMetrics,normalizeDisplay,displayOptions,displayReading};
+  return {defaults,input,storedEnergy,plan,loads,readingState,displayDefaults,displayMetrics,normalizeDisplay,displayOptions,displayReading};
 });

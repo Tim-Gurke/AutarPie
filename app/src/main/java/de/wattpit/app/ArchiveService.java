@@ -36,6 +36,10 @@ public final class ArchiveService extends Service {
     private volatile String operationType="";
     private volatile int negotiatedMtu=23;
     private volatile int disconnectStatus;
+    private volatile IOException receiveFailure;
+    private volatile int receiveQueuePeak;
+    private volatile String cancellationReason="";
+    private volatile boolean userCancelled;
     private String stage="Verbindung";
     private final List<String> diagnostics=new ArrayList<>();
     private volatile boolean cancelled,connected,started;
@@ -65,7 +69,11 @@ public final class ArchiveService extends Service {
         UUID id=c.getUuid();
         if(CONTROL.equals(id)){link.control(v);return;}
         if(DATA.equals(id)||BULK.equals(id))link.receivedData();
-        if((DATA.equals(id)||BULK.equals(id))&&!received.offer(v.clone()))cancelled=true;
+        if((DATA.equals(id)||BULK.equals(id))&&!received.offer(v.clone())){
+            receiveFailure=new IOException("Bluetooth-Empfangspuffer voll; Abgleich unvollständig");
+            failOperation(receiveFailure);
+        }
+        receiveQueuePeak=Math.max(receiveQueuePeak,received.size());
     }
     private void complete(String type,int status){CompletableFuture<Integer> op=operation;if(op!=null&&type.equals(operationType))op.complete(status);}
     private void failOperation(Exception failure){CompletableFuture<Integer> op=operation;if(op!=null)op.completeExceptionally(failure);}
@@ -73,7 +81,7 @@ public final class ArchiveService extends Service {
     private void trace(String text){synchronized(diagnostics){if(diagnostics.size()>=80)diagnostics.remove(0);diagnostics.add(ArchiveDiagnostic.clean(text));}}
     private void saveDiagnostics(String result){try{
         JSONArray lines;synchronized(diagnostics){lines=new JSONArray(diagnostics);}
-        repository.archiveDiagnostics(kind,new JSONObject().put("result",result).put("steps",lines).put("durationMs",SystemClock.elapsedRealtime()-importStarted).put("stored",changed).put("blocks",blocks).put("skipped",skipped).put("missing",missing).put("unmapped",unmapped).put("sentPackets",link.sent()).put("receivedPackets",link.received()).put("receiveGrants",link.grants()));
+        repository.archiveDiagnostics(kind,new JSONObject().put("result",result).put("steps",lines).put("durationMs",SystemClock.elapsedRealtime()-importStarted).put("stored",changed).put("blocks",blocks).put("skipped",skipped).put("missing",missing).put("unmapped",unmapped).put("sentPackets",link.sent()).put("receivedPackets",link.received()).put("consumedPackets",link.consumed()).put("receiveQueuePeak",receiveQueuePeak).put("receiveGrants",link.grants()));
     }catch(JSONException ignored){}}
     private static final class GattFailure extends IOException{
         private static final long serialVersionUID=1;final int status;
@@ -91,8 +99,8 @@ public final class ArchiveService extends Service {
     @Override public int onStartCommand(Intent intent,int flags,int startId){
         if(AppRole.viewerOnly(this)||LanSync.get(this).viewer()){stopSelf();return START_NOT_STICKY;}
         if(intent==null){stopSelf();return START_NOT_STICKY;}
-        if("CONTROL_PREEMPT".equals(intent.getAction())){cancelled=true;failOperation(new IOException("manual control priority"));received.offer(new byte[0]);if(!started)stopSelf();return START_NOT_STICKY;}
-        if("CANCEL".equals(intent.getAction())){cancelled=true;repository.pauseAutomaticArchives();failOperation(new IOException("cancelled"));received.offer(new byte[0]);if(!started)stopSelf();return START_NOT_STICKY;}
+        if("CONTROL_PREEMPT".equals(intent.getAction())){cancellationReason="Archivabruf für manuellen Schaltauftrag unterbrochen";cancelled=true;failOperation(new IOException(cancellationReason));received.offer(new byte[0]);if(!started)stopSelf();return START_NOT_STICKY;}
+        if("CANCEL".equals(intent.getAction())){cancellationReason="Import abgebrochen · automatische Abrufe 30 Minuten pausiert";userCancelled=true;cancelled=true;repository.pauseAutomaticArchives();failOperation(new IOException(cancellationReason));received.offer(new byte[0]);if(!started)stopSelf();return START_NOT_STICKY;}
         if(started)return START_NOT_STICKY;
         liveOnly="LIVE".equals(intent.getAction())||"OUTPUT".equals(intent.getAction());
         if(liveOnly){
@@ -119,7 +127,12 @@ public final class ArchiveService extends Service {
         return new Notification.Builder(this,CHANNEL).setSmallIcon(R.drawable.ic_bolt).setContentTitle("AutarPie · Gerätearchiv").setContentText(text).setContentIntent(open).setOngoing(true).addAction(new Notification.Action.Builder(null,"Abbrechen",cancel).build()).build();
     }
     private void progress(String text){if(liveOnly)return;repository.archiveState(mac,true,text,processed,total);long now=SystemClock.elapsedRealtime();if(now-lastNotification>750){lastNotification=now;getSystemService(NotificationManager.class).notify(11,notification(text));}}
-    private void check() throws IOException {if(cancelled||Thread.currentThread().isInterrupted())throw new IOException("cancelled");}
+    private void check() throws IOException {if(receiveFailure!=null)throw receiveFailure;if(cancelled||Thread.currentThread().isInterrupted())throw new IOException("cancelled");}
+    private byte[] receivePacket(long timeout) throws InterruptedException {
+        byte[] bytes=received.poll(timeout,TimeUnit.MILLISECONDS);
+        if(bytes!=null&&bytes.length>0)link.consumedData();
+        return bytes;
+    }
     private interface GattAction {boolean run();}
     private void op(String type,GattAction action) throws Exception {
         check();long wait=20000;
@@ -182,7 +195,7 @@ public final class ArchiveService extends Service {
                 if(command[0]==5||m.status!=3)return null; // Unsupported field, never a trend data block.
             }
             maintain();
-            byte[] bytes=received.poll(250,TimeUnit.MILLISECONDS);
+            byte[] bytes=receivePacket(250);
             if(bytes!=null&&bytes.length>0)messages.addAll(stream.feed(bytes));
         }
         throw new TimeoutException("Keine Archivantwort.");
@@ -242,7 +255,7 @@ public final class ArchiveService extends Service {
         long deadline=SystemClock.elapsedRealtime()+12000;
         while(SystemClock.elapsedRealtime()<deadline){
             check();while(!messages.isEmpty())if(ArchiveSession.accepted(step,messages.removeFirst()))return;
-            maintain();byte[] bytes=received.poll(250,TimeUnit.MILLISECONDS);
+            maintain();byte[] bytes=receivePacket(250);
             if(bytes!=null&&bytes.length>0)messages.addAll(stream.feed(bytes));
         }
         throw new TimeoutException();
@@ -265,7 +278,7 @@ public final class ArchiveService extends Service {
             List<String> queue=new ArrayList<>();
             JSONArray configs=repository.requestedArchiveDevices(mac);for(int i=0;i<configs.length();i++)queue.add(configs.getJSONObject(i).getString("mac"));
             if(queue.isEmpty()&&!automatic){repository.archiveState(mac,false,"Keine Geräte zum Nachladen eingerichtet.",0,0);repository.message("Bitte zuerst ein Gerät einrichten.");}
-            for(String next:queue){if(cancelled)break;mac=next;stage="Verbindung";changed=missing=unmapped=processed=total=unknown=blocks=skipped=0;negotiatedMtu=23;disconnectStatus=0;link=new ArchiveLink();synchronized(diagnostics){diagnostics.clear();}received.clear();messages.clear();stream=new ArchiveCodec.Stream();runImport();}
+            for(String next:queue){if(cancelled)break;mac=next;stage="Verbindung";changed=missing=unmapped=processed=total=unknown=blocks=skipped=0;negotiatedMtu=23;disconnectStatus=0;receiveFailure=null;receiveQueuePeak=0;link=new ArchiveLink();synchronized(diagnostics){diagnostics.clear();}received.clear();messages.clear();stream=new ArchiveCodec.Stream();runImport();}
         }catch(Exception e){repository.archiveState(mac,false,"Import konnte nicht vorbereitet werden.",0,0);}
         finally{main.post(this::stopSelf);}
     }
@@ -417,12 +430,13 @@ public final class ArchiveService extends Service {
             importComplete=true;
             traceSummary();saveDiagnostics(result);repository.archiveState(mac,false,result,processed,total);repository.message(result);
         }catch(Exception e){
-            String reason=e instanceof GattFailure?"GATT "+((GattFailure)e).status:e instanceof TimeoutException?"Zeitüberschreitung":e instanceof IllegalArgumentException||e instanceof LinkClosed||e instanceof GattRejected||e instanceof IllegalStateException?e.getMessage():e instanceof SecurityException?"Bluetooth-Berechtigung fehlt":"Verbindung beendet";
+            String reason=receiveFailure!=null?receiveFailure.getMessage():e instanceof GattFailure?"GATT "+((GattFailure)e).status:e instanceof TimeoutException?"Zeitüberschreitung":e instanceof IllegalArgumentException||e instanceof LinkClosed||e instanceof GattRejected||e instanceof IllegalStateException?e.getMessage():e instanceof SecurityException?"Bluetooth-Berechtigung fehlt":"Verbindung beendet";
             reason=ArchiveDiagnostic.clean(reason);
-            String result=(cancelled?"Import abgebrochen · automatische Abrufe 30 Minuten pausiert":stage+": "+reason)+". "+changed+" Archivwerte übernommen. Weitere Daten unter Geräte → Gerätearchiv ergänzen nachladen.";
-            trace(cancelled?"Abgebrochen":stage+" · "+reason);traceSummary();saveDiagnostics(result);
+            String result=(cancelled?cancellationReason:stage+": "+reason)+". "+changed+" Archivwerte übernommen. Weitere Daten unter Geräte → Gerätearchiv ergänzen nachladen.";
+            trace(cancelled?cancellationReason:stage+" · "+reason);traceSummary();saveDiagnostics(result);
+            CentralLog.add(this,"Archiv",result);
             repository.invalidateStats();repository.archiveState(mac,false,result,processed,total);repository.message(result);
-        }finally{closeGatt();repository.archiveAttemptFinished(mac,cancelled,importComplete);}
+        }finally{closeGatt();repository.archiveAttemptFinished(mac,userCancelled,importComplete);}
     }
     private void refreshTransfer(int ch,ArchiveTransferPlan transfer,Map<Integer,List<ArchiveCodec.Level>> levels,
                                  Map<Integer,Integer> batches,Map<Integer,Integer> registers,Map<Integer,ArchiveCodec.Field> fields,
@@ -437,7 +451,7 @@ public final class ArchiveService extends Service {
         transfer.refresh(ch,current,saved,batch);levels.put(ch,current);liveChecked.put(ch,at);
         trace(ArchiveSession.label(field.name)+" · neu geplant · "+transfer.remaining()+" Werte offen");
     }
-    private void traceSummary(){trace(blocks+" Datenblöcke · "+changed+" übernommene Werte · "+skipped+" lokal vorhanden, nicht geladen · "+missing+" fehlend · "+unmapped+" ohne sichere Zeit");trace(link.sent()+" Datenpakete gesendet · "+link.received()+" empfangen · "+link.grants()+" Empfangsfreigaben");}
+    private void traceSummary(){trace(blocks+" Datenblöcke · "+changed+" übernommene Werte · "+skipped+" lokal vorhanden, nicht geladen · "+missing+" fehlend · "+unmapped+" ohne sichere Zeit");trace(link.sent()+" Datenpakete gesendet · "+link.received()+" empfangen · "+link.consumed()+" verarbeitet · Puffer maximal "+receiveQueuePeak+" Pakete · "+link.grants()+" Empfangsfreigaben");}
     private void solarDays(LocalDate today,List<Integer> days) throws Exception {
         stage("Solar-Tageswerte ergänzen");
         for(int day:days){
@@ -464,6 +478,6 @@ public final class ArchiveService extends Service {
         repository.db.archiveHistory(mac,p);
     }
     private void closeGatt(){BluetoothGatt g=gatt;gatt=null;connected=false;if(g!=null){try{g.disconnect();}catch(SecurityException ignored){}try{g.close();}catch(SecurityException ignored){}}}
-    @Override public void onDestroy(){cancelled=true;failOperation(new IOException("cancelled"));closeGatt();repository.liveBusy=false;if(!liveOnly){repository.archiveBusy=false;repository.finishArchiveIfActive();repository.archiveRun.finish();}worker.shutdownNow();stopForeground(STOP_FOREGROUND_REMOVE);super.onDestroy();}
+    @Override public void onDestroy(){if(!cancelled)cancellationReason="Archivdienst beendet; Abgleich unvollständig";cancelled=true;failOperation(new IOException(cancellationReason));closeGatt();repository.liveBusy=false;if(!liveOnly){repository.archiveBusy=false;repository.finishArchiveIfActive();repository.archiveRun.finish();}worker.shutdownNow();stopForeground(STOP_FOREGROUND_REMOVE);super.onDestroy();}
     @Override public IBinder onBind(Intent intent){return null;}
 }

@@ -68,6 +68,7 @@
       if(need){CATALOG[kind+suffix].units=supplies.quantityUnits(kind);CATALOG[kind+suffix].hint+=' Bedarf wahlweise in '+(kind==='gas'?'kg oder Flaschen; die Flaschengröße entspricht der eingestellten Gas-Standardmenge.':'Litern oder Kanistern der eingestellten Größe (zunächst 20 L).');}
     }
   }
+  const R=typeof module==='object'&&module.exports?require('./roller-core.js'):globalThis.WattRollerCore;
   const M=typeof module==='object'&&module.exports?require('./metrics-core.js'):globalThis.AutarPieMetrics;Object.assign(CATALOG,M.catalog);
   const PHASES = {0:'Aus',1:'Wenig Leistung',2:'Fehler',3:'Bulk',4:'Absorption',5:'Float',6:'Storage',7:'Ausgleich',9:'Invertieren',11:'Stromversorgung',245:'Start',247:'Auto-Ausgleich',252:'Extern gesteuert'};
   const BLOCK_ORDER=['tiles','history','record','roller'];
@@ -331,7 +332,7 @@
     if(M.catalog[metric])return M.read({...tile,metric},snapshot,shunt,solar,source=>convert(liveValue(source.metric,shunt,source.device?(snapshot.readings||[]).find(r=>r.device===source.device):solar,snapshot,now,chargeEstimate,source),source.unit||CATALOG[source.metric]?.units[0],source.metric,snapshot),now).value;
     const m=CATALOG[metric],r=m.kind==='shunt'?shunt:tile.device?(snapshot.readings||[]).find(r=>r.device===tile.device):solar;
     if(tile.device&&m.kind==='solar'&&!M.fresh(r,now))return null;
-    if(m.kind==='roller'){const b=snapshot.roller;if(!b)return null;const l=(b.fresh?b.live:b.lastKnown)||{},v=m.field==='stored'?finite(l.remainingAh)?l.remainingAh*b.profile.nominalVoltage:finite(l.soc)?l.soc/100*b.profile.capacityAh*b.profile.nominalVoltage:null:m.field==='temperature'?Array.isArray(l.temperatures)&&l.temperatures.length?Math.max(...l.temperatures.filter(finite)):null:l[m.field];return finite(v)?Number(v):null;}
+    if(m.kind==='roller'){const raw=snapshot.roller;if(!raw)return null;const b=R.readingState(raw,now);const l=(b.fresh?b.live:b.lastKnown)||{},v=m.field==='stored'?finite(l.remainingAh)?l.remainingAh*b.profile.nominalVoltage:finite(l.soc)?l.soc/100*b.profile.capacityAh*b.profile.nominalVoltage:null:m.field==='temperature'?Array.isArray(l.temperatures)&&l.temperatures.length?Math.max(...l.temperatures.filter(finite)):null:l[m.field];return finite(v)?Number(v):null;}
     if(m.kind==='isdt'){const l=snapshot.energy?.charger;if(!l||now-l.at>10000||now<l.at)return null;const v=m.field==='power'?finite(l.voltage)&&finite(l.current)?l.voltage*l.current:null:l[m.field];return finite(v)?Number(v):null;}
     if(m.kind==='output'){const l=M.output(snapshot,tile,now);if(!l||now-l.at>45000||now<l.at)return null;const v=m.field==='power'?finite(l.voltage)&&finite(l.current)?l.voltage*l.current:null:l[m.field];return finite(v)?Number(v):null;}
     if(m.resource){const profile=snapshot.suppliesAnalysis?.[m.resource];if(!profile)return null;const value=profile[m.resourceField];return m.resourceField==='lastAt'?finite(value)?Math.max(0,(now-value)/3600000):null:m.resourceField==='nextSupplyAt'?finite(value)?Math.max(0,(value-now)/3600000):null:m.resourceNeed?value?.[m.resourceNeed]??null:value??null;}

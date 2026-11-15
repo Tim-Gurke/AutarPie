@@ -26,7 +26,7 @@ const reads=deviceNative&&window.WattReadBridge?new window.WattReadBridge(device
 const native=reads?.bridge||deviceNative;
 window.onHistoryResult=result=>reads?.result(result);
 window.onHistoryProgress=result=>reads?.progress(result);
-window.onDisplayActive=result=>{const active=!!result.active;window.wattDisplayActive=active;reads?.setActive(active);if(!active){clearTimeout(readRepaint);solar?.stopSensors();return;}lastMiniLoad=0;solar&&(solar.renderKey='');poll();repaintReads();};
+window.onDisplayActive=result=>{const active=!!result.active;window.wattDisplayActive=active;reads?.setActive(active);if(!active){clearTimeout(readRepaint);solar?.stopSensors();return;}lastMiniLoad=0;solar&&(solar.renderKey='');roller?.expireReadings();poll();repaintReads();};
 document.addEventListener('visibilitychange',()=>window.onDisplayActive({active:!document.hidden}));
 window.addEventListener('pageshow',()=>window.onDisplayActive({active:!document.hidden}));
 const historyRead=(method,args,scope)=>reads?reads.read(method,args,scope):deviceNative?.[method](...args);
@@ -135,10 +135,15 @@ function renderOverview() {
   const shunt = reading('shunt'), solar = reading('solar');
   $('todayLabel').textContent = new Date().toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'}).toUpperCase();
   $('welcome').hidden = snapshot.devices.length > 0 || demo;
-  const relevant={shunt:shunt&&Number.isFinite(shunt.power)&&Number.isFinite(shunt.soc),solar:solar&&Number.isFinite(solar.solar)},expected=snapshot.devices.filter(d=>d.kind==='shunt'||d.kind==='solar'),received=expected.filter(d=>relevant[d.kind]).length;
-  const status = $('liveStatus'), any = received>0, complete=expected.length>0&&received===expected.length;
-  status.className = 'status-chip' + (demo ? ' warning' : complete ? ' live' : any ? ' warning' : snapshot.running ? ' warning' : '');
-  status.querySelector('span').textContent = demo ? 'Demo' : complete ? 'Live' : any ? 'Teilweise live' : snapshot.running ? 'Warte auf Geräte' : 'Pausiert';
+  const expected=snapshot.devices.filter(d=>d.kind==='shunt'||d.kind==='solar'),now=Date.now();
+  const received=expected.filter(d=>{const p=snapshot.readings.find(r=>r.device===d.mac);return snapshot.running&&!d.error&&p&&now>=p.t&&now-p.t<45000&&(d.kind==='solar'?Number.isFinite(p.solar):Number.isFinite(p.power)&&Number.isFinite(p.soc));}).length;
+  const status=$('liveStatus'),any=received>0,complete=expected.length>0&&received===expected.length;
+  status.className='status-chip'+(demo?' warning':complete?' live':any||snapshot.running?' warning':'');
+  const statusText=demo?'Demo':complete?'Victron · Live':any?'Victron · Teilweise live':snapshot.running?'Victron · Warten':'Pausiert';
+  status.querySelector('span').textContent=statusText;
+  status.title=statusText+' · '+received+' von '+expected.length+' Solar-/SmartShunt-Geräten mit aktuellen Messwerten. Der 608PD hat einen eigenen Status im Modellbau-Bereich.';
+  status.setAttribute('aria-label',status.title);
+  status.onclick=()=>openModal('Aufzeichnung und Livewerte','<p>Diese Anzeige bezieht sich auf die eingerichteten <strong>Solarladeregler und SmartShunts</strong>.</p><p>'+received+' von '+expected.length+' Geräten liefern aktuelle Messwerte. Die Bluetooth-Verbindung zum 608PD und seine Messwerte stehen jeweils beim Lader unter Modellbau.</p>');
   const direction = shunt?.current == null ? 'Noch kein Livewert' : shunt.current > .03 ? 'Wohnwagenakku wird geladen' : shunt.current < -.03 ? 'Wohnwagenakku wird entladen' : 'Bilanz ausgeglichen';
   $('batteryState').innerHTML = `<i class="dot ${shunt?.alarm ? 'orange' : 'mint'}"></i>${shunt?.alarm ? `Shunt-Alarm 0x${shunt.alarm.toString(16).toUpperCase()}` : direction}`;
   $('lastSeen').textContent = shunt ? (demo ? 'Beispieldaten' : `Stand ${clock(shunt.t)}`) : 'Kein Empfang';
@@ -548,3 +553,6 @@ window.addEventListener('resize',()=>{drawHistory();drawMini();});
 for(const [id,method] of [['chooseAppRole','chooseAppRole'],['migrationBackup','migrationBackup'],['migrationImport','migrationImport']])$(id).onclick=()=>{if(typeof deviceNative?.[method]==='function')deviceNative[method]();else toast('Diese Funktion steht in der installierten AutarPie-App bereit.');};
 if(typeof deviceNative?.appRole==='function')$('appRoleLabel').textContent=({central:'Zentrale · Daten sammeln und im WLAN bereitstellen',viewer:'Anzeigehandy · mit einer Zentrale koppeln',direct:'Eigenständig · Victron direkt, ohne Zentrale'})[deviceNative.appRole()]||'Betriebsart wählen';
 window.AutarPieApp={get dashboard(){return dashboard;},get snapshot(){return snapshot;},get solar(){return solar;},get supplies(){return supplies;},get equipment(){return equipment;},get roller(){return roller;},native:deviceNative,read:historyRead,loadMini,repaint:()=>{drawHistory();drawMini();},showPage,openModal,closeModal,toast,poll,theme,reading,icon,escapeHtml};
+
+setInterval(()=>{if(window.wattDisplayActive&&!document.hidden)roller?.expireReadings();},1000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)roller?.expireReadings();});

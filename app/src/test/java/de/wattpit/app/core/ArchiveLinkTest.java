@@ -17,10 +17,12 @@ public class ArchiveLinkTest {
 
     @Test public void receiveCreditsFollowConsumedPacketsAndNeverIdleTime(){
         ArchiveLink link=new ArchiveLink();
-        for(int i=0;i<64;i++){link.receivedData();assertEquals(0,link.receiveGrant());}
-        link.receivedData();assertEquals(65,link.receiveGrant());
+        for(int i=0;i<128;i++)link.receivedData();
+        assertEquals("A full unprocessed window must stop the peer",0,link.receiveGrant());
+        for(int i=0;i<64;i++){link.consumedData();assertEquals(0,link.receiveGrant());}
+        link.consumedData();assertEquals(65,link.receiveGrant());
         for(long now=0;now<60000;now+=250)assertEquals(0,link.receiveGrant());
-        assertEquals(65,link.received());assertEquals(1,link.grants());
+        assertEquals(128,link.received());assertEquals(1,link.grants());
     }
 
     /** Independent peer: enforces its receive window, one outgoing credit, and a 10 s watchdog. */
@@ -30,7 +32,7 @@ public class ArchiveLinkTest {
         void command(byte[] b,long now){if(Arrays.equals(b,ArchiveSession.keepAlive())){lastHeartbeat=now;heartbeats++;}}
         void check(long now){assertTrue("session watchdog expired",now-lastHeartbeat<10000);}
         void grant(int n){window+=n;assertTrue("unused receive credits accumulated",window<=128);}
-        void send(ArchiveLink link){assertTrue(window>0);window--;packets++;link.receivedData();}
+        void send(ArchiveLink link){assertTrue(window>0);window--;packets++;link.receivedData();link.consumedData();}
     }
     private static void maintain(ArchiveLink link,Peer peer,long now){
         int grant;while((grant=link.receiveGrant())>0)peer.grant(grant);

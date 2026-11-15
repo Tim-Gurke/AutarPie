@@ -1,5 +1,7 @@
 # Gemeinsame Entwicklung und Veröffentlichung
 
+Seit 15.11.2026: Bevor mit dem APK-Bau eines Updates begonnen wird, Tims ausdrückliche Freigabe für den konkret vorbereiteten Umfang einholen. Änderungen und passende Quellcode-/Datentests vorher fertig vorbereiten. Auch der Start eines CI-Laufs, der eine APK baut, wartet auf diese Freigabe. Eine frühere allgemeine Veröffentlichungsfreigabe ersetzt diese neue Bau-Freigabe nicht.
+
 WohnPit führt die bisherige Zentrale und das Watt’n’Pit-Cockpit in einer App zusammen. Sie bietet Zentrale, Anzeigehandy und eigenständigen Betrieb ohne Zentrale. Gemeinsame Einstellungen und Versorgungseinträge müssen von den Anzeigehandys aus bedienbar sein. Im Zentralbetrieb sammelt und archiviert die Zentrale Wetter- und Messdaten; die Anzeigehandys übernehmen aufwendige Berechnungen und Verbrauchslernen. Im eigenständigen Betrieb übernimmt ein Handy alle Aufgaben.
 
 Bei jeder Veröffentlichung APK mit der vorhandenen Updatesignatur bereitstellen, passende Prüfungen ausführen, aktuelle Screenshots sichtbar im README verlinken, ausführliche Anleitungen und eine vollständige dokumentierte Versionshistorie pflegen. Die kompatiblen App-Versionen und die Update-Reihenfolge nennen. Nach erfolgreicher Veröffentlichung höchstens die drei neuesten veröffentlichten Releases je Repository behalten; Quellhistorie und Änderungsdokumentation erhalten.
