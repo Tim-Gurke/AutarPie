@@ -1,10 +1,10 @@
-# AutarPie 3.0.9
+# AutarPie 3.0.10
 
 ![AutarPie Ressourcen-Kreislauf](app/src/main/assets/brand.svg)
 
 **Das lokale Cockpit für autarkes Leben.** Solar und Stromverteilung, Wohnwagenakku, E-Scooter, Modellbau, Gas und Wasser in einer gemeinsamen App. AutarPie führt **Watt’n’Pit und WohnPit** weiter.
 
-**[AutarPie 3.0.9 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.0.9/AutarPie-v3.0.9.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.0.9.md) · [Vollständige Versionshistorie](CHANGELOG.md)
+**[AutarPie 3.0.10 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.0.10/AutarPie-v3.0.10.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.0.10.md) · [Vollständige Versionshistorie](CHANGELOG.md)
 
 Android 8 oder neuer; das Cockpit benötigt einen aktuellen Android-System-WebView. Kein Konto, keine Werbung. Mess- und Lerndaten bleiben auf den eigenen Geräten. Der optionale Wetterabruf verwendet Open-Meteo. Der Anlagenverbund überträgt Daten verschlüsselt im lokalen WLAN.
 
@@ -12,9 +12,9 @@ Android 8 oder neuer; das Cockpit benötigt einen aktuellen Android-System-WebVi
 
 | Native Zentrale · Android 8 | Native Zentrale · Android 11 |
 | --- | --- |
-| ![AutarPie 3.0.9: native Zentrale auf Android 8 ohne persönliche Messwerte](docs/images/autarpie-3.0.9-dark.svg) | ![AutarPie 3.0.9: native Zentrale mit Aufzeichnung und Geräteverwaltung](docs/images/autarpie-3.0.9-central.svg) |
+| ![AutarPie 3.0.10: native Zentrale auf Android 8 ohne persönliche Messwerte](docs/images/autarpie-3.0.10-dark.svg) | ![AutarPie 3.0.10: native Zentrale mit Aufzeichnung und Geräteverwaltung](docs/images/autarpie-3.0.10-central.svg) |
 
-Aktuelle Aufnahmen aus den Android-8-/11-Prüfläufen für 3.0.9, ohne reale Mess- oder Standortdaten. Sie zeigen die Oberfläche und sind kein Funk- oder Hardwaretest. Eigene Farben und Layouts bleiben erhalten.
+Aktuelle Aufnahmen aus den Android-8-/11-Prüfläufen für 3.0.10, ohne reale Mess- oder Standortdaten. Sie zeigen die Oberfläche und sind kein Funk- oder Hardwaretest. Eigene Farben und Layouts bleiben erhalten.
 
 ## Ein Cockpit, mehrere Anwendungen
 
@@ -48,6 +48,16 @@ Der SmartSolar-Lastausgang ist E-Scooter, Modellbau oder einem anderen Verbrauch
 Die **optionale Rollerautomatik ist zunächst aus**. Ladeziel, Wohnwagenreserve, Tagesziel, Überschussschwellen und Prognosereserve sind variabel. Ein aktives Anzeigehandy erstellt den zeitlich begrenzten Plan; die Zentrale kontrolliert direkte Abschaltbedingungen. Ein Schaltauftrag ist erst mit der tatsächlichen Geräteantwort bestätigt. Ohne gültigen Plan wird zum Ausschalten angefordert. BMS-Empfang allein beweist noch keinen eingesteckten Ladestecker.
 
 Bis zu drei 608PD erhalten getrennte Profile, private Kennungen und eigene Verbindungen. Suche und Einrichtung laufen am erfassenden Handy; Anzeigen bedienen den Ablauf. Die neue direkte Ersteinrichtung verlangt eine Bestätigung am Lader und muss am eigenen 608PD praktisch geprüft werden. Vorhandene Verbindungen aus der eigenen Bluetooth-Aufzeichnung bleiben erhalten. Unterstützt sind die nachgewiesenen Livefelder und das Beenden von Laden/Powerbank-Betrieb. App-Start ist zunächst auf das beobachtete **3S-LiPo-Profil 4,21 V/Zelle / 0,50 A** mit ausdrücklicher Profilbestätigung begrenzt. Powerbank und andere Profile am Gerät starten. Nicht belegte Temperatur-/USB-/CC-CV-Felder werden nicht erfunden.
+
+## Update 3.0.10
+
+Kurze Roller-Zwischenladungen zählen unabhängig vom Ladeziel. Bereits gespeicherte Journale und Rohmessungen werden erneut ausgewertet. Zusammengehörige kurz unterbrochene Abschnitte werden gemeinsam gelernt; begrenzte kleine Messlücken bleiben als Schätzung erkennbar. Die Häufigkeit verlangt ausreichend überwachte Ladeweg-Tage statt exakt lückenloser Abfragezeiten. Letzte aufgezeichnete und letzte fürs Lernen genutzte Ladung werden getrennt angezeigt; größere Lücken bleiben erklärt. Journal-Messungen werden nicht umgeschrieben.
+
+Die Akku-/Extras-Balken unter **Heute** behalten nach Sonnenuntergang ihren gespeicherten Messpunkt während einer Hintergrundaktualisierung. Eine erfolgreich leere Antwort oder ein Anlagen-/Shuntwechsel entfernt ihn weiterhin. Beim Victron-Gerätewechsel wird der alte Client vor dem nächsten Aufbau freigegeben; ausschließlich anfänglicher Status 133 erhält höchstens drei frische Verbindungsversuche mit begrenzter Wartezeit. Das gemeinsame Archivergebnis enthält die Werte und den Erfolg beziehungsweise Fehler aller bearbeiteten Geräte.
+
+Der vollständige Freigabelauf ist unter [Freigabelauf 43743151631](https://github.com/Tim-Gurke/AutarPie/actions/runs/43743151631) dokumentiert: APK-Bau und Lint, 605 Unit-Prüfungen (323 JavaScript, 275 JVM und sieben Veröffentlichungstests), 869 native Integrationsprüfungen, zwölf Android-Prüfungen auf Android 8/11 und 35 verschiedene Browser-Szenarien. Der tatsächliche Gerätewechsel an Regler und Shunt bleibt nach Installation praktisch zu bestätigen; Software-/Emulatorprüfungen beweisen keine Funkstabilität.
+
+**Zuerst die Zentrale beziehungsweise das direkt erfassende Handy, danach die Anzeigehandys auf 3.0.10 aktualisieren.** Die neuen Wetter- und Lernberechnungen laufen auf den Anzeigen beziehungsweise im eigenständigen Betrieb. Anzeigen mit 3.0.9 bleiben für den Verbund kompatibel, erhalten die neuen Berechnungen jedoch erst mit ihrem eigenen Update. Über die vorhandene Installation mit ursprünglicher Updatesignatur installieren; Daten, Kopplungen und Layouts bleiben erhalten. [Änderungen, Bedienung und Prüfgrenzen 3.0.10](docs/changes-3.0.10.md).
 
 ## Update 3.0.9
 
