@@ -86,7 +86,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
   });
   assert.equal(await page.locator('.supply-weather').getAttribute('data-state'),'active');
   assert.match(await page.locator('.supply-weather strong').textContent(),/aktiv · Temperatur/);
-  assert.match(await page.locator('.supply-weather').textContent(),/6 von 6 abgeschlossenen/);
+  assert.match(await page.locator('.supply-weather').textContent(),/6 Verbrauchsabschnitte erfasst · davon 6 fürs Wetterlernen geeignet/);
   await page.locator('[data-supply-unit="gas"]').selectOption('Flaschen');assert.match(await page.locator('[data-supply-needs="gas"]').textContent(),/2,3 Flaschen/);
   await page.setViewportSize({width:950,height:1050});await page.evaluate(()=>{document.getElementById('toast').hidden=true;});
   await page.evaluate(()=>document.querySelector('.bottom-nav').hidden=true);

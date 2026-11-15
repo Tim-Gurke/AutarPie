@@ -301,7 +301,7 @@
         const coverage=m.energy?Math.floor((data?.summary?.coverage||0)*100)+' % des Zeitraums abgedeckt'+(data?.summary?.interpolatedMillis>0?' · davon '+(data.summary.interpolatedMillis/60000).toLocaleString('de-DE',{maximumFractionDigits:1})+' min kurz interpoliert':''):'';
         const cachedRoller=(m.kind==='roller'||info?.stale)&&!snapshot.roller?.fresh&&snapshot.roller?.lastKnown?.at;el.classList.toggle('cached-reading',!!cachedRoller);
         if(cachedRoller)hint='Letzter Stand – keine aktuellen BMS-Daten · '+new Date(snapshot.roller.lastKnown.at).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+' · Roller nicht erreichbar';
-        if(m.kind==='roller'||t.metric==='rollerRange'){const at=snapshot.roller?.fresh?snapshot.roller?.live?.at:snapshot.roller?.lastKnown?.at;window.WattRoller.markTile(el,at,!!cachedRoller,hint);el.setAttribute('aria-label',(t.title||m.label)+(cachedRoller?' · '+hint:'')+' anpassen');}
+        if(m.kind==='roller'||t.metric==='rollerRange'){const at=snapshot.roller?.fresh?snapshot.roller?.live?.at:snapshot.roller?.lastKnown?.at;globalThis.WattRoller.markTile(el,at,!!cachedRoller,hint);el.setAttribute('aria-label',(t.title||m.label)+(cachedRoller?' · '+hint:'')+' anpassen');}
         const hintElement=el.querySelector('.tile-hint');hintElement.textContent=t.metric==='consumptionEnergy'&&C.finite(value)&&value<0?'Zusätzliche Einspeisung · '+hint:hint;hintElement.title=[hint,window?.note||'',coverage,m.hint||''].filter(Boolean).join(' ');hintElement.classList.toggle('period-sunrise',t.period.mode==='sunrise');
         el.classList.toggle('no-value',!C.finite(value));
       }
