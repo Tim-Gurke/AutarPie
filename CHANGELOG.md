@@ -8,11 +8,15 @@ Das bestehende GitHub-Repository heißt jetzt [`Tim-Gurke/AutarPie`](https://git
 
 ## Vorbereitet, noch nicht gebaut
 
-### 3.0.10 · Gerätewechsel und gemeinsames Archivergebnis
+### 3.0.10 · Gerätewechsel, stabile Wetterbalken und kurze Rollerladungen
 
 Nach dem Schließen eines GATT-Clients vor der nächsten Verbindung eine kurze Freigabephase einhalten, auch über neue Archivdienst-Instanzen hinweg. Ausschließlich beim anfänglichen Verbindungsfehler 133 mit einem frischen Client höchstens dreimal verbinden; weitere Versuche nach begrenzter Wartezeit. Abbruch beendet die Wartephase. Alte Rückrufe bleiben vom neuen Client getrennt, bestehende Kopplungen und bereits gespeicherte Daten erhalten.
 
-Am Ende das Ergebnis aller Geräte gemeinsam zeigen und in der Diagnose erhalten. Ein fehlgeschlagener zweiter Abruf mit 0 Werten verdeckt die Werte des erfolgreichen ersten Geräts nicht mehr. Geräte-Diagnosen erhalten absolute Beginn-/Endzeiten und die Zahl der Verbindungsversuche. 109 lokale Quellprüfschritte erfolgreich; noch kein APK-Bau oder APK erzeugender CI-Lauf gestartet. Der konkrete Umfang wartet auf Bau-Freigabe. Die native Ursache eines realen Status 133 ist durch die begrenzte Wiederholungsstrategie nicht bewiesen. [Änderungen und Prüfgrenzen](docs/changes-3.0.10.md).
+Am Ende das Ergebnis aller Geräte gemeinsam zeigen und in der Diagnose erhalten. Ein fehlgeschlagener zweiter Abruf mit 0 Werten verdeckt die Werte des erfolgreichen ersten Geräts nicht mehr. Geräte-Diagnosen erhalten absolute Beginn-/Endzeiten und die Zahl der Verbindungsversuche.
+
+Den bekannten Abend-Akkustand in „Heute“ während einer Hintergrundaktualisierung erhalten und den laufenden beziehungsweise gestörten Abruf kennzeichnen. Erfolgreich leere Antworten und ein Anlagen-/Shuntwechsel übernehmen keinen alten Messpunkt. Kurze Roller-Zwischenladungen unabhängig vom Ladeziel lernen; begrenzte Abfragelücken anteilig als Schätzung ergänzen und beobachtete AUS-Zeiten bei der automatischen Enderkennung berücksichtigen. Ladehäufigkeit aus ausreichend überwachten Tagen statt aus unmöglich exakt lückenlosen Abfragezeiten ableiten. Letzte aufgezeichnete und zuletzt zum Lernen verwendete Ladung sowie Ausschlussgründe unterscheiden. Journal-Messwerte bleiben erhalten.
+
+109 Archiv-Prüfschritte, 323 JavaScript-Prüfungen und 35 native Roller-Prüfschritte plus Abgleich mit der produktiven Anzeige erfolgreich. Noch kein APK-Bau oder APK erzeugender CI-Lauf gestartet; der konkrete Umfang wartet auf Bau-Freigabe. Die native Ursache eines realen Status 133 ist durch die begrenzte Wiederholungsstrategie nicht bewiesen. [Änderungen und Prüfgrenzen](docs/changes-3.0.10.md).
 
 ## Veröffentlichte Versionen
 

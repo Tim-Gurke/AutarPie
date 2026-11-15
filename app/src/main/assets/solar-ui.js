@@ -17,7 +17,8 @@
       window.onSolarPlanData=data=>{if(data.analysis?.plant&&data.analysis.plant!==this.a.getSnapshot().lan?.id)return;if($('solarHistoryStatus'))$('solarHistoryStatus').textContent=data.error||'Lernstand aktualisiert. Geeignete historische Abschnitte werden weiterverwendet.';if(data.error){this.knowledge.error=data.error;this.lastRequest=Math.min(this.lastRequest,Date.now()-270000);}else{this.knowledge=data;this.knowledge.observations??=[];this.knowledge.forecasts??=[];if(data.stale)this.lastRequest=Math.min(this.lastRequest,Date.now()-270000);}this.renderKey='';this.render();};
       window.onSolarSunsetSoc=result=>{
         if(result.id!==this.sunsetRead?.id)return;
-        Object.assign(this.sunsetRead,{done:true,point:result.point,error:result.error});this.renderKey='';this.render();
+        const read=this.sunsetRead;if(!result.error||!read.point)read.point=result.point;
+        Object.assign(read,{done:true,error:result.error});this.renderKey='';this.render();
         const panel=document.querySelector('[data-solar-reserve]'),day=this.days?.find(d=>d.day===panel?.dataset.solarReserve);
         if(panel&&day)panel.outerHTML=this.reservePanel(day);
       };
@@ -77,7 +78,7 @@
       days.innerHTML=this.days.length?this.days.map((d,i)=>{
         const date=new Date(d.day+'T12:00:00'),reserve=d.reserve.evening,label=`${date.toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'})}, ${number(d.hours,1)} Sonnenstunden, Gesamtpotenzial aller aktiven Kreise: ${d.total==null?'noch nicht bestimmbar':energy(d.low)+' bis '+energy(d.high)}, Akku bei Sonnenuntergang: ${known(reserve.soc)?reserve.mode==='measured'?'gespeichert '+percent(reserve.soc):percent(reserve.low)+' bis '+percent(reserve.high):reserve.reason}`;
         const bar=Number.isFinite(d.total)?Math.round(100*d.total/maximum):null;
-        return `<button class="weather-day solar-day" data-solar-day="${i}" aria-label="${esc(label)}" title="${esc(label)}"><time datetime="${d.day}">${date.toLocaleDateString('de-DE',{weekday:'short'})}<small>${date.toLocaleDateString('de-DE',{day:'2-digit'})}</small></time>${this.a.symbol(d.code)}<span class="solar-sun-hours">${number(d.hours,1)} h</span>${this.scale('sun','Solar',bar,d.total==null?'— Wh':'≈ '+number(d.total)+' Wh','Erwarteter Tagesertrag · Balken relativ zum besten Vorschautag')}${this.scale('battery','Akku',reserve.soc,known(reserve.soc)?(reserve.mode==='measured'?'':'≈ ')+percent(reserve.soc):'—','Akkustand bei Sonnenuntergang · '+(reserve.mode==='measured'?'gespeicherter SmartShunt-Wert':reserve.reason||percent(reserve.low)+' bis '+percent(reserve.high)))}${this.extraPlan.profiles.length?this.scale('extras','Mit Extras',d.extraReserve.evening.soc,known(d.extraReserve.evening.soc)?(d.extraReserve.evening.mode==='measured'?'':'≈ ')+percent(d.extraReserve.evening.soc):'—','Wohnwagenakku bei Sonnenuntergang mit Sondernutzungen · '+(d.extraReserve.evening.reason||percent(d.extraReserve.evening.low)+' bis '+percent(d.extraReserve.evening.high))):''}</button>`;
+        return `<button class="weather-day solar-day" data-solar-day="${i}" aria-label="${esc(label)}" title="${esc(label)}"><time datetime="${d.day}">${date.toLocaleDateString('de-DE',{weekday:'short'})}<small>${date.toLocaleDateString('de-DE',{day:'2-digit'})}</small></time>${this.a.symbol(d.code)}<span class="solar-sun-hours">${number(d.hours,1)} h</span>${this.scale('sun','Solar',bar,d.total==null?'— Wh':'≈ '+number(d.total)+' Wh','Erwarteter Tagesertrag · Balken relativ zum besten Vorschautag')}${this.scale('battery','Akku',reserve.soc,known(reserve.soc)?(reserve.mode==='measured'?'':'≈ ')+percent(reserve.soc):'—','Akkustand bei Sonnenuntergang · '+(reserve.mode==='measured'?'gespeicherter SmartShunt-Wert'+(reserve.reason?' · '+reserve.reason:''):reserve.reason||percent(reserve.low)+' bis '+percent(reserve.high)))}${this.extraPlan.profiles.length?this.scale('extras','Mit Extras',d.extraReserve.evening.soc,known(d.extraReserve.evening.soc)?(d.extraReserve.evening.mode==='measured'?'':'≈ ')+percent(d.extraReserve.evening.soc):'—','Wohnwagenakku bei Sonnenuntergang mit Sondernutzungen · '+(d.extraReserve.evening.reason||percent(d.extraReserve.evening.low)+' bis '+percent(d.extraReserve.evening.high))):''}</button>`;
       }).join(''):'<p class="muted">Solarvorschau lädt · Standort wählen und Internet einschalten.</p>';
       days.querySelectorAll('[data-solar-day]').forEach(b=>b.onclick=()=>this.openDay(+b.dataset.solarDay));
       $('weatherPeriod').textContent=this.days.length+' Tage';
@@ -91,15 +92,16 @@
     savedSunset(snapshot,now){
       for(const day of this.days){
         const reserve=day.reserve.evening;if(!known(reserve.at)||reserve.at>=now)continue;
-        const key=reserve.at+':'+(snapshot.devices||[]).filter(d=>d.kind==='shunt').map(d=>d.mac).join('|'),revision=snapshot.historyRevision;
+        const key=JSON.stringify([snapshot.lan?.id||'local',reserve.at,(snapshot.devices||[]).filter(d=>d.kind==='shunt').map(d=>d.mac).sort()]),revision=snapshot.historyRevision;
         let read=this.sunsetRead;
         if(this.a.native?.requestSunsetSoc&&!snapshot.archiveBusy&&(!read||read.key!==key||read.done&&(read.revision!==revision||read.error)&&now-read.requested>=30000)){
-          read=this.sunsetRead={key,revision,requested:now,id:this.sunsetRequestId=(this.sunsetRequestId||0)+1,done:false};
+          read=this.sunsetRead={key,revision,requested:now,id:this.sunsetRequestId=(this.sunsetRequestId||0)+1,done:false,point:read?.key===key?read.point:undefined,error:read?.key===key?read.error:undefined};
           this.a.native.requestSunsetSoc(reserve.at,read.id);
         }
-        const point=read?.key===key&&read.done?read.point:null;
+        const point=read?.key===key?read.point:null;
         if(known(point?.soc)&&point.soc>=0&&point.soc<=100&&known(point.t)&&point.t<=now&&Math.abs(point.t-reserve.at)<=15*60000){
-          Object.assign(reserve,{soc:point.soc,sampledAt:point.t,origin:point.origin,mode:'measured',reasonCode:'measured',reason:''});
+          const pending=!read.done,stale=pending||!!read.error;
+          Object.assign(reserve,{soc:point.soc,sampledAt:point.t,origin:point.origin,mode:'measured',reasonCode:'measured',pending,stale,readError:read.error,reason:pending?'Letzter gespeicherter Wert · Aktualisierung läuft.':read.error?'Letzter gespeicherter Wert · '+read.error:''});
         }else{
           reserve.reasonCode='history';reserve.reason=read?.key===key&&!read.done?'Gespeicherter Akkustand wird geladen.':read?.error||'Kein gespeicherter SmartShunt-Ladezustand innerhalb von 15 Minuten vor oder nach Sonnenuntergang vorhanden.';
         }
@@ -143,7 +145,7 @@
     reservePanel(d){
       const zone=this.a.getSnapshot().weather?.timezone,clock=t=>known(t)?new Date(t).toLocaleTimeString('de-DE',{timeZone:zone||undefined,hour:'2-digit',minute:'2-digit'}):'—';
       const point=(label,r)=>{
-        const recorded=r.mode==='measured',description=recorded?'Gespeichert · '+clock(r.sampledAt)+' · '+({archive:'Gerätearchiv',live:'Aufzeichnung',csv:'CSV-Sicherung'}[r.origin]||'SmartShunt'):'Schätzbereich '+percent(r.low)+'–'+percent(r.high);
+        const recorded=r.mode==='measured',description=recorded?'Gespeichert · '+clock(r.sampledAt)+' · '+({archive:'Gerätearchiv',live:'Aufzeichnung',csv:'CSV-Sicherung'}[r.origin]||'SmartShunt')+(r.reason?' · '+r.reason:''):'Schätzbereich '+percent(r.low)+'–'+percent(r.high);
         return `<div class="solar-reserve-point"><h3>${label} · ${clock(r.at)}</h3>${known(r.soc)?`<p><strong>${recorded?'':'≈ '}${percent(r.soc)}</strong><span>${esc(description)}</span></p><div class="solar-reserve-track" role="img" aria-label="${esc(label+': '+percent(r.soc)+', '+description)}"><i style="width:${r.soc}%"></i>${recorded?'':`<span style="left:${r.low}%;width:${r.high-r.low}%"></span>`}</div><div class="solar-reserve-ticks"><span>0 %</span><span>50 %</span><span>100 %</span></div>${r.possibleShortfall?'<p class="solar-reserve-warning">Die Reserve könnte vorher bereits aufgebraucht sein.</p>':''}`:`<p class="muted">${esc(r.reason||'Noch nicht bestimmbar.')}</p>`}</div>`;
       };
       return `<section class="solar-reserve" data-solar-reserve="${esc(d.day)}" aria-label="Akkustand und erwartete Reserve"><h2>Deine Akkureserve</h2>${point('Bei Sonnenuntergang · ohne Extras',d.reserve.evening)}${d.specialUses?.rows.length?point('Bei Sonnenuntergang · mit Extras',d.extraReserve.evening):''}${point('Bei Sonnenaufgang am Folgetag · ohne Extras',d.reserve.morning)}${d.specialUses?.rows.length?point('Bei Sonnenaufgang am Folgetag · mit Extras',d.extraReserve.morning):''}<p class="solar-reserve-note">${known(d.reserve.evening.at)&&d.reserve.evening.at<Date.now()?'Der vergangene Abendpunkt verwendet einen gespeicherten SmartShunt-Messwert mit höchstens 15 Minuten Abstand zum Sonnenuntergang. Die tatsächliche Messzeit steht dabei; der aktuelle Akkustand wird nicht rückwirkend übernommen. ':''}Zukünftige Werte werden ab dem aktuellen SmartShunt-Ladezustand stundenweise geschätzt. Solar versorgt zuerst den Verbrauch, der Rest lädt den Akku bis höchstens 100 %. Überschüsse werden nicht als Reserve für später gespeichert. Die Umrechnung von Wh in Akkuprozent verwendet Kapazität und aktuelle Batteriespannung. Der Schätzbereich berücksichtigt unsicheren Ertrag und Verbrauch; er ist keine garantierte Grenze. Die Tagesansicht gilt für dieselbe Aufstellung, mobile Kreise zählen nur bei gemeldeter Aufstellung.</p></section>`;

@@ -89,3 +89,21 @@ test('known zero use requires a fully covered calendar day, including the 25-hou
 test('weekly frequency is validated and retained through settings normalization',()=>{
  const p=scooterProfile({chargesPerWeek:3.5});assert.equal(X.normalize(config(p)).profiles[0].chargesPerWeek,3.5);for(const n of [-1,NaN,71])assert.throws(()=>X.normalize(config({...p,chargesPerWeek:n})));
 });
+
+function sampledCharge(coverage=.96){const e=chargeData().charges[0],duration=e.to-e.from;return {...e,samplingTolerance:1,coverage,inputWh:300,observedInputWh:300*coverage,estimatedGapWh:300*(1-coverage),gapMillis:duration*(1-coverage),maxGapMillis:30000};}
+test('bounded short sampling gaps teach without turning estimated energy into a measurement',()=>{
+ const p=scooterProfile(),data=chargeData(),c={...config(p),rollerLearning:data};data.charges=[sampledCharge()];const v=X.learned(p,c,roller,'UTC',now);assert.equal(v.charges,1);assert.equal(v.chargeWh,300);assert.ok(v.estimatedGapWh>0);assert.match(X.learningText(v),/Messlücken/);assert.equal(v.wh,null);
+});
+test('a short top-up contributes its own energy without reaching the configured target',()=>{
+ const p=scooterProfile(),data=chargeData(),c={...config(p),rollerLearning:data};data.charges[0]={...data.charges[0],to:data.charges[0].from+60000,inputWh:2.5};const v=X.learned(p,c,{...roller,live:{soc:41}},'UTC',now);assert.equal(v.charges,1);assert.equal(v.chargeWh,2.5);
+});
+test('a large gap, inconsistent estimate or missing coverage cannot bypass the sampling bounds',()=>{
+ const p=scooterProfile();for(const change of [{maxGapMillis:181000},{coverage:.89},{coverage:NaN},{gapMillis:900000},{observedInputWh:1},{estimatedGapWh:999},{samplingTolerance:0}]){const data=chargeData();data.charges=[{...sampledCharge(),...change}];assert.equal(X.learned(p,{...config(p),rollerLearning:data},roller,'UTC',now).charges,0,JSON.stringify(change));}
+});
+test('native qualified sampling days teach frequency while an unbounded hole and DST shortage remain unknown',()=>{
+ const p=scooterProfile(),data=chargeData(),c={...config(p),rollerLearning:data};for(let i=1;i<=3;i++)data.pathDays[new Date(start-i*D).toISOString().slice(0,10)]={mac:roller.profile.mac,complete:true,samplingTolerance:1,dayMillis:D,millis:D-30000,coverage:(D-30000)/D,maxGapMillis:15000,wh:100,charges:1};assert.equal(X.learned(p,c,roller,'UTC',now).frequency,1);
+ const d=data.pathDays['2026-10-31'];d.maxGapMillis=121000;assert.equal(X.learned(p,c,roller,'UTC',now).wh,null);d.maxGapMillis=15000;d.dayMillis=25*H;d.coverage=d.millis/d.dayMillis;assert.equal(X.learned(p,c,roller,'UTC',now).wh,null);
+});
+test('the latest recorded charge is distinct from the latest usable learning charge',()=>{
+ const p=scooterProfile(),data=chargeData(),latest=now-H,c={...config(p),rollerLearning:data};data.latestRecorded=latest;data.exclusions=[{to:latest,reason:'Zu große Messlücke',coverage:.7}];const v=X.learned(p,c,roller,'UTC',now),text=X.learningText(v);assert.equal(v.latestRecorded,latest);assert.equal(v.latest,data.charges[0].to);assert.match(text,/Letzte aufgezeichnete Ladung/);assert.match(text,/Zuletzt fürs Lernen genutzt/);assert.match(text,/Neueste Ladung nicht genutzt: Zu große Messlücke · 70 % Messabdeckung/);
+});

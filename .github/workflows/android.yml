@@ -80,7 +80,7 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
       - name: Dashboard-Berechnungen und Konfiguration prüfen
-        run: node --test tools/update-core.test.cjs tools/autarpie-core.test.cjs tools/value-colors.test.cjs tools/weather-history.test.cjs tools/supplies-core.test.cjs tools/supplies-travel.test.cjs tools/dashboard-core.test.cjs tools/equipment-core.test.cjs tools/settings-backup.test.cjs tools/tile-detail.test.cjs tools/read-bridge.test.cjs tools/energy-window-cache.test.cjs tools/control-bridge.test.cjs tools/solar-core.test.cjs tools/presence-core.test.cjs tools/roller-core.test.cjs tools/special-use-core.test.cjs
+        run: node --test tools/update-core.test.cjs tools/autarpie-core.test.cjs tools/value-colors.test.cjs tools/weather-history.test.cjs tools/supplies-core.test.cjs tools/supplies-travel.test.cjs tools/dashboard-core.test.cjs tools/equipment-core.test.cjs tools/settings-backup.test.cjs tools/tile-detail.test.cjs tools/read-bridge.test.cjs tools/energy-window-cache.test.cjs tools/control-bridge.test.cjs tools/solar-core.test.cjs tools/solar-refresh.test.cjs tools/presence-core.test.cjs tools/roller-core.test.cjs tools/special-use-core.test.cjs
       - name: Private Dateien vor Veröffentlichung ausschließen
         run: python3 tools/check-public-files.py
       - name: Veröffentlichung und Übernahme-Hilfsprogramm prüfen
@@ -160,6 +160,8 @@ jobs:
             app/build/reports/lan-proof/LearningRecoveryProof-results.log
             app/build/reports/lan-proof/HistoricalWeatherLearningProof-results.log
             app/build/reports/lan-proof/RollerUsageLearningProof-results.log
+            app/build/reports/lan-proof/RollerSamplingProof-results.log
+            app/build/reports/lan-proof/roller-sampling-display-results.log
             app/build/reports/lan-proof/results.log
             app/build/reports/lan-proof/presence-results.log
             app/build/reports/lan-proof/viewer-idle-results.log

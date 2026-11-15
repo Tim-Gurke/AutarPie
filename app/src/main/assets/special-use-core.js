@@ -38,27 +38,44 @@
     const previous=legacyLearned(profile,config,roller,zone,now);if(profile.kind!=='roller')return previous;
     const data=config.rollerLearning||{},mac=roller?.profile?.mac,matching=data.version===1&&mac&&data.mac===mac,seen=new Set(),charges=[];let end=0;
     for(const e of (matching?data.charges||[]:[]).slice().sort((a,b)=>a.from-b.from)){
-      if(e.mac!==mac||seen.has(e.id)||!finite(e.from)||!finite(e.to)||e.to<=e.from||e.to>now||now-e.to>90*DAY||!finite(e.inputWh)||e.inputWh<=0||e.inputWh>100000||e.coverage<.98||e.from<end)continue;
+      if(e.mac!==mac||seen.has(e.id)||!finite(e.from)||!finite(e.to)||e.to<=e.from||e.to>now||now-e.to>90*DAY||!finite(e.inputWh)||e.inputWh<=0||e.inputWh>100000||!chargeCoverage(e)||e.from<end)continue;
       seen.add(e.id);charges.push(e);end=e.to;
     }
     const recent=charges.slice(-28),chargeWh=recent.length?recent.reduce((s,e)=>s+e.inputWh,0)/recent.length:null;
-    const days=Object.entries(matching?data.pathDays||{}:{}).filter(([day,d])=>day<dayAt(now,zone)&&day>=dayAt(now-90*DAY,zone)&&d.mac===mac&&d.complete===true&&finite(d.dayMillis)&&d.dayMillis>=22*H&&d.dayMillis<=26*H&&d.millis>=d.dayMillis&&finite(d.wh)&&d.wh>=0).sort((a,b)=>a[0].localeCompare(b[0])).slice(-28);
-    const detail={charges:recent.length,chargeWh,latest:recent.at(-1)?.to||0,monitoredDays:days.length,estimatedInput:true,provisional:recent.length<3,frequency:null,source:'unknown',excludedCharges:matching?data.excludedCharges||0:0};
+    const days=Object.entries(matching?data.pathDays||{}:{}).filter(([day,d])=>day<dayAt(now,zone)&&day>=dayAt(now-90*DAY,zone)&&d.mac===mac&&d.complete===true&&finite(d.dayMillis)&&d.dayMillis>=22*H&&d.dayMillis<=26*H&&dayCoverage(d)&&finite(d.wh)&&d.wh>=0).sort((a,b)=>a[0].localeCompare(b[0])).slice(-28);
+    const recorded=(roller?.journal||[]).filter(e=>e.profile?.mac===mac&&!e.active&&finite(e.ended)&&e.ended<=now&&now-e.ended<=90*DAY).reduce((last,e)=>Math.max(last,e.ended),0),latestRecorded=Math.max(recorded,matching&&finite(data.latestRecorded)?data.latestRecorded:0),latestExclusion=(matching?data.exclusions||[]:[]).find(e=>e.to===latestRecorded);
+    const detail={charges:recent.length,chargeWh,latest:recent.at(-1)?.to||0,latestRecorded,latestExclusion,estimatedGapWh:recent.reduce((sum,e)=>sum+(e.estimatedGapWh||0),0),monitoredDays:days.length,estimatedInput:true,provisional:recent.length<3,frequency:null,source:'unknown',excludedCharges:matching?data.excludedCharges||0:0};
     if(days.length>=3){const wh=days.reduce((s,[,d])=>s+d.wh,0)/days.length,n=days.reduce((s,[,d])=>s+(d.charges||0),0);return {...detail,wh,days:days.length,frequency:n>0||wh===0?n/days.length:null,source:'monitored',provisional:days.length<7};}
     if(previous.wh!==null)return {...detail,...previous,source:'known-days',provisional:previous.days<7};
     if(chargeWh!==null&&finite(profile.chargesPerWeek)&&profile.chargesPerWeek>0)return {...detail,wh:chargeWh*profile.chargesPerWeek/7,days:0,frequency:profile.chargesPerWeek/7,source:'assumed-frequency',provisional:true};
     const r={...roller?.profile},manual=profile.km>0?profile.km*(profile.whPerKm??19)*(1/r.conversionEfficiency+r.idleWatts/r.chargeWatts):profile.wh>0?profile.wh:null;
     if(finite(manual))return {...detail,wh:manual,days:0,source:'manual-fallback',provisional:true};
-    return {...detail,wh:null,days:0,reason:chargeWh===null?'Noch keine ausreichend vollständig erfasste Wohnwagenladung.':'Bedarf je Ladung gelernt; die übliche Ladehäufigkeit ist noch unbekannt. Unter Sondernutzungen kann eine vorläufige Häufigkeit angegeben werden.'};
+    return {...detail,wh:null,days:0,reason:chargeWh===null?'Noch keine ausreichend erfasste Wohnwagenladung.':'Bedarf je Ladung gelernt; für die übliche Ladehäufigkeit fehlen noch ausreichend überwachte Ladeweg-Tage (mindestens drei).'};
+  }
+  function chargeCoverage(e){
+    if(!finite(e.coverage)||e.coverage>1)return false;
+    if(e.samplingTolerance!==1)return e.coverage>=.98;
+    const duration=e.to-e.from,gap=duration*(1-e.coverage);
+    return e.coverage>=.9&&finite(e.maxGapMillis)&&e.maxGapMillis>=0&&e.maxGapMillis<=180000&&gap<=600000+.001&&finite(e.gapMillis)&&Math.abs(e.gapMillis-gap)<1&&finite(e.observedInputWh)&&e.observedInputWh>0&&finite(e.estimatedGapWh)&&e.estimatedGapWh>=0&&Math.abs(e.observedInputWh/e.coverage-e.inputWh)<.000001*Math.max(1,e.inputWh)&&Math.abs(e.inputWh-e.observedInputWh-e.estimatedGapWh)<.000001*Math.max(1,e.inputWh);
+  }
+  function dayCoverage(d){
+    if(!finite(d.millis)||d.millis>d.dayMillis)return false;
+    if(d.samplingTolerance!==1)return d.millis>=d.dayMillis;
+    return finite(d.coverage)&&d.coverage>=.98&&d.coverage<=1&&d.millis>=.98*d.dayMillis&&Math.abs(d.coverage-d.millis/d.dayMillis)<.000001&&finite(d.maxGapMillis)&&d.maxGapMillis>=0&&d.maxGapMillis<=120000;
   }
   function learningText(value,zone='UTC'){
     const n=x=>finite(x)?x.toLocaleString('de-DE',{maximumFractionDigits:1}):'—',parts=[];
-    if(value?.charges){parts.push(value.charges+' auswertbare Ladung'+(value.charges===1?'':'en')+' · ≈ '+n(value.chargeWh)+' Wh am Wohnwagen je Ladung · geschätzt'+(value.provisional?' · vorläufig':''));if(value.latest)try{parts.push('Letzte Ladung: '+new Date(value.latest).toLocaleDateString('de-DE',{timeZone:zone}));}catch(_){}}
-    if(value?.source==='monitored')parts.push(value.monitoredDays+' vollständig überwachte Ladeweg-Tage'+(finite(value.frequency)?' · ≈ '+n(value.frequency*7)+' Ladungen/Woche':''));
+    const date=t=>new Date(t).toLocaleDateString('de-DE',{timeZone:zone});
+    if(value?.latestRecorded)try{parts.push('Letzte aufgezeichnete Ladung: '+date(value.latestRecorded));}catch(_){}
+    if(value?.charges){parts.push(value.charges+' auswertbare Ladung'+(value.charges===1?'':'en')+' · ≈ '+n(value.chargeWh)+' Wh am Wohnwagen je Ladung · geschätzt'+(value.provisional?' · vorläufig':''));if(value.latest)try{parts.push('Zuletzt fürs Lernen genutzt: '+date(value.latest));}catch(_){}}
+    if(value?.estimatedGapWh>0)parts.push('Kurze Messlücken für das Lernen anteilig geschätzt');
+    if(value?.source==='monitored')parts.push(value.monitoredDays+' ausreichend überwachte Ladeweg-Tage'+(finite(value.frequency)?' · ≈ '+n(value.frequency*7)+' Ladungen/Woche':''));
     else if(value?.source==='known-days')parts.push(value.days+' bekannte Nutzungstage');
     else if(value?.source==='assumed-frequency')parts.push('Planungsannahme: '+n(value.frequency*7)+' Ladungen/Woche; Häufigkeit noch nicht gelernt');
     else if(value?.source==='manual-fallback')parts.push('Eigene Tages-/Kilometerschätzung, bis die Ladehäufigkeit gelernt ist');
+    else parts.push((value?.monitoredDays||0)+' von mindestens 3 überwachten Ladeweg-Tagen für die Häufigkeit');
     if(value?.excludedCharges)parts.push(value.excludedCharges+' unvollständige oder nicht zuordenbare Ladeaufzeichnung'+(value.excludedCharges===1?'':'en')+' nicht verwendet');
+    if(value?.latestExclusion)parts.push('Neueste Ladung nicht genutzt: '+value.latestExclusion.reason+(finite(value.latestExclusion.coverage)?' · '+n(value.latestExclusion.coverage*100)+' % Messabdeckung':''));
     return parts.join(' · ');
   }
   function build(days,config,roller,rollerCore,now=Date.now(),zone='UTC'){

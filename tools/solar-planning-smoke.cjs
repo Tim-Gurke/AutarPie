@@ -56,8 +56,16 @@ function fixture(){
  await page.clock.setFixedTime(new Date('2026-10-23T20:00:00Z'));await page.evaluate(()=>{window.fixture.readings[0].t=Date.now();window.fixture.readings[0].soc=95;poll();});
  await page.locator('[data-solar-day="0"] .solar-scale-battery em').filter({hasText:/^73 %$/}).waitFor({state:'visible'});
  await page.locator('[data-solar-day="0"]').click();assert.match(await page.locator('.solar-reserve-point').first().textContent(),/73 %.*Gespeichert.*17:58.*Gerätearchiv/s);assert.equal(await page.locator('.solar-reserve-track').first().locator('span').count(),0,'measured SOC has no invented uncertainty range');assert.match(await page.locator('.solar-reserve-point').nth(1).textContent(),/≈ .*%/);
+ // A delayed background refresh keeps today's recorded bar and labels the pending read.
+ const sunsetWidth=await page.locator('[data-solar-day="0"] .solar-scale-battery .solar-track i').getAttribute('style');
+ await page.clock.setFixedTime(new Date('2026-10-23T20:01:00Z'));await page.evaluate(()=>{window.previousSunsetRequest=window.WattPit.requestSunsetSoc;window.WattPit.requestSunsetSoc=(at,id)=>{window.pendingSunset={at,id};};window.fixture.historyRevision++;window.fixture.readings[0].t=Date.now();poll();});
+ await page.waitForFunction(()=>!!window.pendingSunset);
+ assert.equal(await page.locator('[data-solar-day="0"] .solar-scale-battery .solar-track i').getAttribute('style'),sunsetWidth,'starting history refresh cannot erase the existing bar');
+ assert.match(await page.locator('.solar-reserve-point').first().textContent(),/Aktualisierung läuft/);
+ await page.evaluate(()=>{window.sunsetPoint={t:window.fixture.weather.days[0].sunset-120000,soc:71.2,origin:'archive'};window.onSolarSunsetSoc({id:window.pendingSunset.id,point:window.sunsetPoint});window.WattPit.requestSunsetSoc=window.previousSunsetRequest;});
+ assert.match(await page.locator('[data-solar-day="0"] .solar-scale-battery em').textContent(),/^71 %$/);
  // A missing or too distant raw sample stays unknown, including after late import refreshes.
- await page.clock.setFixedTime(new Date('2026-10-23T20:01:00Z'));await page.evaluate(()=>{window.sunsetPoint={t:window.fixture.weather.days[0].sunset-900001,soc:80,origin:'archive'};window.fixture.historyRevision++;window.fixture.readings[0].t=Date.now();poll();});
+ await page.clock.setFixedTime(new Date('2026-10-23T20:02:00Z'));await page.evaluate(()=>{window.sunsetPoint={t:window.fixture.weather.days[0].sunset-900001,soc:80,origin:'archive'};window.fixture.historyRevision++;window.fixture.readings[0].t=Date.now();poll();});
  await page.locator('[data-solar-reserve] .solar-reserve-point').first().getByText('Kein gespeicherter SmartShunt',{exact:false}).waitFor({state:'visible'});
  await page.locator('#closeModal').click();assert.equal(await page.locator('[data-solar-day="0"] .solar-scale-battery em').textContent(),'—');
  // Opening the app only after sunset still reads history, even without a current Shunt reading.

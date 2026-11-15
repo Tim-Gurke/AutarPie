@@ -31,6 +31,7 @@ sources.append(root/'tools/RollerObservationProof.java')
 sources.append(root/'tools/LearningRecoveryProof.java')
 sources.append(root/'tools/HistoricalWeatherLearningProof.java')
 sources.append(root/'tools/RollerUsageLearningProof.java')
+sources.append(root/'tools/RollerSamplingProof.java')
 subprocess.run(['java','com.sun.tools.javac.Main','-cp',native_cp,'-d',str(classes),*map(str,sources)],check=True)
 classpath=os.pathsep.join(map(str,[classes,a.android_jar.resolve(),a.sqlite_jar.resolve(),a.slf4j_jar.resolve(),*a.android_jar.resolve().parent.glob('zxing-*.jar')]))
 r=subprocess.run(['java','-cp',classpath,'de.wattpit.app.LanSyncProof',str(out/'devices')],capture_output=True,text=True,timeout=90)
@@ -67,6 +68,8 @@ print(r10.stdout+r10.stderr,end='');(out/'autarpie-config-results.log').write_te
 r11=subprocess.run(['java','-cp',classpath,'de.wattpit.app.CentralConcurrencyProof',str(out/'central-concurrency')],capture_output=True,text=True,timeout=20)
 print(r11.stdout+r11.stderr,end='');(out/'central-concurrency-results.log').write_text(r11.stdout+r11.stderr);r11.check_returncode()
 
-for name in ['LearningRetentionProof','RollerObservationProof','LearningRecoveryProof','HistoricalWeatherLearningProof','RollerUsageLearningProof']:
+for name in ['LearningRetentionProof','RollerObservationProof','LearningRecoveryProof','HistoricalWeatherLearningProof','RollerUsageLearningProof','RollerSamplingProof']:
     proof=subprocess.run(['java','-Xmx512m','-cp',classpath,'de.wattpit.app.'+name,str(out/name)],capture_output=True,text=True,timeout=120)
     print(proof.stdout+proof.stderr,end='');(out/(name+'-results.log')).write_text(proof.stdout+proof.stderr);proof.check_returncode()
+sampling=subprocess.run(['node',str(root/'tools/roller-learning-state-check.cjs'),str(out/'RollerSamplingProof/result.json')],capture_output=True,text=True,timeout=30)
+print(sampling.stdout+sampling.stderr,end='');(out/'roller-sampling-display-results.log').write_text(sampling.stdout+sampling.stderr);sampling.check_returncode()

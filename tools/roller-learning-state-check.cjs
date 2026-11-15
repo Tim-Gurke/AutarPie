@@ -1,0 +1,15 @@
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const C=require('../app/src/main/assets/special-use-core.js');
+const value=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+const learned=C.learned({id:'roller',kind:'roller',mode:'learn'},value,value.roller,'UTC',value.now);
+assert.equal(learned.charges,4);
+assert.equal(learned.monitoredDays,4);
+assert.equal(learned.frequency,1);
+assert.ok(Math.abs(learned.wh-56.875)<1e-8);
+assert.equal(learned.source,'monitored');
+assert.ok(learned.estimatedGapWh>0);
+const text=C.learningText(learned);
+assert.match(text,/Letzte aufgezeichnete Ladung/);
+assert.match(text,/Zuletzt fürs Lernen genutzt/);
+assert.match(text,/Messlücken/);
+console.log('PASS native SQLite learning and the actual display agree on partial charges, sampled days, estimated gaps and frequency');
