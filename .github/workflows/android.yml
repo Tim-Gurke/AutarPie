@@ -152,6 +152,7 @@ jobs:
             app/build/reports/charger-journal-proof/*.log
             app/build/reports/charger-journal-proof/report.json
             app/build/reports/archive-backpressure-proof/
+            app/build/reports/archive-io-proof/
             app/build/reports/charger-ble-proof/report.json
             app/build/reports/charger-ble-proof/results.log
             app/build/reports/lan-proof/LearningRetentionProof-results.log
