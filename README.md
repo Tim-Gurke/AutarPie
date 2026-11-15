@@ -1,20 +1,20 @@
-# AutarPie 3.0.8
+# AutarPie 3.0.9
 
 ![AutarPie Ressourcen-Kreislauf](app/src/main/assets/brand.svg)
 
 **Das lokale Cockpit für autarkes Leben.** Solar und Stromverteilung, Wohnwagenakku, E-Scooter, Modellbau, Gas und Wasser in einer gemeinsamen App. AutarPie führt **Watt’n’Pit und WohnPit** weiter.
 
-**[AutarPie 3.0.8 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.0.8/AutarPie-v3.0.8.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.0.8.md) · [Vollständige Versionshistorie](CHANGELOG.md)
+**[AutarPie 3.0.9 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.0.9/AutarPie-v3.0.9.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.0.9.md) · [Vollständige Versionshistorie](CHANGELOG.md)
 
 Android 8 oder neuer; das Cockpit benötigt einen aktuellen Android-System-WebView. Kein Konto, keine Werbung. Mess- und Lerndaten bleiben auf den eigenen Geräten. Der optionale Wetterabruf verwendet Open-Meteo. Der Anlagenverbund überträgt Daten verschlüsselt im lokalen WLAN.
 
 ## Ansichten
 
-| Drei 608PD · dunkle Ansicht | Drei 608PD · helle Ansicht |
+| Native Zentrale · Android 8 | Native Zentrale · Android 11 |
 | --- | --- |
-| ![AutarPie 3.0.8: drei getrennte Laderprofile mit eigenem Status und Journal, dunkle Ansicht](docs/images/autarpie-3.0.8-dark.svg) | ![AutarPie 3.0.8: drei getrennte Laderprofile mit eigenem Status und Journal, helle Ansicht](docs/images/autarpie-3.0.8-light.svg) |
+| ![AutarPie 3.0.9: native Zentrale auf Android 8 ohne persönliche Messwerte](docs/images/autarpie-3.0.9-dark.svg) | ![AutarPie 3.0.9: native Zentrale mit Aufzeichnung und Geräteverwaltung](docs/images/autarpie-3.0.9-central.svg) |
 
-Die Aufnahmen zeigen die aktuelle Oberfläche mit neutralen Beispieldaten, keinen Hardwaretest. Eigene Farben und Layouts bleiben erhalten. [Native Zentrale in 3.0.8](docs/images/autarpie-3.0.8-central.svg).
+Aktuelle Aufnahmen aus den Android-8-/11-Prüfläufen für 3.0.9, ohne reale Mess- oder Standortdaten. Sie zeigen die Oberfläche und sind kein Funk- oder Hardwaretest. Eigene Farben und Layouts bleiben erhalten.
 
 ## Ein Cockpit, mehrere Anwendungen
 
@@ -49,9 +49,17 @@ Die **optionale Rollerautomatik ist zunächst aus**. Ladeziel, Wohnwagenreserve,
 
 Bis zu drei 608PD erhalten getrennte Profile, private Kennungen und eigene Verbindungen. Suche und Einrichtung laufen am erfassenden Handy; Anzeigen bedienen den Ablauf. Die neue direkte Ersteinrichtung verlangt eine Bestätigung am Lader und muss am eigenen 608PD praktisch geprüft werden. Vorhandene Verbindungen aus der eigenen Bluetooth-Aufzeichnung bleiben erhalten. Unterstützt sind die nachgewiesenen Livefelder und das Beenden von Laden/Powerbank-Betrieb. App-Start ist zunächst auf das beobachtete **3S-LiPo-Profil 4,21 V/Zelle / 0,50 A** mit ausdrücklicher Profilbestätigung begrenzt. Powerbank und andere Profile am Gerät starten. Nicht belegte Temperatur-/USB-/CC-CV-Felder werden nicht erfunden.
 
+## Update 3.0.9
+
+Bluetooth-Empfang, Empfangsfreigaben und Sitzungserhalt laufen unabhängig von lokalen Datenbankprüfungen. Eine langsame oder blockierende SQL-Abfrage hält damit die Verbindungspflege nicht mehr an. GATT-Aufträge bleiben seriell; Abbruch und vorrangige Schaltaufträge schließen Bluetooth unmittelbar. Ein verspäteter Schreibcallback kann nach einer ausgebliebenen Bestätigung keinen Folgeauftrag als erfolgreich ausgeben. Die Diagnose zeigt Schrittzeiten, lokale Prüfdauer und Transportfortschritt auch im nativen Text-Export.
+
+Der neue Vergleichstest sperrt echtes SQLite: Der bisherige Ablauf verliert den simulierten Gegenpart, die Korrektur verarbeitet während derselben Sperre weiterhin Pakete und speichert anschließend den Archivblock ohne Verdopplung. Die Vorprüfung umfasst 320 erfolgreiche gezielte Prüfschritte. Der vollständige [Freigabelauf](https://github.com/Tim-Gurke/AutarPie/actions/runs/43719113816) ist erfolgreich: APK-Bau und Lint, 593 Unit-Prüfungen, 819 native Integrationsprüfungen, zwölf Android-Prüfungen auf Android 8/11 und 35 verschiedene Browser-Szenarien. Der tatsächliche vollständige Abruf an Regler und Shunt bleibt nach Installation praktisch zu bestätigen.
+
+**Zuerst die Zentrale beziehungsweise das direkt per Bluetooth erfassende Handy aktualisieren.** Anzeigen mit 3.0.8 bleiben kompatibel; Datenbankformat und Verbundprotokoll sind unverändert. Über die bestehende Installation mit der bisherigen Updatesignatur installieren. Messdaten, private Verbindungen und Layouts bleiben erhalten. Danach einmal **Fehlende Archivdaten abrufen** ausführen und den vollständigen Abschluss prüfen. [Änderungen, Updateweg und Prüfgrenzen 3.0.9](docs/changes-3.0.9.md).
+
 ## Update 3.0.8
 
-**Bekannte Grenze:** Der Archivabruf kann bei einer langsamen lokalen Bestandsprüfung weiterhin mit Bluetooth-Status 19 enden. Eine Korrektur mit eigenständiger Bluetooth-Verarbeitung wird als [3.0.9 vorbereitet](docs/changes-3.0.9.md); diese ist noch nicht gebaut oder veröffentlicht. 3.0.8 behebt den Empfangsüberlauf, bestätigt aber noch keinen erfolgreichen vollständigen Archivabruf auf jeder Anlage.
+**Historische Prüfgrenze:** 3.0.8 begrenzt den Empfangspuffer; die Abhängigkeit von blockierenden lokalen Datenbankprüfungen wird erst mit [3.0.9](docs/changes-3.0.9.md) behoben.
 
 Der Archivempfang gibt Bluetooth-Pufferplatz nach der Verarbeitung frei und unterscheidet einen Transportfehler vom manuellen Abbruch. Gescheiterte Aufzeichnungsstarts bleiben mit Android-Freigaben und Fehlergrund in der Diagnose nachvollziehbar. Die allgemeine **Victron-Liveanzeige sitzt im App-Kopf**; jeder 608PD zeigt seinen eigenen Status.
 
