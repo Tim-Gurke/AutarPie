@@ -47,7 +47,12 @@ public final class ArchiveSessionStartProof {
         }
         final class BluetoothGatt {
             static final int GATT_SUCCESS=0;Handler handler;BluetoothGattCallback callback;boolean closed;
-            boolean discoverServices(){handler.later(()->callback.onServicesDiscovered(this,0));return true;}
+            boolean discoverServices(){
+                discoveryEntered.countDown();
+                if(discoveryTimeouts>0){discoveryTimeouts--;return true;}
+                if(setupDisconnects>0){setupDisconnects--;handler.later(()->callback.onConnectionStateChange(this,19,BluetoothProfile.STATE_DISCONNECTED));return true;}
+                handler.later(()->callback.onServicesDiscovered(this,0));return true;
+            }
             boolean requestMtu(int mtu){handler.later(()->callback.onMtuChanged(this,77,0));return true;}
             BluetoothGattService getService(UUID id){return id.equals(SERVICE)?new BluetoothGattService():null;}
             boolean setCharacteristicNotification(BluetoothGattCharacteristic c,boolean enabled){events.add("subscribe");return true;}
@@ -77,12 +82,19 @@ public final class ArchiveSessionStartProof {
         final class BluetoothDevice {
             static final int BOND_NONE=10,BOND_BONDING=11,BOND_BONDED=12,TRANSPORT_LE=2,PHY_LE_1M_MASK=1;
             int getBondState(){return BOND_BONDED;}boolean createBond(){throw new AssertionError("No new pairing needed");}
-            BluetoothGatt connectGatt(Object context,boolean auto,BluetoothGattCallback callback,int transport,int phy,Handler handler){BluetoothGatt g=new BluetoothGatt();g.handler=handler;g.callback=callback;handler.later(()->callback.onConnectionStateChange(g,0,BluetoothProfile.STATE_CONNECTED));return g;}
+            BluetoothGatt connectGatt(Object context,boolean auto,BluetoothGattCallback callback,int transport,int phy,Handler handler){
+                BluetoothGatt g=new BluetoothGatt();g.handler=handler;g.callback=callback;clients.add(g);
+                handler.later(()->callback.onConnectionStateChange(g,0,BluetoothProfile.STATE_CONNECTED));
+                if(lateOldDisconnect&&clients.size()>1){BluetoothGatt old=clients.get(0);handler.later(()->{callback.onConnectionStateChange(old,19,BluetoothProfile.STATE_DISCONNECTED);oldDisconnects++;});}
+                return g;
+            }
         }
         final Handler main=new Handler(),bluetooth=new Handler();
         final BlockingQueue<byte[]> received=new LinkedBlockingQueue<>(512);
         final ArrayDeque<ArchiveCodec.Message> messages=new ArrayDeque<>();
         final List<String> events=new CopyOnWriteArrayList<>();
+        final List<BluetoothGatt> clients=new CopyOnWriteArrayList<>();
+        final CountDownLatch discoveryEntered=new CountDownLatch(1);
         final CountDownLatch readEntered=new CountDownLatch(1);
         final BluetoothGattCharacteristic serverControl=new BluetoothGattCharacteristic(CONTROL),serverData=new BluetoothGattCharacteristic(DATA),serverBulk=new BluetoothGattCharacteristic(BULK);
         final ArchiveIo io=new ArchiveIo(()->{},e->{throw new AssertionError(e);});
@@ -92,7 +104,7 @@ public final class ArchiveSessionStartProof {
         volatile CompletableFuture<Integer> operation;volatile String operationType="",cancellationReason="";
         volatile byte[] controlResponse;volatile boolean lastOperationSubmitted,lastOperationCallback;volatile int disconnectStatus,negotiatedMtu=23,receiveQueuePeak;
         volatile long longestAndroidQueueDelay,longestGattOperation;static volatile long lastGattClosedAt=-1;
-        int connectionAttempts,readStatus,reads,writes;
+        int connectionAttempts,readStatus,reads,writes,discoveryTimeouts,setupDisconnects,oldDisconnects;boolean lateOldDisconnect;
         Environment(int api,boolean cold){Build.VERSION.SDK_INT=api;this.cold=cold;lastGattClosedAt=-1;}
         void stage(String text){events.add("stage:"+text);}void trace(String text){events.add("trace:"+text);}
         abstract void start()throws Exception;abstract void abort();
@@ -118,6 +130,26 @@ public final class ArchiveSessionStartProof {
         try(Environment e=create(false,30,true)){
             e.blockRead=true;ExecutorService caller=Executors.newSingleThreadExecutor();try{
                 Future<?> f=caller.submit(()->{try{e.start();}catch(Exception ex){throw new CompletionException(ex);}});check(e.readEntered.await(2,TimeUnit.SECONDS),"control read actually becomes pending");e.abort();boolean stopped=false;try{f.get(2,TimeUnit.SECONDS);}catch(ExecutionException expected){stopped=true;}check(stopped&&e.writes==0,"closing pending initialization releases its caller without sending commands");check(e.lastOperationSubmitted&&!e.lastOperationCallback,"an accepted but interrupted Android read is not reported as an acknowledgement");
+            }finally{caller.shutdownNow();}
+        }
+        try(Environment e=create(true,30,false)){
+            e.discoveryTimeouts=1;boolean failed=false;try{e.start();}catch(TimeoutException expected){failed=true;}
+            check(failed&&e.clients.size()==1&&e.writes==0,"released setup cannot recover a missing service-discovery callback");
+        }
+        try(Environment e=create(false,30,false)){
+            e.discoveryTimeouts=1;e.lateOldDisconnect=true;e.start();
+            check(e.sessionReady&&e.connected&&e.clients.size()==2&&e.clients.get(0).closed,"one timed-out discovery is retried using a fresh client after closing the old one");
+            check(e.oldDisconnects==1,"retired-client disconnect is delivered and cannot end the new session");
+        }
+        try(Environment e=create(false,35,false)){
+            e.setupDisconnects=2;boolean failed=false;try{e.start();}catch(IOException expected){failed=expected.getMessage().contains("19");}
+            check(failed&&e.clients.size()==2&&e.writes==0,"permanent setup failure is limited to two clients and retains its real status");
+        }
+        try(Environment e=create(false,30,false)){
+            e.discoveryTimeouts=1;ExecutorService caller=Executors.newSingleThreadExecutor();try{
+                Future<?> f=caller.submit(()->{try{e.start();}catch(Exception ex){throw new CompletionException(ex);}});
+                check(e.discoveryEntered.await(2,TimeUnit.SECONDS),"silent discovery becomes pending before cancellation");e.abort();boolean stopped=false;try{f.get(2,TimeUnit.SECONDS);}catch(ExecutionException expected){stopped=true;}
+                check(stopped&&e.clients.size()==1&&e.writes==0,"cancellation releases discovery without starting another connection or sending commands");
             }finally{caller.shutdownNow();}
         }
         System.out.println("RESULT "+checks+" transport initialization checks; Android/GATT adapters, no physical-device claim");

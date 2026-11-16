@@ -308,7 +308,24 @@ public final class ArchiveService extends Service {
             if(device.getBondState()!=BluetoothDevice.BOND_BONDED)throw new IllegalArgumentException("Android-Kopplung nicht abgeschlossen. PIN-Abfrage oder Bluetooth-Kopplungsbenachrichtigung prüfen");
             trace("Neue Android-Kopplung bestätigt");
         }else trace("Android-Kopplung bereits vorhanden · keine erneute PIN-Abfrage nötig");
-        openGatt(device);
+        // Recover one incomplete read-only setup with a fresh Android client.
+        // Never toggle the shared Bluetooth adapter or repeat a control command.
+        for(int setupAttempt=1;setupAttempt<=2;setupAttempt++){
+            openGatt(device);
+            try{initializeGatt();return;}
+            catch(Exception failure){
+                boolean transientFailure=failure instanceof TimeoutException||failure instanceof LinkClosed||
+                        failure instanceof GattFailure&&((GattFailure)failure).status==133;
+                if(!transientFailure||setupAttempt==2||cancelled)throw failure;
+                closeGatt();check();
+                trace("Bluetooth-Anmeldung unvollständig · "+(failure instanceof TimeoutException?"Zeitüberschreitung":failure.getMessage())+" · einmal mit neuer Verbindung wiederholen");
+                received.clear();messages.clear();stream=new ArchiveCodec.Stream();link=new ArchiveLink();
+                receiveFailure=null;controlResponse=null;control=null;data=null;disconnectStatus=0;negotiatedMtu=23;
+                stage("Bluetooth-Verbindung erneut aufbauen");awaitGattRelease(1500);
+            }
+        }
+    }
+    private void initializeGatt() throws Exception {
         stage("Bluetooth-Dienste lesen");op("discover",()->gatt.discoverServices());
         stage("Bluetooth-Paketgröße aushandeln");
         try{op("mtu",()->gatt.requestMtu(517));}catch(GattFailure|TimeoutException e){if(!connected)throw e;trace("Paketgröße 23 · Standardwert verwenden");}

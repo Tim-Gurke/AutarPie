@@ -116,8 +116,23 @@ final class HistoryDb extends SQLiteOpenHelper {
         List<Integer> periods=new ArrayList<>();for(ArchiveCodec.Level level:levels)periods.add(level.period);
         ArchiveSyncPlan.Availability local=new ArchiveSyncPlan.Availability(periods,now);
         long[] bounds=ArchiveSyncPlan.bounds(levels,clock);
-        try(Cursor c=getReadableDatabase().rawQuery(ArchiveSyncPlan.readingsSql(field),new String[]{device,kind,""+bounds[0],""+bounds[1]})){
-            int rows=0;while(c.moveToNext()){local.reading(c.getLong(0),c.getString(1),c.getInt(2));if(++rows%512==0)check.run();}
+        // A single large Android SQLiteCursor refills its small CursorWindow by
+        // stepping the query again. Keep each result bounded and seek forward;
+        // OFFSET would still repeatedly walk the already inspected history.
+        long lastTime=bounds[0],lastId=0;boolean continued=false;
+        while(true){
+            check.run();int rows=0;
+            String[] args=continued?new String[]{device,kind,""+lastTime,""+bounds[1],""+lastTime,""+lastTime,""+lastId}:
+                    new String[]{device,kind,""+bounds[0],""+bounds[1]};
+            try(Cursor c=getReadableDatabase().rawQuery(ArchiveSyncPlan.readingsPageSql(field,continued),args)){
+                while(c.moveToNext()){
+                    lastTime=c.getLong(0);lastId=c.getLong(3);
+                    local.reading(lastTime,c.getString(1),c.getInt(2));
+                    if(++rows%512==0)check.run();
+                }
+            }
+            if(rows<ArchiveSyncPlan.READING_PAGE_SIZE)break;
+            continued=true;
         }
         try(Cursor c=getReadableDatabase().rawQuery("SELECT period,start,end FROM archive_coverage WHERE device=? AND channel=? AND start<=? AND end>=?",new String[]{device,""+channel,""+bounds[1],""+bounds[0]})){
             int rows=0;while(c.moveToNext()){local.imported(c.getInt(0),c.getLong(1),c.getLong(2));if(++rows%512==0)check.run();}

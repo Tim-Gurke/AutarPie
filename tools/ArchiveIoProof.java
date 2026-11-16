@@ -162,7 +162,7 @@ public final class ArchiveIoProof {
         Blocked(Environment e,HistoryDb history,Path database)throws Exception{
             SQLiteDatabase db=history.getWritableDatabase();db.execSQL("PRAGMA journal_mode=DELETE");db.execSQL("PRAGMA busy_timeout=12000");
             lock=SQLiteDatabase.openDatabase(database.toString(),null,0);lock.execSQL("BEGIN EXCLUSIVE");
-            SQLiteDatabase.beforeQuery=sql->{if(sql.startsWith("SELECT ts,origin,period FROM readings"))queryEntered.countDown();};
+            SQLiteDatabase.beforeQuery=sql->{if(sql.startsWith("SELECT ts,origin,period"))queryEntered.countDown();};
             result=worker.submit(()->e.availability(history,Collections.singletonList(new ArchiveCodec.Level(41,30,1200)),clock(),EPOCH+2000000));
             require(queryEntered.await(2,TimeUnit.SECONDS),"the actual HistoryDb SELECT reaches real SQLite");
             Thread.sleep(150);require(!result.isDone(),"an exclusive SQLite lock blocks the real query before row callbacks");

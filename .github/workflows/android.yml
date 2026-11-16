@@ -101,6 +101,7 @@ jobs:
           python3 tools/prove-archive-io.py --dependencies "$deps" --output app/build/reports/archive-io-proof
           python3 tools/prove-archive-session-start.py --dependencies "$deps" --output app/build/reports/archive-session-start-proof
           python3 tools/prove-archive-availability.py --output app/build/reports/archive-availability-proof
+          python3 tools/prove-archive-paging.py --dependencies "$deps" --output app/build/reports/archive-paging-proof
           python3 tools/prove-charger-ble.py --android-jar "$deps/android-api35.jar" --output app/build/reports/charger-ble-proof
           python3 tools/prove-archive-delta.py --output app/build/reports/archive-delta-proof --sqlite-jar "$deps/sqlite-jdbc-3.46.1.0.jar" --slf4j-jar "$deps/slf4j-api-1.7.36.jar"
           python3 tools/prove-archive-storage.py --output app/build/reports/archive-storage-proof --android-jar "$deps/android-api35.jar" --sqlite-jar "$deps/sqlite-jdbc-3.46.1.0.jar" --slf4j-jar "$deps/slf4j-api-1.7.36.jar"
@@ -159,6 +160,7 @@ jobs:
             app/build/reports/archive-io-proof/
             app/build/reports/archive-session-start-proof/
             app/build/reports/archive-availability-proof/
+            app/build/reports/archive-paging-proof/
             app/build/reports/charger-ble-proof/report.json
             app/build/reports/charger-ble-proof/results.log
             app/build/reports/lan-proof/LearningRetentionProof-results.log

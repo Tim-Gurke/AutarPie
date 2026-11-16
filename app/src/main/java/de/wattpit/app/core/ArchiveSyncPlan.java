@@ -8,10 +8,25 @@ public final class ArchiveSyncPlan {
     private static final Set<String> FIELDS = new HashSet<>(Arrays.asList(
             "voltage", "current", "soc", "solar", "temperature", "aux", "load", "pvVoltage", "auxRaw"));
 
-    public static String readingsSql(String field) {
+    public static final int READING_PAGE_SIZE=2048;
+
+    private static String readingsWhere(String field) {
         if (!FIELDS.contains(field)) throw new IllegalArgumentException("Unbekannter Archivwert.");
-        return "SELECT ts,origin,period FROM readings WHERE device=? AND kind=? AND " + field +
-                " IS NOT NULL AND origin IN ('live','archive','csv') AND ts BETWEEN ? AND ? ORDER BY ts";
+        return " FROM readings WHERE device=? AND kind=? AND " + field +
+                " IS NOT NULL AND origin IN ('live','archive','csv') AND ts BETWEEN ? AND ?";
+    }
+
+    public static String readingsSql(String field) {
+        return "SELECT ts,origin,period"+readingsWhere(field)+" ORDER BY ts";
+    }
+
+    /** Bound each Android CursorWindow and seek to the last timestamp/row id.
+     * Row id disambiguates equal times without dropping another origin or tier.
+     * The caller also advances the lower ts bound so SQLite can seek its index. */
+    public static String readingsPageSql(String field,boolean continued) {
+        return "SELECT ts,origin,period,rowid"+readingsWhere(field)+
+                (continued?" AND (ts>? OR (ts=? AND rowid>?))":"")+
+                " ORDER BY ts,rowid LIMIT "+READING_PAGE_SIZE;
     }
 
     private static final class Intervals {
