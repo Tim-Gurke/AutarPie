@@ -28,6 +28,7 @@
  }
  window.WattWeatherStyleUI={fields,bind,read,apply,capture,addEditAction};
  const oldTiles=ui.applyTiles.bind(ui);ui.applyTiles=function(){oldTiles();for(const t of app.dashboard.config.tiles){const el=app.dashboard.elements.get(t.id);if(el)apply(el,t);}};
+ const oldBoardRender=app.dashboard.render.bind(app.dashboard);app.dashboard.render=function(...args){oldBoardRender(...args);ui.applyTiles();};
  const oldRender=app.solar.render.bind(app.solar);app.solar.render=function(){oldRender();ui.applyTiles();};
  const oldOpen=app.solar.openDay.bind(app.solar);app.solar.openDay=function(index){const context=capture();oldOpen(index);if($('modalTitle').textContent==='Solarvorschau')addEditAction(context);};
  ui.applyTiles();
