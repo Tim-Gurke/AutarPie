@@ -12,9 +12,9 @@ Android 8 oder neuer; das Cockpit benötigt einen aktuellen Android-System-WebVi
 
 | Wetterfarben und Rückschau | Wetterkachel bearbeiten |
 | --- | --- |
-| ![AutarPie 3.0.11: eigene Wetterfarben und getrennte Rückschauzeilen](docs/images/autarpie-3.0.11-dark.svg) | ![AutarPie 3.0.11: Wetterkachel mit mehrfarbigen Symbolen bearbeiten](docs/images/autarpie-3.0.11-settings.svg) |
+| ![AutarPie 3.0.12: eigene Wetterfarben und getrennte Rückschauzeilen](docs/images/autarpie-3.0.12-dark.svg) | ![AutarPie 3.0.12: Wetterkachel mit mehrfarbigen Symbolen bearbeiten](docs/images/autarpie-3.0.12-settings.svg) |
 
-Aktuelle Aufnahmen der unveränderten App-Oberfläche aus dem Browser-Prüflauf für 3.0.11 mit neutralen Beispieldaten. Zusätzlich wird die native Zentrale auf Android 8/11 geprüft. Die Aufnahmen sind kein Funk- oder Hardwaretest. Eigene Farben und Layouts bleiben erhalten.
+Aktuelle Aufnahmen der App-Oberfläche aus dem Browser-Prüflauf für 3.0.12 mit neutralen Beispieldaten. Zusätzlich wird die native Zentrale auf Android 8/11 geprüft. Die Aufnahmen sind kein Funk- oder Hardwaretest. Eigene Farben und Layouts bleiben erhalten.
 
 ## Ein Cockpit, mehrere Anwendungen
 
@@ -50,6 +50,8 @@ Die **optionale Rollerautomatik ist zunächst aus**. Ladeziel, Wohnwagenreserve,
 Bis zu drei 608PD erhalten getrennte Profile, private Kennungen und eigene Verbindungen. Suche und Einrichtung laufen am erfassenden Handy; Anzeigen bedienen den Ablauf. Die neue direkte Ersteinrichtung verlangt eine Bestätigung am Lader und muss am eigenen 608PD praktisch geprüft werden. Vorhandene Verbindungen aus der eigenen Bluetooth-Aufzeichnung bleiben erhalten. Unterstützt sind die nachgewiesenen Livefelder und das Beenden von Laden/Powerbank-Betrieb. App-Start ist zunächst auf das beobachtete **3S-LiPo-Profil 4,21 V/Zelle / 0,50 A** mit ausdrücklicher Profilbestätigung begrenzt. Powerbank und andere Profile am Gerät starten. Nicht belegte Temperatur-/USB-/CC-CV-Felder werden nicht erfunden.
 
 ## Update 3.0.12
+
+Der [Freigabelauf 43874880586](https://github.com/Tim-Gurke/AutarPie/actions/runs/43874880586) ist vollständig erfolgreich: APK-Bau und Lint, **613 Unit-Prüfungen** (331 JavaScript, 275 JVM, sieben Veröffentlichungstests), **947 native Integrationsprüfungen**, **zwölf Android-Prüfungen** auf Android 8/11 und **36 verschiedene Browser-Prüfskripte**. Die veröffentlichte APK verwendet die ursprüngliche Updatesignatur.
 
 Der Archivdienst verarbeitet Android-Bluetooth-Aufträge und Rückmeldungen unabhängig vom Hauptthread. Eine beschäftigte Oberfläche hält dadurch Diensterkennung und Schreibbestätigungen nicht mehr auf. Der bestehende serielle Protokollablauf und sofortige Verbindungsabbruch bleiben erhalten. Die Bestandsplanung durchgehender Messreihen benötigt weniger Arbeit und erkennt weiterhin dieselben gespeicherten Werte und echten Lücken.
 
