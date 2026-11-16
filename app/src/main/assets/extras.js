@@ -38,21 +38,21 @@ window.WattExtras=class {
   search(){const query=document.getElementById('weatherQuery').value.trim();if(query.length<2){this.a.toast('Bitte einen Ort eingeben.');return;}if(!this.a.native){this.a.toast('Die Ortssuche ist in der Android-App verfügbar.');return;}document.getElementById('weatherResults').textContent='Suche …';document.getElementById('weatherSearchButton').disabled=true;this.a.native.searchWeather(query);}
   async place(place){if(!this.a.native)return;const error=await this.a.native.weatherPlace(JSON.stringify(place));if(error)this.a.toast(error);else{document.getElementById('weatherLocation').textContent=place.off?'Wetter ist ausgeschaltet.':place.name;this.a.toast(place.off?'Wetter ausgeschaltet.':'Wetterort gespeichert. Vorschau wird geladen.');this.a.poll();}}
   symbol(code){
-    const sun='<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.4 1.4m11.2 11.2L19 19M5 19l1.4-1.4M17.6 6.4 19 5"/>';
-    const cloud='<path d="M6 17a4 4 0 1 1 1-7.9A6 6 0 0 1 19 11a3 3 0 0 1 0 6Z"/>';
-    let label='Keine Vorhersage',path='<path d="M10 8a3 3 0 1 1 4 3c-2 1-2 2-2 3m0 3v.1"/>';
+    const sun='<g data-weather-part="sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.4 1.4m11.2 11.2L19 19M5 19l1.4-1.4M17.6 6.4 19 5"/></g>';
+    const cloudShape='<path d="M6 17a4 4 0 1 1 1-7.9A6 6 0 0 1 19 11a3 3 0 0 1 0 6Z"/>',cloud='<g data-weather-part="cloud">'+cloudShape+'</g>';
+    let label='Keine Vorhersage',path='<g data-weather-part="unknown"><path d="M10 8a3 3 0 1 1 4 3c-2 1-2 2-2 3m0 3v.1"/></g>';
     if(code===0){label='Sonnig';path=sun;}
     else if(code===1||code===2){
       label='Heiter bis wolkig';const id='weather-cloud-'+(this.symbolId=(this.symbolId||0)+1);
       const rays=Array.from({length:8},(_,i)=>{const a=i*Math.PI/4;return `M${(7+5.2*Math.cos(a)).toFixed(2)} ${(7+5.2*Math.sin(a)).toFixed(2)}L${(7+6.4*Math.cos(a)).toFixed(2)} ${(7+6.4*Math.sin(a)).toFixed(2)}`;}).join('');
-      path=`<defs><mask id="${id}" x="0" y="0" width="24" height="26" maskUnits="userSpaceOnUse"><rect width="24" height="26" fill="white" stroke="none"/><g fill="black" stroke="black">${cloud}</g></mask></defs><g mask="url(#${id})"><circle cx="7" cy="7" r="3.5"/><path d="${rays}"/></g>${cloud}`;
+      path=`<defs><mask id="${id}" x="0" y="0" width="24" height="26" maskUnits="userSpaceOnUse"><rect width="24" height="26" fill="white" stroke="none"/><g fill="black" stroke="black">${cloudShape}</g></mask></defs><g data-weather-part="sun" mask="url(#${id})"><circle cx="7" cy="7" r="3.5"/><path d="${rays}"/></g>${cloud}`;
     }
     else if(code===3){label='Bewölkt';path=cloud;}
-    else if(code===45||code===48){label='Nebel';path=cloud+'<path d="M3 20h18M5 23h14"/>';}
-    else if([51,53,55,56,57,61,63,65,66,67,80,81,82].includes(code)){label='Regen';path=cloud+'<path d="m7 20-1 2m6-2-1 2m6-2-1 2"/>';}
-    else if([71,73,75,77,85,86].includes(code)){label='Schnee';path=cloud+'<path d="M7 20v2m-1-1h2m8-1v2m-1-1h2"/>';}
-    else if([95,96,99].includes(code)){label='Gewitter';path=cloud+'<path d="m12 18-3 3h4l-2 3"/>';}
-    return `<svg class="weather-symbol" viewBox="0 0 24 26" role="img" aria-label="${label}"><title>${label}</title><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${path}</g></svg>`;
+    else if(code===45||code===48){label='Nebel';path=cloud+'<g data-weather-part="fog"><path d="M3 20h18M5 23h14"/></g>';}
+    else if([51,53,55,56,57,61,63,65,66,67,80,81,82].includes(code)){label='Regen';path=cloud+'<g data-weather-part="rain"><path d="m7 20-1 2m6-2-1 2m6-2-1 2"/></g>';}
+    else if([71,73,75,77,85,86].includes(code)){label='Schnee';path=cloud+'<g data-weather-part="snow"><path d="M7 20v2m-1-1h2m8-1v2m-1-1h2"/></g>';}
+    else if([95,96,99].includes(code)){label='Gewitter';path=cloud+'<g data-weather-part="lightning"><path d="m12 18-3 3h4l-2 3"/></g>';}
+    return `<svg class="weather-symbol" data-weather-type="${window.WattWeatherStyle?.type(code)||'unknown'}" viewBox="0 0 24 26" role="img" aria-label="${label}"><title>${label}</title><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${path}</g></svg>`;
   }
   render(){
     const s=this.a.getSnapshot(),e=this.esc.bind(this);this.palette(s.settings.palette||'classic',false);

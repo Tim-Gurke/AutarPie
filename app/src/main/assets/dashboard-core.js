@@ -1,9 +1,9 @@
 /* Dashboard values and configuration. No Bluetooth or UI dependencies. */
 (function (root, factory) {
-  const api = factory(typeof module==='object'&&module.exports?require('./dashboard-preset.json'):root.WattPit?.dashboardPreset?JSON.parse(root.WattPit.dashboardPreset()):null,typeof module==='object'&&module.exports?require('./supplies-core.js'):root.WattSuppliesCore);
+  const api = factory(typeof module==='object'&&module.exports?require('./dashboard-preset.json'):root.WattPit?.dashboardPreset?JSON.parse(root.WattPit.dashboardPreset()):null,typeof module==='object'&&module.exports?require('./supplies-core.js'):root.WattSuppliesCore,typeof module==='object'&&module.exports?require('./weather-style.js'):root.WattWeatherStyle);
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.WattDashboardCore = api;
-})(typeof globalThis === 'object' ? globalThis : this, function (preset,supplies) {
+})(typeof globalThis === 'object' ? globalThis : this, function (preset,supplies,weatherStyle) {
   'use strict';
   const CATALOG = {
     soc:          {label:'Ladezustand', group:'Akku', kind:'shunt', field:'soc', units:['%'], min:0, max:100, digits:1, color:'#65cbb0'},
@@ -244,6 +244,7 @@
     result.valueMode=input.valueMode==='live'?'live':'history';
     result.reverseSign=!!m.energy&&!m.flow&&input.reverseSign===true;
     result.opacity=numeric(input.opacity,100,0,100);result.background=input.background==='auto'?'auto':color(input.background,'auto');
+    if(input.metric==='weather'&&input.weatherStyle&&weatherStyle)result.weatherStyle=weatherStyle.normalize(input.weatherStyle);
     if(input.backgroundSurface&&['solid','gradient'].includes(input.backgroundSurface.mode)){const b=input.backgroundSurface;result.backgroundSurface={mode:b.mode,first:color(b.first,'#142236'),second:color(b.second,'#263a50'),angle:numeric(b.angle,135,0,360)};}
     const p=input.period || {};
     result.period={mode:!m.liveOnly && ['live','last','today','sunrise','reset','custom'].includes(p.mode)?p.mode:'live',amount:numeric(p.amount,6,1,10000),unit:['min','h','d'].includes(p.unit)?p.unit:'h',

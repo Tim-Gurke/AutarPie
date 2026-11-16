@@ -50,14 +50,17 @@ public final class RollerSamplingProof {
         }finally{ledger.getWritableDatabase().endTransaction();}
         JSONObject roller=new JSONObject().put("profile",profile).put("journal",journal),data=ledger.usageLearning(SOURCE,roller,now,"UTC");
         JSONArray charges=data.getJSONArray("charges");
-        check(charges.length()==4,"three interrupted sampled charges and a one-minute top-up all teach; a long recording hole does not");
+        check(charges.length()==5,"sampled charges, a one-minute top-up and the valid energy around a long hole all teach");
         for(int i=0;i<3;i++){
             JSONObject e=charges.getJSONObject(i);check(e.getInt("fragments")==2,"sampling fragments "+i+" count as one charging occasion");
             check(Math.abs(e.getDouble("inputWh")-75)<1e-8&&e.getDouble("observedInputWh")<75&&e.getDouble("estimatedGapWh")>0,"bounded gaps "+i+" are estimated separately from the observed energy");
         }
-        JSONObject topup=charges.getJSONObject(3);
+        JSONObject partial=charges.getJSONObject(3);
+        check(partial.getBoolean("partsOnly")&&!partial.getBoolean("amountComplete")&&Math.abs(partial.getDouble("inputWh")-140)<1e-8&&partial.getDouble("estimatedGapWh")==0,"a four-minute hole retains exactly 140 observed Wh without inventing the missing ten Wh");
+        check(partial.getString("missingReason").contains("Messlücke"),"the retained partial charge explains why its total is unknown");
+        JSONObject topup=charges.getJSONObject(4);
         check(topup.getLong("to")-topup.getLong("from")==60000&&Math.abs(topup.getDouble("inputWh")-2.5)<1e-8,"a one-minute partial charge contributes its own 2.5 Wh with no battery-full or target requirement");
-        check(data.getInt("excludedCharges")==1&&data.getJSONArray("exclusions").getJSONObject(0).getString("reason").contains("Messlücke"),"a four-minute continuous hole is explained even when total coverage exceeds 90 percent");
+        check(data.getInt("excludedCharges")==0,"a high-coverage charge with a long hole no longer disappears from learning");
         int monitored=0;JSONObject days=data.getJSONObject("pathDays");
         for(Iterator<String> it=days.keys();it.hasNext();){JSONObject d=days.getJSONObject(it.next());if(d.getBoolean("complete")){monitored++;check(d.getLong("maxGapMillis")<=120000,"accepted frequency days have only bounded sampling gaps");}}
         check(monitored==4,"midnight sampling boundaries and brief top-ups teach frequency; the two-hour outage and incomplete charge stay unknown");

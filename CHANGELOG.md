@@ -8,6 +8,14 @@ Das bestehende GitHub-Repository heißt jetzt [`Tim-Gurke/AutarPie`](https://git
 
 ## Aktuelles Update
 
+### 3.0.11 · Wetterfarben und erhaltene Roller-Teilmengen
+
+Wetterkacheln je Dashboard unabhängig gestalten: Haupt-/Nebenbeschriftungen, Zahlen, Bedienung, Linien, Balken und einzelne Bestandteile jedes Wettertyps. Gemeinsamer Kacheleditor mit Symbolvorschau, Speichern/Abbrechen und portabler Sicherung. Ein Tag öffnet weiterhin sofort seine Details; dort zusätzlich „Wetterkachel bearbeiten“. Rückschau mit getrennten Solar-/Akkuzeilen statt übereinanderliegenden Werten.
+
+Gültige Roller-Teilmengen bleiben auch bei größeren Messlücken erhalten und werden aus vorhandenen Rohdaten neu gelernt. Fehlende Energie bleibt unbekannt; ein beobachteter Mindestanteil je Ladetag wird klar von einem vollständigen Tagesbedarf und sicherer Ladehäufigkeit unterschieden. Kurzladungen, Journal und Anlagenbilanz bleiben erhalten. Am 16.11.2026 ausdrücklich zum Bau und zur Veröffentlichung freigegeben. [Bedienung und Prüfgrenzen](docs/changes-3.0.11.md).
+
+## Veröffentlichte Versionen
+
 ### 3.0.10 · Gerätewechsel, stabile Wetterbalken und kurze Rollerladungen
 
 Nach dem Schließen eines GATT-Clients vor der nächsten Verbindung eine kurze Freigabephase einhalten, auch über neue Archivdienst-Instanzen hinweg. Ausschließlich beim anfänglichen Verbindungsfehler 133 mit einem frischen Client höchstens dreimal verbinden; weitere Versuche nach begrenzter Wartezeit. Abbruch beendet die Wartephase. Alte Rückrufe bleiben vom neuen Client getrennt, bestehende Kopplungen und bereits gespeicherte Daten erhalten.
@@ -17,8 +25,6 @@ Am Ende das Ergebnis aller Geräte gemeinsam zeigen und in der Diagnose erhalten
 Den bekannten Abend-Akkustand in „Heute“ während einer Hintergrundaktualisierung erhalten und den laufenden beziehungsweise gestörten Abruf kennzeichnen. Erfolgreich leere Antworten und ein Anlagen-/Shuntwechsel übernehmen keinen alten Messpunkt. Kurze Roller-Zwischenladungen unabhängig vom Ladeziel lernen; begrenzte Abfragelücken anteilig als Schätzung ergänzen und beobachtete AUS-Zeiten bei der automatischen Enderkennung berücksichtigen. Ladehäufigkeit aus ausreichend überwachten Tagen statt aus unmöglich exakt lückenlosen Abfragezeiten ableiten. Letzte aufgezeichnete und zuletzt zum Lernen verwendete Ladung sowie Ausschlussgründe unterscheiden. Journal-Messwerte bleiben erhalten.
 
 109 Archiv-Prüfschritte, 323 JavaScript-Prüfungen und 35 native Roller-Prüfschritte plus Abgleich mit der produktiven Anzeige erfolgreich. Der konkrete Umfang wurde am 15.11.2026 ausdrücklich zum APK-Bau und zur Veröffentlichung nach erfolgreicher Gesamtprüfung freigegeben. Die native Ursache eines realen Status 133 ist durch die begrenzte Wiederholungsstrategie nicht bewiesen. [Änderungen und Prüfgrenzen](docs/changes-3.0.10.md).
-
-## Veröffentlichte Versionen
 
 ### 3.0.9 · Bluetooth-Verarbeitung während blockierender Archivprüfung
 

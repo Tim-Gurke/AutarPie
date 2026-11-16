@@ -40,6 +40,7 @@ final class ConfigurationBackup {
             if(!id.matches("[a-zA-Z0-9_-]{1,90}")||!ids.add(id)||!metric.matches("[a-zA-Z][a-zA-Z0-9]{0,40}"))throw new IllegalArgumentException("Ungültige Kachel in der Sicherung.");
             JSONObject tile=pick(row,"id","metric","title","unit","type","digits","fontSize","color","colorSource","colorMid","colorEnd","adaptiveColor","multicolor","invert","min","max","scaleMode","valueMode","reverseSign","background","opacity","scaleSource","device","cell","rangeReserve","formula");
             if(row.has("backgroundSurface"))tile.put("backgroundSurface",AutarPieConfig.surface(row.getJSONObject("backgroundSurface")));
+            if(metric.equals("weather")&&row.has("weatherStyle"))tile.put("weatherStyle",WeatherStyleConfig.checked(row.getJSONObject("weatherStyle")));
             tile.put("fontSize",Math.max(18,Math.min(20,row.optDouble("fontSize",20))));
             if(row.has("period"))tile.put("period",pick(row.getJSONObject("period"),"mode","amount","unit","aggregate","resetAt","from","to"));
             if(row.has("layouts")){

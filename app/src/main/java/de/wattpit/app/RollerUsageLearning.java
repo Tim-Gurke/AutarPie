@@ -16,7 +16,7 @@ final class RollerUsageLearning {
     private final Map<String,Day> offKnown=new HashMap<>();
     private ZoneId zone;
     private static final class Day {
-        final TreeMap<Long,Long> known=new TreeMap<>(); double wh; boolean invalid; int starts;
+        final TreeMap<Long,Long> known=new TreeMap<>(); double wh,observedWh; boolean invalid; int starts;
         void add(long a,long b){Map.Entry<Long,Long> p=known.floorEntry(a);if(p!=null&&p.getValue()>=a){a=p.getKey();b=Math.max(b,p.getValue());known.remove(p.getKey());}while((p=known.ceilingEntry(a))!=null&&p.getKey()<=b){b=Math.max(b,p.getValue());known.remove(p.getKey());}known.put(a,b);}
         long covered(){long n=0;for(var p:known.entrySet())n+=p.getValue()-p.getKey();return n;}
         long maxGap(long from,long to){long gap=0,end=from;for(var p:known.entrySet()){gap=Math.max(gap,p.getKey()-end);end=Math.max(end,p.getValue());}return Math.max(gap,to-end);}
@@ -42,7 +42,7 @@ final class RollerUsageLearning {
                 if(!Double.isFinite(p)||!Double.isFinite(q)||!Double.isFinite(idle)||!Double.isFinite(eff)||eff<=0||eff>1||idle<0)continue;
                 p=Math.max(0,p);q=Math.max(0,q);double battery=(p+q)*.5*(b-a)/H,input=(de.wattpit.app.core.RollerEnergy.inputWatts(p,idle,eff)+de.wattpit.app.core.RollerEnergy.inputWatts(q,idle,eff))*.5*(b-a)/H;
                 Charge s=samples.computeIfAbsent(session,k->new Charge());if(s.from==0)s.from=a;else s.maxGap=Math.max(s.maxGap,a-s.to);s.to=b;s.millis+=b-a;s.wh+=input;s.battery+=battery;s.known.add(a,b);
-                final long from=a,to=b;final double wh=input;split(a,b,(d,x,y)->{d.add(x,y);d.wh+=wh*(y-x)/(to-from);});
+                final long from=a,to=b;final double wh=input;split(a,b,(d,x,y)->{d.add(x,y);double part=wh*(y-x)/(to-from);d.wh+=part;d.observedWh+=part;});
             }}
         }
         Map<String,JSONObject> last=new HashMap<>();
@@ -78,20 +78,23 @@ final class RollerUsageLearning {
             if(!legacy){Day off=offKnown.get(first.getJSONObject("profile").optString("chargePath"));if(off!=null)covered.addClipped(off,a,b);millis=covered.covered();maxGap=covered.maxGap(a,b);}
             String reason=tail.optString("endReason");double coverage=b>a?Math.min(1,millis/(double)(b-a)):0;
             long missing=Math.max(0,b-a-millis);String rejection=!trustworthy?"Berechnungsgrundlagen fehlen":coverage<MIN_CHARGE_COVERAGE?"Zu wenig Messabdeckung":maxGap>MAX_CHARGE_GAP||missing>MAX_CHARGE_MISSING?"Zu große Messlücke":wh<=0||!Double.isFinite(wh)?"Ladeenergie unbekannt":reason.contains("pausiert")||reason.contains("verloren")?"Ladeaufzeichnung unterbrochen":a<lastCompleteEnd?"Überlappende Ladeaufzeichnung":"";
-            if(!rejection.isEmpty()){excluded++;exclusions.put(new JSONObject().put("from",a).put("to",b).put("coverage",coverage).put("maxGapMillis",maxGap).put("reason",rejection));split(a,b,(d,x,y)->d.invalid=true);continue;}
+            // A gap makes the total unknown; it does not erase safely observed energy.
+            // Overlapping/invalid records cannot supply another occasion or another Wh.
+            boolean partsOnly=!rejection.isEmpty(),usable=Double.isFinite(wh)&&wh>0&&coverage>0&&a>=lastCompleteEnd;
+            if(partsOnly){split(a,b,(d,x,y)->d.invalid=true);if(!usable){excluded++;exclusions.put(new JSONObject().put("from",a).put("to",b).put("coverage",coverage).put("maxGapMillis",maxGap).put("reason",rejection));continue;}}
             if(a<since||b>now)continue;lastCompleteEnd=b;
             // Fill only bounded sampling gaps, using this charge's observed mean power.
             // These are planning estimates; journal measurements and plant totals stay untouched.
-            double estimatedWh=wh/coverage,estimatedBattery=battery/coverage,extraWh=estimatedWh-rawWh;
-            charges.put(new JSONObject().put("id",mac+":"+a).put("mac",mac).put("from",a).put("to",b).put("inputWh",estimatedWh).put("batteryWh",estimatedBattery).put("observedInputWh",wh).put("estimatedGapWh",estimatedWh-wh).put("gapMillis",missing).put("maxGapMillis",maxGap).put("samplingTolerance",1).put("coverage",coverage).put("estimatedInput",true).put("fragments",group.size()));
-            split(a,b,(d,x,y)->{d.add(x,y);d.wh+=extraWh*(y-x)/(b-a);});
+            double estimatedWh=partsOnly?wh:wh/coverage,estimatedBattery=partsOnly?battery:battery/coverage,extraWh=estimatedWh-rawWh,legacyWh=wh-rawWh;
+            charges.put(new JSONObject().put("id",mac+":"+a).put("mac",mac).put("from",a).put("to",b).put("inputWh",estimatedWh).put("batteryWh",estimatedBattery).put("observedInputWh",wh).put("estimatedGapWh",estimatedWh-wh).put("gapMillis",missing).put("maxGapMillis",maxGap).put("samplingTolerance",1).put("coverage",coverage).put("partsOnly",partsOnly).put("amountComplete",!partsOnly).put("missingReason",partsOnly?rejection:"").put("estimatedInput",true).put("fragments",group.size()));
+            split(a,b,(d,x,y)->{if(!partsOnly)d.add(x,y);d.wh+=extraWh*(y-x)/(b-a);d.observedWh+=legacyWh*(y-x)/(b-a);});
             String day=Instant.ofEpochMilli(a).atZone(zone).toLocalDate().toString();Day d=days.get(day);if(d!=null)d.starts++;
         }
         JSONObject pathDays=new JSONObject();LocalDate today=Instant.ofEpochMilli(now).atZone(zone).toLocalDate();
         for(var pair:days.entrySet()){
             LocalDate date=LocalDate.parse(pair.getKey());long a=date.atStartOfDay(zone).toInstant().toEpochMilli(),b=date.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli();Day d=pair.getValue();long covered=d.covered();
             long maxGap=d.maxGap(a,b);double coverage=covered/(double)(b-a);
-            pathDays.put(pair.getKey(),new JSONObject().put("mac",mac).put("millis",covered).put("dayMillis",b-a).put("wh",d.wh).put("charges",d.starts).put("coverage",coverage).put("maxGapMillis",maxGap).put("samplingTolerance",1).put("complete",date.isBefore(today)&&coverage>=MIN_DAY_COVERAGE&&maxGap<=MAX_DAY_GAP&&!d.invalid));
+            pathDays.put(pair.getKey(),new JSONObject().put("mac",mac).put("millis",covered).put("dayMillis",b-a).put("wh",d.wh).put("observedWh",d.observedWh).put("charges",d.starts).put("coverage",coverage).put("maxGapMillis",maxGap).put("samplingTolerance",1).put("complete",date.isBefore(today)&&coverage>=MIN_DAY_COVERAGE&&maxGap<=MAX_DAY_GAP&&!d.invalid));
         }
         return result.put("charges",charges).put("pathDays",pathDays).put("excludedCharges",excluded).put("exclusions",exclusions).put("latestRecorded",latestRecorded);
     }

@@ -92,3 +92,11 @@ test('a delayed BMS packet remains cached in raw tiles and range estimates and c
  const formula=M.read({metric:'formula',formula:{expression:'A*2',variables:{A:{metric:'rollerSoc'}}}},s,null,null,()=>({value:raw,at:s.roller.live.at}),s.now);assert.equal(formula.value,null);
  s.roller.live={...s.roller.live,at:s.now,soc:25,remainingAh:6};const actual=M.read({metric:'rollerRange'},s,null,null,()=>null,s.now);assert.equal(actual.stale,false);assert.equal(D.liveValue('rollerSoc',null,null,s,s.now),25);
 });
+
+
+test('selective color restore transfers weather palettes while layout-only restore preserves the local palette',()=>{
+ const board=D.defaults(),tile=board.tiles.find(t=>t.metric==='weather');tile.weatherStyle={version:1,colors:{text:'#112233'},icons:{partly:{cloud:'#ffffff'}}};
+ const current={dashboard:board,workspace:A.normalize({},board),appearance:A.appearance({})},saved=structuredClone(current);saved.workspace.pages[0].board.tiles.find(t=>t.metric==='weather').weatherStyle.colors.text='#abcdef';
+ const restored=U.mergeView(current,saved,['colors']);assert.equal(restored.workspace.pages[0].board.tiles.find(t=>t.metric==='weather').weatherStyle.colors.text,'#abcdef');
+ const layout=U.mergeView(current,saved,['layout']);assert.equal(layout.workspace.pages[0].board.tiles.find(t=>t.metric==='weather').weatherStyle.colors.text,'#112233');assert.equal(tile.weatherStyle.colors.text,'#112233');
+});

@@ -2,7 +2,7 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.AutarPieUpdate=api;})(typeof globalThis==='object'?globalThis:this,function(){
  'use strict';
  const copy=x=>JSON.parse(JSON.stringify(x)),finite=x=>x!==null&&x!==''&&Number.isFinite(Number(x));
- const COLOR_KEYS=['color','colorSource','colorMid','colorEnd','adaptiveColor','multicolor','invert','background','backgroundSurface','opacity','scaleSource'];
+ const COLOR_KEYS=['color','colorSource','colorMid','colorEnd','adaptiveColor','multicolor','invert','background','backgroundSurface','opacity','scaleSource','weatherStyle'];
  const VIEW_PARTS={colors:'Farben & Design',selection:'Kachelauswahl',layout:'Kachelgrößen & Anordnung',dashboards:'Dashboards & Ansichtseinstellungen'};
  function formula(source,values={},validateOnly=false){
   source=String(source||'').trim().replace(/^=/,'');if(!source||source.length>1000)throw Error('Die Formel muss zwischen 1 und 1000 Zeichen enthalten.');

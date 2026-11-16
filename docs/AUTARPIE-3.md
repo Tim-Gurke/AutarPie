@@ -1,6 +1,6 @@
 # AutarPie einrichten und benutzen
 
-**Stand 3.0.6:** [Rollerlernen bei Abwesenheit, gekennzeichnete Ladehäufigkeit und gemeinsame Kurzwahlfarbe](changes-3.0.6.md). Zuerst die Zentrale, danach alle Anzeigen auf 3.0.6 aktualisieren.
+**Stand 3.0.11:** [Wetterfarben je Kachel und erhaltene Roller-Teilmengen](changes-3.0.11.md). Zuerst die Zentrale, danach alle Anzeigen auf 3.0.11 aktualisieren.
 
 ## Rollen und Wiederanlauf
 
@@ -13,6 +13,14 @@ Unter Einstellungen → Zentrale & Verbindungen → Aufzeichnung, Archiv & Autos
 E-Scooter → **Verbrauch lernen** zeigt Energie je ausreichend erfasster Ladung und die Grundlage der üblichen Häufigkeit getrennt. Der Roller benötigt dafür keinen ganztägigen BMS-Empfang. Bei unbekannter Häufigkeit unter Bearbeiten eine vorläufige Zahl von Ladungen pro Woche eingeben; 0 lässt sie offen. Geeignete bisherige Tages-/Kilometerschätzungen bleiben als eigene Annahme nutzbar. Mindestens drei vollständig beobachtete abgeschlossene Ladeweg-Tage können die tatsächliche Häufigkeit beziehungsweise den Tagesdurchschnitt liefern.
 
 Dazu den tatsächlich ausschließlich für den Roller verwendeten Ladeweg unter Lastausgang → Einrichten entsprechend zuordnen und aktiv auslesen. Bestätigte Aus-Zeiten können auch bei abwesendem Roller ausgewertet werden; eine Funklücke oder eine abgeschaltete Zentrale ist keine bestätigte Nullnutzung. Bei Rückkehr ersetzen frische BMS-Werte den pauschalen Ansatz einer konkret geplanten Ladung. [Ausführliche Bedienung und Grenzen](changes-3.0.6.md).
+
+## Wetterfarben je Dashboard
+
+Einen Tag wie bisher einmal antippen. In der Vorschau/Rückschau unten **✎ Wetterkachel bearbeiten** wählen. Alternativ **Anordnen → Wetterkachel → Anpassen**. Unter **Wetter: Schrift, Balken & Symbole** die gewünschte eigene Farbe mit einem Häkchen aktivieren. Hauptschrift, Nebenbeschriftungen, Bedienung, Linien und alle Balken sind getrennt einstellbar. Unter **Wettersymbol** den Wettertyp auswählen und seine Bestandteile einzeln färben; die Vorschau zeigt das Ergebnis. Ohne Häkchen gilt die Vorgabe des aktuellen Dashboards/Kachelhintergrunds.
+
+**Übernehmen** speichert nur diese Wetterkachel auf diesem Dashboard. **Abbrechen** und Zurück verwerfen den Entwurf. Die Übersicht darf deshalb andere Wetterfarben als Solar oder ein eigenes Dashboard haben. Die Ansichtssicherung nimmt diese Unterschiede mit. Solarertrag und Akku stehen in der Rückschau in eigenen Zeilen.
+
+Auch lückenhafte Rolleraufzeichnungen behalten ab 3.0.11 ihre gültigen Teilmengen. Die Lernanzeige unterscheidet vollständig genug erfasste Ladungen, erhaltene Teilmengen, beobachtete Ladetage und ausreichend überwachte Häufigkeitstage. **≥ … Wh / beob. Ladetag** ist nur der durchschnittliche erfasste Mindestanteil bekannter Ladetage. Unbekannte Tage und fehlende Energie werden nicht als Null oder vollständiger Bedarf ausgegeben. [Details und Grenzen](changes-3.0.11.md).
 
 ## Verbrauchslernen aus dem gespeicherten Verlauf
 

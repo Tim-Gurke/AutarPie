@@ -107,3 +107,19 @@ test('native qualified sampling days teach frequency while an unbounded hole and
 test('the latest recorded charge is distinct from the latest usable learning charge',()=>{
  const p=scooterProfile(),data=chargeData(),latest=now-H,c={...config(p),rollerLearning:data};data.latestRecorded=latest;data.exclusions=[{to:latest,reason:'Zu große Messlücke',coverage:.7}];const v=X.learned(p,c,roller,'UTC',now),text=X.learningText(v);assert.equal(v.latestRecorded,latest);assert.equal(v.latest,data.charges[0].to);assert.match(text,/Letzte aufgezeichnete Ladung/);assert.match(text,/Zuletzt fürs Lernen genutzt/);assert.match(text,/Neueste Ladung nicht genutzt: Zu große Messlücke · 70 % Messabdeckung/);
 });
+
+function retainedPartial(){const e=sampledCharge(.5);return {...e,inputWh:e.observedInputWh,estimatedGapWh:0,maxGapMillis:600000,partsOnly:true,amountComplete:false};}
+test('large holes retain valid partial energy and its newest date without supplying an invented full charge',()=>{
+ const p=scooterProfile({chargesPerWeek:7}),data=chargeData();data.charges=[retainedPartial()];const dayKey=new Date(data.charges[0].from).toISOString().slice(0,10);data.pathDays[dayKey]={mac:roller.profile.mac,complete:false,dayMillis:D,millis:H,observedWh:150,wh:150,charges:1};
+ const v=X.learned(p,{...config(p),rollerLearning:data},roller,'UTC',now);assert.equal(v.charges,1);assert.equal(v.partialCharges,1);assert.equal(v.partialInputWh,150);assert.equal(v.minimumWh,150);assert.equal(v.observedChargingDays,1);assert.equal(v.latest,data.charges[0].to);assert.equal(v.chargeWh,null);assert.equal(v.wh,null);assert.equal(v.frequency,null);assert.match(X.learningText(v),/fehlende Energie unbekannt/);assert.match(X.learningText(v),/kein vollständiger Tagesbedarf/);
+});
+test('repeated or overlapping partial records and another BMS cannot inflate learned quantities',()=>{
+ const data=chargeData(),e=retainedPartial();data.charges=[e,{...e},{...e,id:'overlap',from:e.from+10000},{...e,id:'foreign',mac:'other'}];const v=X.learned(scooterProfile(),{rollerLearning:data},roller,'UTC',now);assert.equal(v.charges,1);assert.equal(v.partialInputWh,150);
+});
+test('partial marker cannot bypass measured-energy or coverage consistency',()=>{
+ for(const change of [{amountComplete:true},{inputWh:300},{estimatedGapWh:2},{observedInputWh:NaN},{gapMillis:1},{coverage:0},{maxGapMillis:Infinity}]){const data=chargeData();data.charges=[{...retainedPartial(),...change}];assert.equal(X.learned(scooterProfile(),{rollerLearning:data},roller,'UTC',now).charges,0,JSON.stringify(change));}
+});
+test('three positive partial charging days stay separate from fully monitored frequency days and never turn unknown days into zero',()=>{
+ const data=chargeData();data.charges=[retainedPartial()];for(let i=1;i<=3;i++)data.pathDays[new Date(start-i*D).toISOString().slice(0,10)]={mac:roller.profile.mac,complete:false,dayMillis:D,millis:H,observedWh:i*10,wh:i*10,charges:1};
+ const v=X.learned(scooterProfile(),{rollerLearning:data},roller,'UTC',now);assert.equal(v.observedChargingDays,3);assert.equal(v.minimumWh,20);assert.equal(v.monitoredDays,0);assert.equal(v.wh,null);assert.equal(v.frequency,null);
+});

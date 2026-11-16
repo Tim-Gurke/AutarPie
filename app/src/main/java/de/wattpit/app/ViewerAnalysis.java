@@ -111,7 +111,7 @@ final class ViewerAnalysis {
             edit.putString("analysisTimezone",m.getString("timezone")).commit();if(dirtyRollerTo>dirtyRollerFrom)ledger.derive(dirtyRollerFrom,dirtyRollerTo);metadata=m;
             // At most 90 days; the central remains a raw-data collector.
             JSONObject roller=new JSONObject(lan.part("roller")),profile=roller.optJSONObject("profile");
-            String usageKey=(profile==null?"":profile.optString("mac"))+"|"+roller.optLong("sessionRevision")+"|"+versions.optString("roller_raw")+"|"+versions.optString("load_raw");long usageNow=System.currentTimeMillis();
+            String usageKey="partial-energy-v2|"+(profile==null?"":profile.optString("mac"))+"|"+roller.optLong("sessionRevision")+"|"+versions.optString("roller_raw")+"|"+versions.optString("load_raw");long usageNow=System.currentTimeMillis();
             if(profile!=null&&!profile.optString("mac").isEmpty()&&(!usageKey.equals(usageRevision)||usageNow-usageAt>300000||rollerObservations.length()==0)){
                 rollerObservations=ledger.observedDays(RollerLedger.source(repo.prefs),profile.optString("mac"),Math.max(0,usageNow-90L*86400000),usageNow,m.getString("timezone"));
                 rollerObservations.put("learning",ledger.usageLearning(RollerLedger.source(repo.prefs),roller,usageNow,m.getString("timezone")));
