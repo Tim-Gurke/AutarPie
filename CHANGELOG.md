@@ -8,13 +8,19 @@ Das bestehende GitHub-Repository heißt jetzt [`Tim-Gurke/AutarPie`](https://git
 
 ## Aktuelles Update
 
+### 3.0.12 · Archiv-Bluetooth vom Hauptthread trennen
+
+Android-Bluetooth-Aufträge und ihre Rückmeldungen im Archivdienst verwenden einen eigenen HandlerThread. Ein beschäftigter Hauptthread blockiert damit nicht mehr Diensterkennung, Schreibbestätigungen und den bestehenden seriellen Sitzungserhalt. Abbruch und Freigabe des GATT-Clients bleiben erhalten. Die lokale Bestandsplanung verlängert zusammenhängende Messintervalle ohne unnötiges Entfernen und erneutes Einfügen; vorhandene Daten und echte Lücken werden unverändert erkannt.
+
+Direkter Vergleich mit 3.0.11 bei blockiertem Hauptthread, 114 gezielte Transportprüfungen, 45 Vergleichsprüfungen mit 240.000 Punktentscheidungen und neun SQLite-/Fortsetzungsanforderungen lokal bestanden. Tim hat diesen konkreten Reparaturumfang am 16.11.2026 zum APK-Bau und zur Veröffentlichung freigegeben. Ein Softwaretest beweist weder die Ursache jedes Status-19-Abbruchs noch reale Funkstabilität oder die gesamte Ladezeit der Anzeigehandys. [Aktualisieren und Prüfgrenzen](docs/changes-3.0.12.md).
+
+## Veröffentlichte Versionen
+
 ### 3.0.11 · Wetterfarben und erhaltene Roller-Teilmengen
 
 Wetterkacheln je Dashboard unabhängig gestalten: Haupt-/Nebenbeschriftungen, Zahlen, Bedienung, Linien, Balken und einzelne Bestandteile jedes Wettertyps. Gemeinsamer Kacheleditor mit Symbolvorschau, Speichern/Abbrechen und portabler Sicherung. Ein Tag öffnet weiterhin sofort seine Details; dort zusätzlich „Wetterkachel bearbeiten“. Rückschau mit getrennten Solar-/Akkuzeilen statt übereinanderliegenden Werten.
 
 Gültige Roller-Teilmengen bleiben auch bei größeren Messlücken erhalten und werden aus vorhandenen Rohdaten neu gelernt. Fehlende Energie bleibt unbekannt; ein beobachteter Mindestanteil je Ladetag wird klar von einem vollständigen Tagesbedarf und sicherer Ladehäufigkeit unterschieden. Kurzladungen, Journal und Anlagenbilanz bleiben erhalten. Am 16.11.2026 ausdrücklich zum Bau und zur Veröffentlichung freigegeben. [Bedienung und Prüfgrenzen](docs/changes-3.0.11.md).
-
-## Veröffentlichte Versionen
 
 ### 3.0.10 · Gerätewechsel, stabile Wetterbalken und kurze Rollerladungen
 

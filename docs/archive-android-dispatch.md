@@ -1,6 +1,6 @@
-# Vorbereitete Archivkorrektur nach 3.0.11
+# Archivkorrektur 3.0.12 nach 3.0.11
 
-Stand: 16.11.2026. Quellcode vorbereitet und lokal geprüft; noch keine neue APK gebaut oder veröffentlicht.
+Stand: 16.11.2026. Quellcode vorbereitet und lokal geprüft. Tim hat den konkreten Umfang zum APK-Bau und zur Veröffentlichung nach erfolgreicher Gesamtprüfung freigegeben.
 
 ## Problem und Änderung
 

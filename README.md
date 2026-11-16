@@ -1,10 +1,10 @@
-# AutarPie 3.0.11
+# AutarPie 3.0.12
 
 ![AutarPie Ressourcen-Kreislauf](app/src/main/assets/brand.svg)
 
 **Das lokale Cockpit für autarkes Leben.** Solar und Stromverteilung, Wohnwagenakku, E-Scooter, Modellbau, Gas und Wasser in einer gemeinsamen App. AutarPie führt **Watt’n’Pit und WohnPit** weiter.
 
-**[AutarPie 3.0.11 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.0.11/AutarPie-v3.0.11.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.0.11.md) · [Vollständige Versionshistorie](CHANGELOG.md)
+**[AutarPie 3.0.12 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.0.12/AutarPie-v3.0.12.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.0.12.md) · [Vollständige Versionshistorie](CHANGELOG.md)
 
 Android 8 oder neuer; das Cockpit benötigt einen aktuellen Android-System-WebView. Kein Konto, keine Werbung. Mess- und Lerndaten bleiben auf den eigenen Geräten. Der optionale Wetterabruf verwendet Open-Meteo. Der Anlagenverbund überträgt Daten verschlüsselt im lokalen WLAN.
 
@@ -48,6 +48,14 @@ Der SmartSolar-Lastausgang ist E-Scooter, Modellbau oder einem anderen Verbrauch
 Die **optionale Rollerautomatik ist zunächst aus**. Ladeziel, Wohnwagenreserve, Tagesziel, Überschussschwellen und Prognosereserve sind variabel. Ein aktives Anzeigehandy erstellt den zeitlich begrenzten Plan; die Zentrale kontrolliert direkte Abschaltbedingungen. Ein Schaltauftrag ist erst mit der tatsächlichen Geräteantwort bestätigt. Ohne gültigen Plan wird zum Ausschalten angefordert. BMS-Empfang allein beweist noch keinen eingesteckten Ladestecker.
 
 Bis zu drei 608PD erhalten getrennte Profile, private Kennungen und eigene Verbindungen. Suche und Einrichtung laufen am erfassenden Handy; Anzeigen bedienen den Ablauf. Die neue direkte Ersteinrichtung verlangt eine Bestätigung am Lader und muss am eigenen 608PD praktisch geprüft werden. Vorhandene Verbindungen aus der eigenen Bluetooth-Aufzeichnung bleiben erhalten. Unterstützt sind die nachgewiesenen Livefelder und das Beenden von Laden/Powerbank-Betrieb. App-Start ist zunächst auf das beobachtete **3S-LiPo-Profil 4,21 V/Zelle / 0,50 A** mit ausdrücklicher Profilbestätigung begrenzt. Powerbank und andere Profile am Gerät starten. Nicht belegte Temperatur-/USB-/CC-CV-Felder werden nicht erfunden.
+
+## Update 3.0.12
+
+Der Archivdienst verarbeitet Android-Bluetooth-Aufträge und Rückmeldungen unabhängig vom Hauptthread. Eine beschäftigte Oberfläche hält dadurch Diensterkennung und Schreibbestätigungen nicht mehr auf. Der bestehende serielle Protokollablauf und sofortige Verbindungsabbruch bleiben erhalten. Die Bestandsplanung durchgehender Messreihen benötigt weniger Arbeit und erkennt weiterhin dieselben gespeicherten Werte und echten Lücken.
+
+Ein direkter Belastungsvergleich mit 3.0.11 reproduziert die Abhängigkeit vom Hauptthread und prüft ihre Korrektur mit simuliertem Android-Transport. Physische Funkstabilität und sämtliche Verzögerungen zwischen Zentrale und Anzeigehandys sind damit nicht nachgewiesen. [Nachweis und Grenzen](docs/archive-android-dispatch.md).
+
+**Zuerst die Zentrale beziehungsweise das direkt per Bluetooth erfassende Handy auf 3.0.12 aktualisieren.** Anzeigen mit 3.0.11 bleiben kompatibel; ein gemeinsamer Versionsstand wird empfohlen. Über die vorhandene App installieren, Daten und Kopplungen behalten. Anschließend **Fehlende Archivdaten abrufen** verwenden und den Abschluss beider Geräte prüfen. Neue Grundeinstellungen und automatische Sicherungen bleiben für ein späteres Update vorgemerkt. [Update und Bedienung 3.0.12](docs/changes-3.0.12.md).
 
 ## Update 3.0.11
 
