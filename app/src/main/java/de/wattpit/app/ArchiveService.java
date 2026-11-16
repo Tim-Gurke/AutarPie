@@ -32,6 +32,11 @@ public final class ArchiveService extends Service {
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
     private final ArchiveIo io=new ArchiveIo(this::idleTransport,this::transportFailed);
     private final Handler main=new Handler(Looper.getMainLooper());
+    // Android callbacks must not wait for the UI, scan callbacks or activity work.
+    // ArchiveIo remains the serial protocol owner; this looper only dispatches
+    // asynchronous Android operations and their completions.
+    private final HandlerThread bluetoothThread=new HandlerThread("AutarPie-Archiv-Android");
+    private Handler bluetooth;
     private final BlockingQueue<byte[]> received=new LinkedBlockingQueue<>(512);
     private final ArrayDeque<ArchiveCodec.Message> messages=new ArrayDeque<>();
     private ArchiveCodec.Stream stream=new ArchiveCodec.Stream();
@@ -103,7 +108,7 @@ public final class ArchiveService extends Service {
         private static final long serialVersionUID=1;
         GattRejected(String operation){super("Android hat den Bluetooth-Auftrag nicht gestartet ("+operation+")");}
     }
-    @Override public void onCreate(){super.onCreate();repository=Repository.get(this);getSystemService(NotificationManager.class).createNotificationChannel(new NotificationChannel(CHANNEL,"Gerätearchiv importieren",NotificationManager.IMPORTANCE_LOW));}
+    @Override public void onCreate(){super.onCreate();bluetoothThread.start();bluetooth=new Handler(bluetoothThread.getLooper());repository=Repository.get(this);getSystemService(NotificationManager.class).createNotificationChannel(new NotificationChannel(CHANNEL,"Gerätearchiv importieren",NotificationManager.IMPORTANCE_LOW));}
     @Override public int onStartCommand(Intent intent,int flags,int startId){
         if(AppRole.viewerOnly(this)||LanSync.get(this).viewer()){stopSelf();return START_NOT_STICKY;}
         if(intent==null){stopSelf();return START_NOT_STICKY;}
@@ -168,7 +173,7 @@ public final class ArchiveService extends Service {
     private void op(String type,GattAction action) throws Exception {
         check();long wait=20000,queuedAt=SystemClock.elapsedRealtime();
         CompletableFuture<Integer> future=new CompletableFuture<>();operationType=type;operation=future;
-        main.post(()->{if(future.isDone()||cancelled)return;long delay=Math.max(0,SystemClock.elapsedRealtime()-queuedAt);longestAndroidQueueDelay=Math.max(longestAndroidQueueDelay,delay);try{if(!action.run())future.completeExceptionally(new GattRejected(type));}catch(Exception e){future.completeExceptionally(e);}});
+        if(!bluetooth.post(()->{if(future.isDone()||cancelled)return;long delay=Math.max(0,SystemClock.elapsedRealtime()-queuedAt);longestAndroidQueueDelay=Math.max(longestAndroidQueueDelay,delay);try{if(!action.run())future.completeExceptionally(new GattRejected(type));}catch(Exception e){future.completeExceptionally(e);}}))future.completeExceptionally(new IOException("Android-Bluetooth-Arbeitsablauf ist beendet"));
         try {int status=future.get(wait,TimeUnit.MILLISECONDS);if(status!=0){trace(type+" · GATT "+status);throw new GattFailure(status);}}
         catch(TimeoutException e){future.completeExceptionally(e);if(type.equals("write"))receiveFailure=new IOException("Bluetooth-Schreibauftrag wurde nicht bestätigt",e);check();throw e;}
         catch(ExecutionException e){if(e.getCause() instanceof Exception)throw (Exception)e.getCause();throw e;}
@@ -258,7 +263,7 @@ public final class ArchiveService extends Service {
             awaitGattRelease(attempt==1?0:(attempt-1)*1000L);
             check();disconnectStatus=0;connectionAttempts++;
             stage("Bluetooth verbinden · Versuch "+attempt+" von 3");
-            try{op("connect",()->{gatt=device.connectGatt(this,false,callback,BluetoothDevice.TRANSPORT_LE,BluetoothDevice.PHY_LE_1M_MASK,main);return gatt!=null;});return;}
+            try{op("connect",()->{gatt=device.connectGatt(this,false,callback,BluetoothDevice.TRANSPORT_LE,BluetoothDevice.PHY_LE_1M_MASK,bluetooth);return gatt!=null;});return;}
             catch(LinkClosed e){
                 closeGatt();check();
                 if(e.status!=133||attempt==3)throw e;
@@ -541,6 +546,6 @@ public final class ArchiveService extends Service {
         repository.db.archiveHistory(mac,p);
     }
     private void closeGatt(){sessionReady=false;BluetoothGatt g=gatt;gatt=null;connected=false;failOperation(new IOException("Archivverbindung beendet"));if(g!=null){try{g.disconnect();}catch(SecurityException ignored){}try{g.close();}catch(SecurityException ignored){}finally{lastGattClosedAt=SystemClock.elapsedRealtime();}}}
-    @Override public void onDestroy(){if(!cancelled)cancellationReason="Archivdienst beendet; Abgleich unvollständig";cancelled=true;failOperation(new IOException(cancellationReason));closeGatt();io.close();repository.liveBusy=false;if(!liveOnly){repository.archiveBusy=false;repository.finishArchiveIfActive();repository.archiveRun.finish();}worker.shutdownNow();stopForeground(STOP_FOREGROUND_REMOVE);super.onDestroy();}
+    @Override public void onDestroy(){if(!cancelled)cancellationReason="Archivdienst beendet; Abgleich unvollständig";cancelled=true;failOperation(new IOException(cancellationReason));closeGatt();io.close();if(bluetooth!=null)bluetooth.removeCallbacksAndMessages(null);bluetoothThread.quitSafely();repository.liveBusy=false;if(!liveOnly){repository.archiveBusy=false;repository.finishArchiveIfActive();repository.archiveRun.finish();}worker.shutdownNow();stopForeground(STOP_FOREGROUND_REMOVE);super.onDestroy();}
     @Override public IBinder onBind(Intent intent){return null;}
 }

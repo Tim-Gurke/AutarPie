@@ -17,6 +17,7 @@ p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--dependencies', type=Path, required=True)
 p.add_argument('--output', type=Path, required=True)
 p.add_argument('--baseline-ref', default='c15f75c6b4be0adea1e543b029484a7353d14473')
+p.add_argument('--ui-baseline-ref', default='9cf8d9db51a87141f44abcd63a852f0a833523d6')
 p.add_argument('--phases', nargs='+', help='Select targeted phases without repeating the full transport proof.')
 a = p.parse_args()
 root = Path(__file__).resolve().parents[1]
@@ -30,6 +31,8 @@ current = (root / path).read_text()
 baseline = subprocess.run(['git', 'show', a.baseline_ref + ':' + path], cwd=root,
                           check=True, capture_output=True, text=True).stdout
 
+ui_baseline = subprocess.run(['git', 'show', a.ui_baseline_ref + ':' + path], cwd=root, check=True, capture_output=True, text=True).stdout
+
 
 def block(text, signature):
     start = text.index(signature)
@@ -41,7 +44,7 @@ def block(text, signature):
     return text[start:end]
 
 
-for name, source, fixed in [('ArchiveIoHarness', current, True), ('ArchiveLegacyHarness', baseline, False)]:
+for name, source, fixed in [('ArchiveIoHarness', current, True), ('ArchiveLegacyHarness', baseline, False), ('ArchiveUiHarness', ui_baseline, True)]:
     methods = [block(source, signature) for signature in [
         'private void incoming(', 'private void complete(', 'private void failOperation(',
         'private void check()', 'private void trace(', 'private void stage(', 'private void op(',
@@ -77,6 +80,8 @@ final class __NAME__ extends ArchiveIoProof.Environment {
  @Override void ioFailure(Exception e){__FAIL__}
  @Override void notifyPacket(BluetoothGatt g,BluetoothGattCharacteristic c,byte[] bytes){if(Build.VERSION.SDK_INT>=33)callback.onCharacteristicChanged(g,c,bytes);else{c.setValue(bytes);callback.onCharacteristicChanged(g,c);}}
  @Override void writeComplete(BluetoothGatt g,BluetoothGattCharacteristic c,int status){callback.onCharacteristicWrite(g,c,status);}
+ @Override void servicesComplete(BluetoothGatt g,int status){callback.onServicesDiscovered(g,status);}
+ @Override void probeServices()throws Exception{io.call(()->{op("discover",()->gatt.discoverServices());return null;});}
  @Override void peerDisconnect(BluetoothGatt g,int status){callback.onConnectionStateChange(g,status,BluetoothProfile.STATE_DISCONNECTED);}
  @Override byte[] request()throws Exception{return exchange(0xec5b,ArchiveCodec.trendQuery(0,1260,3),null,12000);}
  @Override void closeTransport(){closeGatt();}
@@ -111,14 +116,14 @@ subprocess.run(['java', 'com.sun.tools.javac.Main', '-source', '17', '-target', 
 cp = os.pathsep.join(map(str, [classes, deps / 'android-api35.jar', deps / 'sqlite-jdbc-3.46.1.0.jar',
                               deps / 'slf4j-api-1.7.36.jar', *deps.glob('zxing-*.jar')]))
 results = []
-for phase in a.phases or ['connect-recovery', 'connect-limits', 'connect-stop', 'connect-switch', 'batch', 'legacy', 'fixed30', 'fixed35', 'cancel', 'preempt', 'disconnect', 'actor', 'ack-failure', 'ack-timeout']:
+for phase in a.phases or ['main-legacy', 'main-fixed30', 'main-fixed35', 'main-cancel', 'connect-recovery', 'connect-limits', 'connect-stop', 'connect-switch', 'batch', 'legacy', 'fixed30', 'fixed35', 'cancel', 'preempt', 'disconnect', 'actor', 'ack-failure', 'ack-timeout']:
     run = subprocess.run(['java', '-cp', cp, 'de.wattpit.app.ArchiveIoProof', str(out / phase), phase],
                          capture_output=True, text=True, timeout=60)
     print(run.stdout + run.stderr, end='', flush=True)
     (out / (phase + '.log')).write_text(run.stdout + run.stderr)
     results.append({'phase': phase, 'exit_code': run.returncode, 'checks': [s[5:] for s in run.stdout.splitlines() if s.startswith('PASS ')]})
     (out / 'report.json').write_text(json.dumps({
-        'scope': __doc__, 'baseline_ref': a.baseline_ref,
+        'scope': __doc__, 'baseline_ref': a.baseline_ref, 'ui_baseline_ref': a.ui_baseline_ref,
         'current_service_sha256': hashlib.sha256(current.encode()).hexdigest(),
         'baseline_service_sha256': hashlib.sha256(baseline.encode()).hexdigest(),
         'source_sha256': {str(s.relative_to(root)): hashlib.sha256(s.read_bytes()).hexdigest() for s in sources if s.is_relative_to(root)},

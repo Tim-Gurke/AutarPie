@@ -44,12 +44,14 @@ public final class ArchiveIoProof {
             void setWriteType(int type){}void setValue(byte[] bytes){value=bytes.clone();}byte[] getValue(){return value;}
         }
         final class Handler {
-            final ScheduledExecutorService executor=Executors.newSingleThreadScheduledExecutor(r->{Thread t=new Thread(r,"android-main-adapter");t.setDaemon(true);return t;});
-            void post(Runnable r){executor.execute(r);}
+            final ScheduledExecutorService executor;
+            Handler(String name){executor=Executors.newSingleThreadScheduledExecutor(r->{Thread t=new Thread(r,name);t.setDaemon(true);return t;});}
+            boolean post(Runnable r){try{executor.execute(r);return true;}catch(RejectedExecutionException e){return false;}}
             void later(Runnable r,long ms){executor.schedule(r,ms,TimeUnit.MILLISECONDS);}
         }
         final class BluetoothGatt {
-            static final int GATT_SUCCESS=0;volatile boolean closed;
+            static final int GATT_SUCCESS=0;volatile boolean closed;Handler handler=main;
+            boolean discoverServices(){handler.later(()->servicesComplete(this,0),8);return true;}
             int disconnectCalls,closeCalls;
             boolean writeCharacteristic(BluetoothGattCharacteristic c){legacyWrites++;return submit(c,c.getValue());}
             int writeCharacteristic(BluetoothGattCharacteristic c,byte[] value,int type){modernWrites++;return submit(c,value)?0:1;}
@@ -60,7 +62,7 @@ public final class ArchiveIoProof {
                 if(active>1)asynchronousFailure.compareAndSet(null,new AssertionError("Overlapping GATT operations"));
                 byte[] copy=value.clone();int status=peer.failNext;peer.failNext=0;
                 if(peer.silentNext){peer.silentNext=false;return true;}
-                main.later(()->{inFlight.decrementAndGet();if(status==0&&!closed)peer.written(c,copy);writeComplete(this,c,status);},8);
+                handler.later(()->{inFlight.decrementAndGet();if(status==0&&!closed)peer.written(c,copy);writeComplete(this,c,status);},8);
                 return true;
             }
             void disconnect(){disconnectCalls++;closed=true;peer.alive=false;}void close(){closeCalls++;closed=true;}
@@ -74,12 +76,12 @@ public final class ArchiveIoProof {
             BluetoothDevice(int... statuses){this.statuses=statuses;}
             BluetoothGatt connectGatt(Object context,boolean automatic,BluetoothGattCallback callback,int transport,int phy,Handler handler){
                 if(automatic||transport!=TRANSPORT_LE||phy!=PHY_LE_1M_MASK)throw new IllegalArgumentException("Unexpected transport setup");
-                BluetoothGatt fresh=new BluetoothGatt();int index=clients.size();clients.add(fresh);attemptedAt.add(SystemClock.elapsedRealtime());listener=callback;
+                BluetoothGatt fresh=new BluetoothGatt();fresh.handler=handler;int index=clients.size();clients.add(fresh);attemptedAt.add(SystemClock.elapsedRealtime());listener=callback;
                 int status=statuses[Math.min(index,statuses.length-1)];
                 handler.later(()->{callback.onConnectionStateChange(fresh,status,status==0?BluetoothProfile.STATE_CONNECTED:BluetoothProfile.STATE_DISCONNECTED);firstCallback.countDown();},8);
                 return fresh;
             }
-            void late(BluetoothGatt old,int status){main.post(()->listener.onConnectionStateChange(old,status,BluetoothProfile.STATE_DISCONNECTED));}
+            void late(BluetoothGatt old,int status){old.handler.post(()->listener.onConnectionStateChange(old,status,BluetoothProfile.STATE_DISCONNECTED));}
         }
         final class Peer implements AutoCloseable {
             final ScheduledExecutorService radio=Executors.newSingleThreadScheduledExecutor(r->{Thread t=new Thread(r,"victron-peer-adapter");t.setDaemon(true);return t;});
@@ -90,13 +92,13 @@ public final class ArchiveIoProof {
             Peer(){radio.scheduleWithFixedDelay(()->{try{tick();}catch(Throwable e){asynchronousFailure.compareAndSet(null,e);}},15,15,TimeUnit.MILLISECONDS);}
             synchronized void tick(){
                 if(!alive)return;
-                if(watchdog&&SystemClock.elapsedRealtime()-lastHeartbeat>=10000){alive=false;BluetoothGatt current=gatt;main.post(()->peerDisconnect(current,19));return;}
+                if(watchdog&&SystemClock.elapsedRealtime()-lastHeartbeat>=10000){alive=false;BluetoothGatt current=gatt;current.handler.post(()->peerDisconnect(current,19));return;}
                 flush();if(unsolicited)for(int n=0;n<16&&window>0;n++)packet(new byte[]{8,0,0x19,3,0,0x41,1});
             }
             synchronized void written(BluetoothGattCharacteristic c,byte[] bytes){
                 if(c==control){window+=bytes[1]&255;maximumWindow=Math.max(maximumWindow,window);if(window>128)throw new AssertionError("Receive window exceeded");flush();}
                 else{
-                    main.post(()->notifyPacket(gatt,control,new byte[]{(byte)0xf9,1}));
+                    BluetoothGatt current=gatt;current.handler.post(()->notifyPacket(current,control,new byte[]{(byte)0xf9,1}));
                     if(Arrays.equals(bytes,ArchiveSession.keepAlive()))lastHeartbeat=SystemClock.elapsedRealtime();
                     else{
                         byte[] payload=new byte[14];payload[0]=0;System.arraycopy(ArchiveCodec.le(1260,4),0,payload,1,4);payload[5]=3;payload[6]=30;
@@ -110,12 +112,12 @@ public final class ArchiveIoProof {
             private void packet(byte[] bytes){
                 if(window--<=0)throw new AssertionError("Peer ignored credits");
                 BluetoothGatt current=gatt;BluetoothGattCharacteristic c=(notifications++%2==0)?data:bulk;
-                main.post(()->notifyPacket(current,c,bytes));
+                current.handler.post(()->notifyPacket(current,c,bytes));
             }
             public void close(){alive=false;radio.shutdownNow();}
         }
         final Repository repository;
-        final Handler main=new Handler();
+        final Handler main=new Handler("android-main-adapter"),bluetooth=new Handler("android-bluetooth-adapter");
         final BlockingQueue<byte[]> received=new LinkedBlockingQueue<>(512);
         final ArrayDeque<ArchiveCodec.Message> messages=new ArrayDeque<>();
         ArchiveCodec.Stream stream=new ArchiveCodec.Stream();
@@ -139,6 +141,7 @@ public final class ArchiveIoProof {
         abstract void idleTick()throws Exception;abstract void ioFailure(Exception e);
         abstract void notifyPacket(BluetoothGatt g,BluetoothGattCharacteristic c,byte[] bytes);
         abstract void writeComplete(BluetoothGatt g,BluetoothGattCharacteristic c,int status);
+        abstract void servicesComplete(BluetoothGatt g,int status);abstract void probeServices()throws Exception;
         abstract void peerDisconnect(BluetoothGatt g,int status);
         abstract byte[] request()throws Exception;abstract void closeTransport();abstract void maintenance()throws Exception;abstract void snapshot();
         void openDevice(BluetoothDevice device)throws Exception{throw new UnsupportedOperationException();}
@@ -146,7 +149,7 @@ public final class ArchiveIoProof {
         abstract int cancel();abstract int preempt();
         void stopSelf(){}
         void progress(String label){}
-        public void close(){closeTransport();io.close();peer.close();main.executor.shutdownNow();}
+        public void close(){closeTransport();io.close();peer.close();main.executor.shutdownNow();bluetooth.executor.shutdownNow();}
     }
 
     private static final class Blocked implements AutoCloseable {
@@ -229,6 +232,28 @@ public final class ArchiveIoProof {
             }
         }else throw new IllegalArgumentException(phase);
     }
+    /** Block the actual selected callback looper, not just the SQL worker. */
+    private static void blockedMain(Environment e,boolean old,boolean cancel)throws Exception{
+        e.sessionReady=false;e.connected=false;e.gatt=null;e.peer.alive=false;e.peer.watchdog=false;
+        e.openDevice(e.new BluetoothDevice(0));e.peer.lastHeartbeat=SystemClock.elapsedRealtime();e.peer.alive=true;e.peer.watchdog=true;e.sessionReady=true;
+        require(e.gatt.handler==(old?e.main:e.bluetooth),"productive connectGatt selects the expected Android callback looper");
+        CountDownLatch entered=new CountDownLatch(1),release=new CountDownLatch(1);ExecutorService calls=caller();
+        try{
+            e.main.post(()->{entered.countDown();try{release.await();}catch(InterruptedException x){Thread.currentThread().interrupt();}});
+            require(entered.await(1,TimeUnit.SECONDS),"the simulated Android UI looper is actually blocked");
+            Future<?> discovery=calls.submit(()->{e.probeServices();return null;});
+            if(!old){discovery.get(1,TimeUnit.SECONDS);require(e.connected&&release.getCount()==1,"service discovery completes while the Android UI remains blocked");}
+            Thread.sleep(3200); // More than the peer's ten-second watchdog on the 4x clock.
+            if(old){require(!e.peer.alive&&!discovery.isDone(),"3.0.11 starves service discovery and the modeled peer while the UI looper is blocked");}
+            else if(cancel){e.cancel();int writes=e.writes;Thread.sleep(300);require(e.userCancelled&&e.gatt==null&&e.writes==writes,"cancellation closes isolated Bluetooth immediately even while the UI is blocked");}
+            else{
+                require(e.peer.alive&&e.connected&&e.receiveFailure==null,"isolated Android dispatch keeps the modeled session alive during the same UI block");
+                require(e.link.heartbeats()>=3&&e.link.received()>128&&e.link.consumed()>128,"notifications, receive grants and session renewals continue without any UI tasks");
+                require(e.maxInFlight.get()==1&&e.asynchronousFailure.get()==null,"isolated callbacks preserve one serialized GATT operation");
+            }
+            require(release.getCount()==1,"the test never unblocks the UI to make Bluetooth pass");
+        }finally{release.countDown();calls.shutdownNow();}
+    }
     private static void batch(Repository repo)throws Exception{
         ArchiveBatch mixed=new ArchiveBatch(2);mixed.add("Solar",true,1517,"Vollständig");mixed.add("Batterie",false,0,"Bluetooth verbinden · Status 133");
         String text=repo.archiveBatchFinished(mixed,false,"");JSONObject saved=new JSONObject(repo.syncState()).getJSONObject("archive");
@@ -246,9 +271,10 @@ public final class ArchiveIoProof {
         String phase=args[1];if(phase.equals("actor")){actor();System.out.println("RESULT "+checks+" actor checks");return;}
         Class.forName("org.sqlite.JDBC");Path directory=Path.of(args[0]);LanSyncProof.TestContext context=new LanSyncProof.TestContext(directory);
         Repository repo=LanSyncProof.repository(context);HistoryDb history=repo.db;seed(history);Path database=directory.resolve("wattpit-history.db");
-        boolean legacy=phase.equals("legacy");int api=phase.equals("fixed30")?30:35;
-        try(Environment e=legacy?new ArchiveLegacyHarness(repo,api):new ArchiveIoHarness(repo,api)){
-            if(phase.startsWith("connect-"))connection(e,phase);
+        boolean legacy=phase.equals("legacy");int api=phase.endsWith("30")?30:35;
+        try(Environment e=legacy?new ArchiveLegacyHarness(repo,api):phase.equals("main-legacy")?new ArchiveUiHarness(repo,api):new ArchiveIoHarness(repo,api)){
+            if(phase.startsWith("main-"))blockedMain(e,phase.equals("main-legacy"),phase.equals("main-cancel"));
+            else if(phase.startsWith("connect-"))connection(e,phase);
             else if(phase.equals("batch"))batch(repo);
             else if(phase.startsWith("ack-")){
                 e.peer.unsolicited=false;e.peer.watchdog=false;

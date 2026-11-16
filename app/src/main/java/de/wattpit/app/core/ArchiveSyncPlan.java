@@ -19,8 +19,14 @@ public final class ArchiveSyncPlan {
         void add(long from, long to) {
             if (to < from) return;
             Map.Entry<Long, Long> previous = ranges.floorEntry(from);
+            if(previous!=null&&previous.getValue()>=to)return;
             if (previous != null && previous.getValue() >= from - 1) {
-                from = previous.getKey(); to = Math.max(to, previous.getValue()); ranges.remove(previous.getKey());
+                // Continuous live recordings extend the same interval millions
+                // of times. Keep its tree node instead of removing/reallocating it.
+                long start=previous.getKey();to=Math.max(to,previous.getValue());
+                Map.Entry<Long,Long> next=ranges.higherEntry(start);
+                while(next!=null&&next.getKey()<=to+1){to=Math.max(to,next.getValue());ranges.remove(next.getKey());next=ranges.higherEntry(start);}
+                ranges.put(start,to);return;
             }
             Map.Entry<Long, Long> next;
             while ((next = ranges.ceilingEntry(from)) != null && next.getKey() <= to + 1) {
@@ -46,7 +52,7 @@ public final class ArchiveSyncPlan {
         public void reading(long time,String origin,int resolution){
             if(origin.equals("live")){
                 boolean join=lastLive!=Long.MIN_VALUE&&time>lastLive&&time-lastLive<=SampleTimeline.liveLimit(lastLiveStep,resolution);
-                for(Intervals ranges:actual.values()){ranges.add(time-500,time+500);if(join)ranges.add(lastLive,time);}
+                for(Intervals ranges:actual.values())ranges.add(join?Math.min(time-500,lastLive):time-500,time+500);
                 if(time>lastLive){lastLive=time;lastLiveStep=resolution;}return;
             }
             if(!(origin.equals("archive")||origin.equals("csv")))return;
