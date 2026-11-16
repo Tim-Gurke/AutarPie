@@ -1,20 +1,20 @@
-# AutarPie 3.0.10
+# AutarPie 3.0.11
 
 ![AutarPie Ressourcen-Kreislauf](app/src/main/assets/brand.svg)
 
 **Das lokale Cockpit für autarkes Leben.** Solar und Stromverteilung, Wohnwagenakku, E-Scooter, Modellbau, Gas und Wasser in einer gemeinsamen App. AutarPie führt **Watt’n’Pit und WohnPit** weiter.
 
-**[AutarPie 3.0.10 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.0.10/AutarPie-v3.0.10.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.0.10.md) · [Vollständige Versionshistorie](CHANGELOG.md)
+**[AutarPie 3.0.11 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.0.11/AutarPie-v3.0.11.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.0.11.md) · [Vollständige Versionshistorie](CHANGELOG.md)
 
 Android 8 oder neuer; das Cockpit benötigt einen aktuellen Android-System-WebView. Kein Konto, keine Werbung. Mess- und Lerndaten bleiben auf den eigenen Geräten. Der optionale Wetterabruf verwendet Open-Meteo. Der Anlagenverbund überträgt Daten verschlüsselt im lokalen WLAN.
 
 ## Ansichten
 
-| Native Zentrale · Android 8 | Native Zentrale · Android 11 |
+| Wetterfarben und Rückschau | Wetterkachel bearbeiten |
 | --- | --- |
-| ![AutarPie 3.0.10: native Zentrale auf Android 8 ohne persönliche Messwerte](docs/images/autarpie-3.0.10-dark.svg) | ![AutarPie 3.0.10: native Zentrale mit Aufzeichnung und Geräteverwaltung](docs/images/autarpie-3.0.10-central.svg) |
+| ![AutarPie 3.0.11: eigene Wetterfarben und getrennte Rückschauzeilen](docs/images/autarpie-3.0.11-dark.svg) | ![AutarPie 3.0.11: Wetterkachel mit mehrfarbigen Symbolen bearbeiten](docs/images/autarpie-3.0.11-settings.svg) |
 
-Aktuelle Aufnahmen aus den Android-8-/11-Prüfläufen für 3.0.10, ohne reale Mess- oder Standortdaten. Sie zeigen die Oberfläche und sind kein Funk- oder Hardwaretest. Eigene Farben und Layouts bleiben erhalten.
+Aktuelle Aufnahmen der unveränderten App-Oberfläche aus dem Browser-Prüflauf für 3.0.11 mit neutralen Beispieldaten. Zusätzlich wird die native Zentrale auf Android 8/11 geprüft. Die Aufnahmen sind kein Funk- oder Hardwaretest. Eigene Farben und Layouts bleiben erhalten.
 
 ## Ein Cockpit, mehrere Anwendungen
 
@@ -48,6 +48,26 @@ Der SmartSolar-Lastausgang ist E-Scooter, Modellbau oder einem anderen Verbrauch
 Die **optionale Rollerautomatik ist zunächst aus**. Ladeziel, Wohnwagenreserve, Tagesziel, Überschussschwellen und Prognosereserve sind variabel. Ein aktives Anzeigehandy erstellt den zeitlich begrenzten Plan; die Zentrale kontrolliert direkte Abschaltbedingungen. Ein Schaltauftrag ist erst mit der tatsächlichen Geräteantwort bestätigt. Ohne gültigen Plan wird zum Ausschalten angefordert. BMS-Empfang allein beweist noch keinen eingesteckten Ladestecker.
 
 Bis zu drei 608PD erhalten getrennte Profile, private Kennungen und eigene Verbindungen. Suche und Einrichtung laufen am erfassenden Handy; Anzeigen bedienen den Ablauf. Die neue direkte Ersteinrichtung verlangt eine Bestätigung am Lader und muss am eigenen 608PD praktisch geprüft werden. Vorhandene Verbindungen aus der eigenen Bluetooth-Aufzeichnung bleiben erhalten. Unterstützt sind die nachgewiesenen Livefelder und das Beenden von Laden/Powerbank-Betrieb. App-Start ist zunächst auf das beobachtete **3S-LiPo-Profil 4,21 V/Zelle / 0,50 A** mit ausdrücklicher Profilbestätigung begrenzt. Powerbank und andere Profile am Gerät starten. Nicht belegte Temperatur-/USB-/CC-CV-Felder werden nicht erfunden.
+
+## Update 3.0.11
+
+**Wetterfarben je Kachel:** Einen Tag wie bisher einmal antippen und unten **✎ Wetterkachel bearbeiten** wählen. Im gemeinsamen Editor lassen sich Schrift/Zahlen, Nebenbeschriftungen, Bedienung, Linien und Balken unabhängig einstellen. Jeder Wettertyp bietet getrennte Farben für seine Bestandteile – etwa Sonne und Wolke oder Wolke und Regentropfen. Die Symbolvorschau zeigt die Auswahl. **Übernehmen** speichert nur diese Kachel auf diesem Dashboard; **Abbrechen** verwirft den Entwurf. Ohne eigene Farbe gilt die passende Vorgabe. Die Ansichtssicherung erhält die Unterschiede zwischen Übersicht, Solar und eigenen Dashboards.
+
+**Roller-Teilmengen bleiben erhalten:** Auch bei größeren Aufzeichnungslücken fließen gültige erfasste Mengen weiter ins Lernen ein. Fehlende Energie wird nicht hochgerechnet. Beobachtete Ladetage, erfasster Mindestanteil und vollständig überwachte Häufigkeitstage bleiben getrennt. Vorhandene Rohdaten werden erneut ausgewertet; Journal und Gesamtenergiebilanz bleiben erhalten. In der Wetterrückschau stehen Solarertrag und Akku jetzt in getrennten Zeilen.
+
+Der vollständige [Freigabelauf 43838698588](https://github.com/Tim-Gurke/AutarPie/actions/runs/43838698588) prüft APK, Lint, Unit- und Integrationsfälle sowie Bedienung im Browser und auf Android 8/11. Der neue Wetterfall prüft unter anderem unabhängige Dashboardfarben, Speichern/Abbrechen, Neustart, Sicherung, einen Tipp pro Tag und lesbare Rückschau bei 150 % Darstellung in beiden Ausrichtungen. Reale Funkstabilität wird dadurch nicht bewiesen.
+
+**Zuerst die Zentrale beziehungsweise das direkt erfassende Handy, danach die Anzeigehandys auf 3.0.11 aktualisieren.** Über die bestehende App mit ursprünglicher Updatesignatur installieren. Daten, Kopplungen und Layouts bleiben erhalten. Anzeigen mit 3.0.10 bleiben für den Verbund kompatibel, erhalten die neuen Wetterfarben und Lernanzeigen aber erst mit ihrem eigenen Update. [Bedienung, Umfang und Prüfgrenzen](docs/changes-3.0.11.md).
+
+## Update 3.0.11
+
+Wetterfarben gelten jetzt unabhängig je Wetterkachel/Dashboard: Schrift und Zahlen, Nebenbeschriftungen, Balken, Linien, Bedienung und einzelne Bestandteile jedes Wettersymbols. Ein Tipp auf den Tag öffnet weiterhin sofort die Details; dort führt **✎ Wetterkachel bearbeiten** in denselben Kacheleditor wie der normale Bearbeitungsmodus. Die Rückschau zeigt Solarertrag und Akkustand in getrennten Zeilen. Vorschau, Speichern/Abbrechen, Neustart und portable Sicherung erhalten die getrennten Farben.
+
+Sicher erfasste Roller-Teilmengen zählen auch bei größeren Funk- oder Aufzeichnungslücken. Fehlende Energie bleibt unbekannt; die Anzeige trennt beobachtete Ladetage und ihren Mindestanteil vom vollständigen Tagesbedarf und ausreichend überwachten Häufigkeitstagen. Vorhandene Rohdaten werden erneut ausgewertet, ursprüngliche Messungen und Journal-Einträge erhalten.
+
+Der [Freigabelauf 43838698588](https://github.com/Tim-Gurke/AutarPie/actions/runs/43838698588) ist vollständig erfolgreich: APK-Bau und Lint, **613 Unit-Prüfungen** (331 JavaScript, 275 JVM, sieben Veröffentlichungstests), **875 native Integrationsprüfungen**, **zwölf Android-Prüfungen** auf Android 8/11 und **36 verschiedene Browser-Prüfskripte**. Die Wettergestaltung wurde im vollständigen Browserlauf zweimal geprüft, einschließlich 150 % Darstellung in Hoch-/Querformat. Keine Aussage über reale Bluetooth-Stabilität oder Stromverbrauch am eigenen Gerät.
+
+**Zuerst Zentrale beziehungsweise direkt erfassendes Handy, danach alle Anzeigen auf 3.0.11 aktualisieren.** Über die vorhandene Installation mit ursprünglicher Updatesignatur installieren. Daten, Kopplungen und Layouts bleiben erhalten. Anzeigen mit 3.0.10 bleiben im Verbund kompatibel; neue Darstellung und Lernberechnungen benötigen dort das eigene Update. [Bedienung und Prüfgrenzen 3.0.11](docs/changes-3.0.11.md).
 
 ## Update 3.0.10
 
