@@ -33,6 +33,8 @@ public final class ArchiveIoProof {
             public void onServicesDiscovered(BluetoothGatt g,int status){}
             public void onDescriptorWrite(BluetoothGatt g,BluetoothGattDescriptor d,int status){}
             public void onCharacteristicWrite(BluetoothGatt g,BluetoothGattCharacteristic c,int status){}
+            public void onCharacteristicRead(BluetoothGatt g,BluetoothGattCharacteristic c,int status){}
+            public void onCharacteristicRead(BluetoothGatt g,BluetoothGattCharacteristic c,byte[] value,int status){}
             public void onMtuChanged(BluetoothGatt g,int mtu,int status){}
             public void onCharacteristicChanged(BluetoothGatt g,BluetoothGattCharacteristic c,byte[] value){}
             public void onCharacteristicChanged(BluetoothGatt g,BluetoothGattCharacteristic c){}
@@ -126,6 +128,8 @@ public final class ArchiveIoProof {
         volatile boolean connected=true,sessionReady=true,cancelled,userCancelled,started=true;
         volatile IOException receiveFailure;volatile int disconnectStatus,receiveQueuePeak,negotiatedMtu=77;
         volatile CompletableFuture<Integer> operation;volatile String operationType="",cancellationReason="";
+        volatile byte[] controlResponse;
+        volatile boolean lastOperationSubmitted,lastOperationCallback;
         volatile long idlePackets,idleMessages,lastTransportTick,longestDatabaseCall,longestGattOperation,longestAndroidQueueDelay;
         static volatile long lastGattClosedAt=-1;
         final List<String> diagnostics=new ArrayList<>();long importStarted=SystemClock.elapsedRealtime(),importStartedWall=System.currentTimeMillis();

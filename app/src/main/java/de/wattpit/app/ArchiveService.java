@@ -46,6 +46,8 @@ public final class ArchiveService extends Service {
     private volatile CompletableFuture<Integer> operation;
     private volatile String operationType="";
     private volatile int negotiatedMtu=23;
+    private volatile byte[] controlResponse;
+    private volatile boolean lastOperationSubmitted,lastOperationCallback;
     private volatile int disconnectStatus;
     private volatile IOException receiveFailure;
     private volatile int receiveQueuePeak;
@@ -73,6 +75,8 @@ public final class ArchiveService extends Service {
         }
         @Override public void onServicesDiscovered(BluetoothGatt g,int status){if(g==gatt)complete("discover",status);}
         @Override public void onDescriptorWrite(BluetoothGatt g,BluetoothGattDescriptor d,int status){if(g==gatt)complete("descriptor",status);}
+        @Override public void onCharacteristicRead(BluetoothGatt g,BluetoothGattCharacteristic c,byte[] value,int status){if(g==gatt&&CONTROL.equals(c.getUuid())){controlResponse=value==null?null:value.clone();complete("control-read",status);}}
+        @SuppressWarnings("deprecation") @Override public void onCharacteristicRead(BluetoothGatt g,BluetoothGattCharacteristic c,int status){if(Build.VERSION.SDK_INT<33&&g==gatt&&CONTROL.equals(c.getUuid())){byte[] value=c.getValue();controlResponse=value==null?null:value.clone();complete("control-read",status);}}
         @Override public void onCharacteristicWrite(BluetoothGatt g,BluetoothGattCharacteristic c,int status){if(g==gatt)complete("write",status);}
         @Override public void onMtuChanged(BluetoothGatt g,int mtu,int status){if(g==gatt){if(status==0)negotiatedMtu=mtu;complete("mtu",status);}}
         @Override public void onCharacteristicChanged(BluetoothGatt g,BluetoothGattCharacteristic c,byte[] v){if(g==gatt)incoming(c,v);}
@@ -94,7 +98,7 @@ public final class ArchiveService extends Service {
     private void trace(String text){synchronized(diagnostics){if(diagnostics.size()>=80)diagnostics.remove(0);String elapsed=importStarted>0?"+"+Math.max(0,SystemClock.elapsedRealtime()-importStarted)+" ms · ":"";diagnostics.add(elapsed+ArchiveDiagnostic.clean(text));}}
     private void saveDiagnostics(String result){try{
         JSONArray lines;synchronized(diagnostics){lines=new JSONArray(diagnostics);}
-        repository.archiveDiagnostics(kind,new JSONObject().put("result",result).put("steps",lines).put("startedAt",importStartedWall).put("finishedAt",System.currentTimeMillis()).put("connectionAttempts",connectionAttempts).put("durationMs",SystemClock.elapsedRealtime()-importStarted).put("stored",changed).put("blocks",blocks).put("skipped",skipped).put("missing",missing).put("unmapped",unmapped).put("sentPackets",link.sent()).put("receivedPackets",link.received()).put("consumedPackets",link.consumed()).put("receiveQueuePeak",receiveQueuePeak).put("receiveGrants",link.grants()).put("idlePackets",idlePackets).put("idleMessages",idleMessages).put("heartbeats",link.heartbeats()).put("maxHeartbeatGapMs",link.maxHeartbeatGap()).put("lastHeartbeatAgeMs",link.heartbeatAge(SystemClock.elapsedRealtime())).put("lastTransportTickAgeMs",lastTransportTick>0?Math.max(0,SystemClock.elapsedRealtime()-lastTransportTick):JSONObject.NULL).put("longestDatabaseCallMs",longestDatabaseCall).put("longestGattOperationMs",longestGattOperation).put("longestAndroidQueueDelayMs",longestAndroidQueueDelay));
+        repository.archiveDiagnostics(kind,new JSONObject().put("result",result).put("steps",lines).put("startedAt",importStartedWall).put("finishedAt",System.currentTimeMillis()).put("connectionAttempts",connectionAttempts).put("durationMs",SystemClock.elapsedRealtime()-importStarted).put("stored",changed).put("blocks",blocks).put("skipped",skipped).put("missing",missing).put("unmapped",unmapped).put("sentPackets",link.sent()).put("receivedPackets",link.received()).put("consumedPackets",link.consumed()).put("receiveQueuePeak",receiveQueuePeak).put("receiveGrants",link.grants()).put("idlePackets",idlePackets).put("idleMessages",idleMessages).put("heartbeats",link.heartbeats()).put("maxHeartbeatGapMs",link.maxHeartbeatGap()).put("lastHeartbeatAgeMs",link.heartbeatAge(SystemClock.elapsedRealtime())).put("lastTransportTickAgeMs",lastTransportTick>0?Math.max(0,SystemClock.elapsedRealtime()-lastTransportTick):JSONObject.NULL).put("longestDatabaseCallMs",longestDatabaseCall).put("longestGattOperationMs",longestGattOperation).put("longestAndroidQueueDelayMs",longestAndroidQueueDelay).put("lastOperationSubmitted",lastOperationSubmitted).put("lastOperationCallback",lastOperationCallback).put("heartbeatConfirmation","android-gatt"));
     }catch(JSONException ignored){}}
     private static final class GattFailure extends IOException{
         private static final long serialVersionUID=1;final int status;
@@ -172,12 +176,13 @@ public final class ArchiveService extends Service {
     private interface GattAction {boolean run();}
     private void op(String type,GattAction action) throws Exception {
         check();long wait=20000,queuedAt=SystemClock.elapsedRealtime();
+        java.util.concurrent.atomic.AtomicBoolean submitted=new java.util.concurrent.atomic.AtomicBoolean();boolean answered=false;
         CompletableFuture<Integer> future=new CompletableFuture<>();operationType=type;operation=future;
-        if(!bluetooth.post(()->{if(future.isDone()||cancelled)return;long delay=Math.max(0,SystemClock.elapsedRealtime()-queuedAt);longestAndroidQueueDelay=Math.max(longestAndroidQueueDelay,delay);try{if(!action.run())future.completeExceptionally(new GattRejected(type));}catch(Exception e){future.completeExceptionally(e);}}))future.completeExceptionally(new IOException("Android-Bluetooth-Arbeitsablauf ist beendet"));
-        try {int status=future.get(wait,TimeUnit.MILLISECONDS);if(status!=0){trace(type+" · GATT "+status);throw new GattFailure(status);}}
+        if(!bluetooth.post(()->{if(future.isDone()||cancelled)return;long delay=Math.max(0,SystemClock.elapsedRealtime()-queuedAt);longestAndroidQueueDelay=Math.max(longestAndroidQueueDelay,delay);try{boolean accepted=action.run();submitted.set(accepted);if(!accepted)future.completeExceptionally(new GattRejected(type));}catch(Exception e){future.completeExceptionally(e);}}))future.completeExceptionally(new IOException("Android-Bluetooth-Arbeitsablauf ist beendet"));
+        try {int status=future.get(wait,TimeUnit.MILLISECONDS);answered=true;if(status!=0){trace(type+" · GATT "+status);throw new GattFailure(status);}}
         catch(TimeoutException e){future.completeExceptionally(e);if(type.equals("write"))receiveFailure=new IOException("Bluetooth-Schreibauftrag wurde nicht bestätigt",e);check();throw e;}
         catch(ExecutionException e){if(e.getCause() instanceof Exception)throw (Exception)e.getCause();throw e;}
-        finally {long elapsed=Math.max(0,SystemClock.elapsedRealtime()-queuedAt);longestGattOperation=Math.max(longestGattOperation,elapsed);if(elapsed>3000)trace(type+" · Android-Bestätigung nach "+elapsed+" ms");operation=null;operationType="";}
+        finally {lastOperationSubmitted=submitted.get();lastOperationCallback=answered;long elapsed=Math.max(0,SystemClock.elapsedRealtime()-queuedAt);longestGattOperation=Math.max(longestGattOperation,elapsed);if(elapsed>3000)trace(type+" · "+(answered?"Android-Antwort":"ohne Android-Antwort beendet")+" nach "+elapsed+" ms · Auftrag angenommen: "+lastOperationSubmitted);operation=null;operationType="";}
     }
     @SuppressWarnings("deprecation") private void write(BluetoothGattCharacteristic c,byte[] value) throws Exception {
         if(c==data){
@@ -211,6 +216,17 @@ public final class ArchiveService extends Service {
             byte[] value=(c.getProperties()&BluetoothGattCharacteristic.PROPERTY_NOTIFY)!=0?BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE:BluetoothGattDescriptor.ENABLE_INDICATION_VALUE;
             if(Build.VERSION.SDK_INT>=33)return gatt.writeDescriptor(descriptor,value)==BluetoothStatusCodes.SUCCESS;
             descriptor.setValue(value);return gatt.writeDescriptor(descriptor);});
+    }
+    private void readTransportControl()throws Exception{
+        // Observed VictronConnect setup reads 306b0002 before notifications and
+        // writes, including after a device restart. Do not infer undocumented
+        // limits from its bytes or reuse a previous connection's response.
+        controlResponse=null;
+        if((control.getProperties()&BluetoothGattCharacteristic.PROPERTY_READ)==0){trace("Bluetooth-Transportinitialisierung · kein Lesezugriff angeboten; bisherige Anmeldung verwenden");return;}
+        op("control-read",()->gatt.readCharacteristic(control));
+        byte[] response=controlResponse;
+        if(response==null||response.length==0)throw new IOException("Bluetooth-Transportinitialisierung ohne Antwort; Archivabruf nicht gestartet.");
+        trace("Bluetooth-Transportinitialisierung · "+response.length+" Bytes gelesen");
     }
     private byte[] exchange(int reg,byte[] command) throws Exception {
         return exchange(reg,command,null);
@@ -301,6 +317,7 @@ public final class ArchiveService extends Service {
         if(s==null)throw new IllegalArgumentException("Das Gerät bietet diese Archiv-Schnittstelle nicht an.");
         control=s.getCharacteristic(CONTROL);data=s.getCharacteristic(DATA);BluetoothGattCharacteristic bulk=s.getCharacteristic(BULK);
         if(control==null||data==null||bulk==null)throw new IllegalArgumentException("Unvollständige Archiv-Schnittstelle.");
+        stage("Bluetooth-Transport initialisieren");readTransportControl();
         stage("Archiv-Benachrichtigungen aktivieren");subscribe(control);subscribe(data);subscribe(bulk);
         write(control,new byte[]{(byte)0xfa,(byte)0x80,(byte)0xff});write(control,new byte[]{(byte)0xf9,(byte)0x80});
         for(ArchiveSession.Step step:ArchiveSession.setup()){
@@ -519,7 +536,7 @@ public final class ArchiveService extends Service {
         transfer.refresh(ch,current,saved,batch);levels.put(ch,current);liveChecked.put(ch,at);
         trace(ArchiveSession.label(field.name)+" · neu geplant · "+transfer.remaining()+" Werte offen");
     }
-    private void traceSummary(){trace("Sitzungserhalt · "+link.heartbeats()+" bestätigt · größter Abstand "+link.maxHeartbeatGap()+" ms · letzte Bestätigung vor "+link.heartbeatAge(SystemClock.elapsedRealtime())+" ms · lokale Prüfung maximal "+longestDatabaseCall+" ms");trace("Bluetooth-Verarbeitung neben lokalen Abfragen · "+idlePackets+" Pakete · "+idleMessages+" Meldungen ohne ausstehende Abfrage verworfen");trace("Android-Bluetooth · längster Auftrag "+longestGattOperation+" ms · längste Wartezeit vor Ausführung "+longestAndroidQueueDelay+" ms · letzter Arbeitszyklus vor "+(lastTransportTick>0?Math.max(0,SystemClock.elapsedRealtime()-lastTransportTick)+" ms":"unbekannt"));trace(blocks+" Datenblöcke · "+changed+" übernommene Werte · "+skipped+" lokal vorhanden, nicht geladen · "+missing+" fehlend · "+unmapped+" ohne sichere Zeit");trace(link.sent()+" Datenpakete gesendet · "+link.received()+" empfangen · "+link.consumed()+" verarbeitet · Puffer maximal "+receiveQueuePeak+" Pakete · "+link.grants()+" Empfangsfreigaben");}
+    private void traceSummary(){trace("Sitzungserhalt · "+link.heartbeats()+" Android-Schreibantworten · größter Abstand "+link.maxHeartbeatGap()+" ms · letzte Bestätigung vor "+link.heartbeatAge(SystemClock.elapsedRealtime())+" ms · lokale Prüfung maximal "+longestDatabaseCall+" ms");trace("Bluetooth-Verarbeitung neben lokalen Abfragen · "+idlePackets+" Pakete · "+idleMessages+" Meldungen ohne ausstehende Abfrage verworfen");trace("Android-Bluetooth · längster Auftrag "+longestGattOperation+" ms · längste Wartezeit vor Ausführung "+longestAndroidQueueDelay+" ms · letzter Arbeitszyklus vor "+(lastTransportTick>0?Math.max(0,SystemClock.elapsedRealtime()-lastTransportTick)+" ms":"unbekannt"));trace(blocks+" Datenblöcke · "+changed+" übernommene Werte · "+skipped+" lokal vorhanden, nicht geladen · "+missing+" fehlend · "+unmapped+" ohne sichere Zeit");trace(link.sent()+" Datenpakete gesendet · "+link.received()+" empfangen · "+link.consumed()+" verarbeitet · Puffer maximal "+receiveQueuePeak+" Pakete · "+link.grants()+" Empfangsfreigaben");}
     private void solarDays(LocalDate today,List<Integer> days) throws Exception {
         stage("Solar-Tageswerte ergänzen");
         for(int day:days){

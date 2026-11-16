@@ -97,7 +97,9 @@ jobs:
           python3 tools/prove-archive-backpressure.py --output app/build/reports/archive-backpressure-proof
           git fetch --no-tags --depth=1 origin c15f75c6b4be0adea1e543b029484a7353d14473
           git fetch --no-tags --depth=1 origin 9cf8d9db51a87141f44abcd63a852f0a833523d6
+          git fetch --no-tags --depth=1 origin 5fac3e7bf06a463590b866e6e40c76cb2ebba94e
           python3 tools/prove-archive-io.py --dependencies "$deps" --output app/build/reports/archive-io-proof
+          python3 tools/prove-archive-session-start.py --dependencies "$deps" --output app/build/reports/archive-session-start-proof
           python3 tools/prove-archive-availability.py --output app/build/reports/archive-availability-proof
           python3 tools/prove-charger-ble.py --android-jar "$deps/android-api35.jar" --output app/build/reports/charger-ble-proof
           python3 tools/prove-archive-delta.py --output app/build/reports/archive-delta-proof --sqlite-jar "$deps/sqlite-jdbc-3.46.1.0.jar" --slf4j-jar "$deps/slf4j-api-1.7.36.jar"
@@ -155,6 +157,7 @@ jobs:
             app/build/reports/charger-journal-proof/report.json
             app/build/reports/archive-backpressure-proof/
             app/build/reports/archive-io-proof/
+            app/build/reports/archive-session-start-proof/
             app/build/reports/archive-availability-proof/
             app/build/reports/charger-ble-proof/report.json
             app/build/reports/charger-ble-proof/results.log
