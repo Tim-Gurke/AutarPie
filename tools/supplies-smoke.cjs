@@ -69,7 +69,10 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
    await tile.click();await page.locator('#tileActionDetail').click();assert.equal(await page.locator('#detailReading .tile-number').textContent(),value);assert.equal(await page.locator('.detail-container-size').textContent(),sizeHint);
    await page.locator('#detailSettings summary').click();await page.locator('#detailUnit').selectOption(metric.startsWith('gas')?'kg':'L');
    const base=await page.evaluate(()=>dashboard.detail.value);assert.ok(base>Number(value.replace(',','.')));await page.locator('#detailClose').click();
-   await page.evaluate(()=>{delete snapshot.suppliesAnalysis;dashboard.update();});assert.equal(await tile.locator('.tile-number').textContent(),'—');assert.equal(await tile.locator('.gauge-max').textContent(),'—');
+   // Capture the transient missing-analysis state in the same browser turn.
+   // A normal background poll may legitimately restore the known fixture next.
+   const missing=await page.evaluate(id=>{delete snapshot.suppliesAnalysis;dashboard.update();const el=document.querySelector('[data-tile="'+id+'"]');return {value:el.querySelector('.tile-number').textContent,scale:el.querySelector('.gauge-max').textContent};},tileId);
+   assert.deepEqual(missing,{value:'—',scale:'—'});
    await page.evaluate(()=>{supplies.render();dashboard.update();});assert.equal(await tile.locator('.tile-number').textContent(),value);
   }
   await page.locator('[data-page="supplies"]').click();
