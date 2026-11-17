@@ -5,7 +5,10 @@ from pathlib import Path
 p=argparse.ArgumentParser();p.add_argument('--serial');p.add_argument('--output',type=Path,required=True);a=p.parse_args();serial=a.serial or subprocess.check_output(['adb','get-serialno'],text=True).strip();adb=['adb','-s',serial];users=[];a.output.mkdir(parents=True,exist_ok=True)
 def run(*args,**kw):
  result=subprocess.run(adb+list(args),stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=180,**kw)
- if result.returncode:
+ # Android 8's Pm.runCreateUser returns 1 even after printing a successful ID.
+ # Accept only that exact response; the caller independently verifies the user exists.
+ legacy_created=args[:3]==('shell','pm','create-user') and result.returncode==1 and re.fullmatch(rb'Success: created user id [0-9]+\s*',result.stdout)
+ if result.returncode and not legacy_created:
   detail=(result.stdout+result.stderr).decode(errors='replace');(a.output/'adb-error.log').write_text(detail)
   raise RuntimeError('ADB '+repr(args)+' failed: '+detail)
  return result
@@ -19,10 +22,11 @@ if 'OK (1 test)' not in s or 'AUTARPIE_SAF_BACKUP_VERIFIED' not in s:raise Runti
 run('root');run('wait-for-device');previous=run('shell','getprop','fw.max_users').stdout.decode().strip();run('shell','setprop','fw.max_users','4')
 try:
  for name in ['AutarPieBackupSource','AutarPieBackupTarget']:
-  # Explicit finally cleanup works on both API 26 and 30; ephemeral users are device-config dependent.
+  # Both test users are removed explicitly in finally on disposable emulators.
   result=run('shell','pm','create-user',name).stdout.decode();match=re.search(r'created user id (\d+)',result)
   if not match:raise RuntimeError('Cannot create disposable proof user.')
   user=int(match[1]);users.append(user)
+  if not re.search(r'UserInfo\{'+str(user)+r':',run('shell','pm','list','users').stdout.decode()):raise RuntimeError('Created proof user is missing.')
   for package in ['de.wattpit.app','de.wattpit.app.test']:run('shell','cmd','package','install-existing','--user',str(user),package)
   run('shell','am','start-user','-w',str(user))
  phase(users[0],'source');run('shell','run-as','de.wattpit.app','--user',str(users[1]),'mkdir','-p','files')
