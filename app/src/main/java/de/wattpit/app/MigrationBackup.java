@@ -57,6 +57,17 @@ final class MigrationBackup {
             File cache=new File(c.getFilesDir(),"lan-display.json");if(cache.isFile())put(zip,"files/lan-display.json",cache);
         }finally{db.endTransaction();}
     }
+    /** Consistent per-database copies; encryption and upload hold no live database transaction. */
+    static synchronized void exportLive(Context c,OutputStream destination,char[] password)throws Exception{
+        if(Repository.get(c).archiveBusy||pending(c))throw new IOException("Archivabruf oder Wiederherstellung läuft. Sicherung später erneut versuchen.");
+        File snapshots=new File(c.getCacheDir(),"daily-backup-snapshot");remove(snapshots);if(!snapshots.mkdirs())throw new IOException("Kein Platz für die Sicherung.");
+        try{
+            JSONObject prefs=preferences(c);prefs.remove("autarpie-backups");BackupCredentials.transform(prefs,true);long start=System.currentTimeMillis();JSONArray captures=new JSONArray();File folder=c.getDatabasePath("wattpit-history.db").getParentFile();File[] files=folder.listFiles();
+            if(files!=null)for(File source:files)if(source.isFile()&&source.getName().endsWith(".db")&&safeEntry("databases/"+source.getName())){long at=System.currentTimeMillis();BackupSnapshot.copy(source,new File(snapshots,source.getName()));captures.put(new JSONObject().put("name",source.getName()).put("from",at).put("to",System.currentTimeMillis()));}
+            JSONObject manifest=new JSONObject().put("format","wohnpit-takeover").put("version",2).put("portableCredentials",true).put("sourcePackage",c.getPackageName()).put("sourceVersion",BuildConfig.VERSION_NAME).put("createdAt",start).put("snapshotEnd",System.currentTimeMillis()).put("databases",captures);
+            try(ZipOutputStream zip=new ZipOutputStream(MigrationCipher.encrypt(destination,password))){put(zip,"manifest.json",manifest.toString().getBytes(StandardCharsets.UTF_8));put(zip,"preferences.json",prefs.toString().getBytes(StandardCharsets.UTF_8));File[] copies=snapshots.listFiles();if(copies!=null)for(File f:copies)if(f.getName().endsWith(".db"))put(zip,"databases/"+f.getName(),f);File cache=new File(c.getFilesDir(),"lan-display.json");if(cache.isFile())put(zip,"files/lan-display.json",cache);}
+        }finally{remove(snapshots);}
+    }
     static JSONObject prepare(Context c,InputStream source,char[] password)throws Exception{
         if(pending(c))throw new IOException("Eine bereits geprüfte Übernahme wartet auf den Neustart.");
         File temp=new File(c.getFilesDir(),STAGE+"-checking");remove(temp);if(!temp.mkdirs())throw new IOException("Kein Speicherplatz für die Prüfung.");
@@ -69,8 +80,9 @@ final class MigrationBackup {
             // Consume and authenticate the AES-GCM tag before touching any current data.
             while(plain.read()!=-1){}
             JSONObject manifest=json(new File(temp,"manifest.json")),prefs=json(new File(temp,"preferences.json"));
-            if(!manifest.optString("format").equals("wohnpit-takeover")||manifest.optInt("version")!=1||!Arrays.asList("de.wohnpit.app","de.wattpit.app").contains(manifest.optString("sourcePackage"))||!prefs.has("wattpit"))throw new IOException("Keine unterstützte vollständige AutarPie-Sicherung.");
-            validatePreferences(prefs);
+            if(!manifest.optString("format").equals("wohnpit-takeover")||(manifest.optInt("version")!=1&&manifest.optInt("version")!=2)||!Arrays.asList("de.wohnpit.app","de.wattpit.app").contains(manifest.optString("sourcePackage"))||!prefs.has("wattpit"))throw new IOException("Keine unterstützte vollständige AutarPie-Sicherung.");
+            validatePreferences(prefs);prefs.remove("autarpie-backups");
+            if(manifest.optInt("version")==2){if(!manifest.optBoolean("portableCredentials"))throw new IOException("Übertragbare Schlüssel fehlen.");BackupCredentials.transform(prefs,false);write(new File(temp,"preferences.json"),prefs.toString().getBytes(StandardCharsets.UTF_8));}else manifest.put("legacyCredentials",true);
             File primary=new File(temp,"databases/wattpit-history.db");if(!primary.isFile())throw new IOException("Die Messwertdatenbank fehlt.");
             File[] databases=new File(temp,"databases").listFiles();if(databases!=null)for(File file:databases)if(file.getName().endsWith(".db")){
                 try(SQLiteDatabase db=SQLiteDatabase.openDatabase(file.getAbsolutePath(),null,SQLiteDatabase.OPEN_READWRITE|SQLiteDatabase.NO_LOCALIZED_COLLATORS);Cursor cursor=db.rawQuery("PRAGMA quick_check",null)){if(!cursor.moveToFirst()||!cursor.getString(0).equals("ok"))throw new IOException("Die Datenbankprüfung ist fehlgeschlagen.");}
@@ -79,6 +91,7 @@ final class MigrationBackup {
         }catch(Exception e){remove(temp);throw e;}
     }
     static synchronized void schedule(Context c)throws Exception{
+        if(DailyBackup.running())throw new IOException("Bitte die laufende Sicherung abwarten.");
         if(pending(c)||!new File(stage(c),"manifest.json").isFile()||!new File(stage(c),"preferences.json").isFile())throw new IOException("Keine geprüfte Sicherung zur Übernahme bereit.");
         File mark=new File(marker(c).getPath()+".tmp");write(mark,UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8));Files.move(mark.toPath(),marker(c).toPath(),StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);stagedHere=true;
     }
@@ -102,7 +115,7 @@ final class MigrationBackup {
         }
         // Marker and original backup survive interruption; the next cold start repeats safely.
         File target=c.getDatabasePath("wattpit-history.db").getParentFile();clearFiles(target);copyFolder(new File(input,"databases"),target);
-        restorePreferences(c,incoming);c.getSharedPreferences("wattpit",0).edit().putBoolean("recording",false).commit();
+        restorePreferences(c,incoming);c.getSharedPreferences("autarpie-backups",0).edit().clear().commit();android.app.job.JobScheduler jobs=c.getSystemService(android.app.job.JobScheduler.class);if(jobs!=null)jobs.cancel(BackupScheduler.JOB);c.getSharedPreferences("wattpit",0).edit().putBoolean("recording",false).putString("local-presentation-restore",UUID.randomUUID().toString()).commit();
         File cache=new File(input,"files/lan-display.json");if(cache.isFile())atomicCopy(cache,new File(c.getFilesDir(),"lan-display.json"));
         if(!c.getSharedPreferences("wohnpit-role",0).edit().remove("role").commit())throw new IOException("Betriebsart konnte nicht übernommen werden.");
         if(!marker(c).delete())throw new IOException("Übernahme konnte nicht abgeschlossen werden.");remove(input);

@@ -17,6 +17,7 @@ public final class MainActivity extends Activity {
         }else ready();
     }
     private void ready(){
+        BackupScheduler.reconcile(this);
         try{UiPreset.install(this,getSharedPreferences("wattpit",0));}catch(Exception e){failure("Grundeinstellungen konnten nicht geladen werden.");return;}
         String role=AppRole.infer(this);
         if(!getIntent().getBooleanExtra("chooseRole",false)&&AppRole.valid(role)){

@@ -35,6 +35,9 @@
         </activity>
         <activity android:name=".DisplayActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".CentralActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
+        <activity android:name=".BackupActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
+        <service android:name=".BackupJobService" android:permission="android.permission.BIND_JOB_SERVICE" android:exported="true" />
+        <receiver android:name=".BackupTimeReceiver" android:exported="false"><intent-filter><action android:name="android.intent.action.TIME_SET"/><action android:name="android.intent.action.TIMEZONE_CHANGED"/></intent-filter></receiver>
         <activity android:name=".MigrationActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <receiver android:name=".AutostartReceiver" android:enabled="true" android:exported="false"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/><action android:name="android.intent.action.USER_UNLOCKED"/></intent-filter></receiver>
         <service android:name=".ArchiveService" android:exported="false" android:foregroundServiceType="connectedDevice|location" />

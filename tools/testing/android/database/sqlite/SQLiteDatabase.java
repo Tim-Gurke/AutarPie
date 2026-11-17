@@ -9,7 +9,7 @@ import java.util.*;
 /** JVM test adapter only: execute the actual HistoryDb SQL against real SQLite. */
 public final class SQLiteDatabase implements AutoCloseable {
     public interface CursorFactory { }
-    public static final int CONFLICT_IGNORE=4,CONFLICT_REPLACE=5,OPEN_READWRITE=0,OPEN_READONLY=1,NO_LOCALIZED_COLLATORS=0x10;
+    public static final int CONFLICT_IGNORE=4,CONFLICT_REPLACE=5,OPEN_READWRITE=0,OPEN_READONLY=1,NO_LOCALIZED_COLLATORS=0x10,ENABLE_WRITE_AHEAD_LOGGING=0x20000000;
     public static SQLiteDatabase openDatabase(String path,CursorFactory factory,int flags){return new SQLiteDatabase(path);}
     private final Connection connection;
     /** Observe query entry in concurrency proofs; the actual SQLite engine still supplies the lock. */
@@ -17,6 +17,8 @@ public final class SQLiteDatabase implements AutoCloseable {
     private boolean successful;
     SQLiteDatabase(String path){try{connection=DriverManager.getConnection("jdbc:sqlite:"+path);}catch(SQLException e){throw new IllegalStateException(e);}}
     public void beginTransaction(){try{if(!connection.getAutoCommit())throw new IllegalStateException("Nested test transaction");connection.setAutoCommit(false);successful=false;}catch(SQLException e){throw new IllegalStateException(e);}}
+    public static SQLiteDatabase openOrCreateDatabase(java.io.File file,CursorFactory factory){return new SQLiteDatabase(file.getAbsolutePath());}
+    public void beginTransactionNonExclusive(){beginTransaction();}
     public void setTransactionSuccessful(){successful=true;}
     public boolean inTransaction(){try{return !connection.getAutoCommit();}catch(SQLException e){throw new IllegalStateException(e);}}
     public void endTransaction(){try{if(successful)connection.commit();else connection.rollback();connection.setAutoCommit(true);}catch(SQLException e){throw new IllegalStateException(e);}}
@@ -31,6 +33,10 @@ public final class SQLiteDatabase implements AutoCloseable {
             PreparedStatement q=statement(sql,args);ResultSet r=q.executeQuery();
             return (Cursor)Proxy.newProxyInstance(Cursor.class.getClassLoader(),new Class<?>[]{Cursor.class},(proxy,method,a)->{
                 switch(method.getName()){
+                    case "getColumnCount":return r.getMetaData().getColumnCount();
+                    case "getColumnName":return r.getMetaData().getColumnName((int)a[0]+1);
+                    case "getBlob":return r.getBytes((int)a[0]+1);
+                    case "getType":Object v=r.getObject((int)a[0]+1);return v==null?0:v instanceof byte[]?4:v instanceof Float||v instanceof Double?2:v instanceof Number?1:3;
                     case "moveToFirst":case "moveToNext":return r.next();
                     case "isNull":return r.getObject((int)a[0]+1)==null;
                     case "getLong":return r.getLong((int)a[0]+1);

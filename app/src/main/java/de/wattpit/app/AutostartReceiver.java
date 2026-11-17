@@ -9,6 +9,7 @@ public final class AutostartReceiver extends BroadcastReceiver {
         if(intent==null)return;String action=intent.getAction();
         if(!Intent.ACTION_BOOT_COMPLETED.equals(action)&&!Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)&&!Intent.ACTION_USER_UNLOCKED.equals(action))return;
         android.os.UserManager users=context.getSystemService(android.os.UserManager.class);if(users!=null&&!users.isUserUnlocked())return;
+        BackupScheduler.reconcile(context);
         android.content.SharedPreferences prefs=context.getSharedPreferences("wattpit",0);String role=AppRole.infer(context);
         if(!StartupPolicy.restoreNetwork(prefs.getBoolean("autostart",true),role,true))return;
         try{
