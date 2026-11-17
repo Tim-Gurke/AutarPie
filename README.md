@@ -1,20 +1,20 @@
-# AutarPie 3.0.12
+# AutarPie 3.0.13
 
 ![AutarPie Ressourcen-Kreislauf](app/src/main/assets/brand.svg)
 
 **Das lokale Cockpit für autarkes Leben.** Solar und Stromverteilung, Wohnwagenakku, E-Scooter, Modellbau, Gas und Wasser in einer gemeinsamen App. AutarPie führt **Watt’n’Pit und WohnPit** weiter.
 
-**[AutarPie 3.0.12 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.0.12/AutarPie-v3.0.12.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.0.12.md) · [Vollständige Versionshistorie](CHANGELOG.md)
+**[AutarPie 3.0.13 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.0.13/AutarPie-v3.0.13.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.0.13.md) · [Vollständige Versionshistorie](CHANGELOG.md)
 
-Android 8 oder neuer; das Cockpit benötigt einen aktuellen Android-System-WebView. Kein Konto, keine Werbung. Mess- und Lerndaten bleiben auf den eigenen Geräten. Der optionale Wetterabruf verwendet Open-Meteo. Der Anlagenverbund überträgt Daten verschlüsselt im lokalen WLAN.
+Android 8 oder neuer; das Cockpit benötigt einen aktuellen Android-System-WebView. Kein Pflichtkonto, keine Werbung. Mess- und Lerndaten werden lokal gespeichert; eine freiwillige verschlüsselte Sicherung kann in einem selbst gewählten lokalen oder unterstützten Online-Ordner abgelegt werden. Der optionale Wetterabruf verwendet Open-Meteo. Der Anlagenverbund überträgt Daten verschlüsselt im lokalen WLAN.
 
 ## Ansichten
 
-| Wetterfarben und Rückschau | Wetterkachel bearbeiten |
+| Übersicht und Wetterfarben | Native Zentrale |
 | --- | --- |
-| ![AutarPie 3.0.12: eigene Wetterfarben und getrennte Rückschauzeilen](docs/images/autarpie-3.0.12-dark.svg) | ![AutarPie 3.0.12: Wetterkachel mit mehrfarbigen Symbolen bearbeiten](docs/images/autarpie-3.0.12-settings.svg) |
+| ![AutarPie 3.0.13: Cockpit und eigene Wetterfarben](docs/images/autarpie-3.0.13-dark.svg) | ![AutarPie 3.0.13: native Zentrale](docs/images/autarpie-3.0.13-central.svg) |
 
-Aktuelle Aufnahmen der App-Oberfläche aus dem Browser-Prüflauf für 3.0.12 mit neutralen Beispieldaten. Zusätzlich wird die native Zentrale auf Android 8/11 geprüft. Die Aufnahmen sind kein Funk- oder Hardwaretest. Eigene Farben und Layouts bleiben erhalten.
+Aufnahmen aus dem erfolgreichen Prüflauf für 3.0.13: native Zentrale auf Android 11 sowie Cockpit im Browser mit neutralen Geräte- und Versionsattrappen. Die Aufnahmen sind kein Funk- oder Hardwaretest. Eigene Farben und Layouts bleiben bei Updates erhalten. [Wetterkachel bearbeiten](docs/images/autarpie-3.0.13-settings.svg).
 
 ## Ein Cockpit, mehrere Anwendungen
 
@@ -48,6 +48,20 @@ Der SmartSolar-Lastausgang ist E-Scooter, Modellbau oder einem anderen Verbrauch
 Die **optionale Rollerautomatik ist zunächst aus**. Ladeziel, Wohnwagenreserve, Tagesziel, Überschussschwellen und Prognosereserve sind variabel. Ein aktives Anzeigehandy erstellt den zeitlich begrenzten Plan; die Zentrale kontrolliert direkte Abschaltbedingungen. Ein Schaltauftrag ist erst mit der tatsächlichen Geräteantwort bestätigt. Ohne gültigen Plan wird zum Ausschalten angefordert. BMS-Empfang allein beweist noch keinen eingesteckten Ladestecker.
 
 Bis zu drei 608PD erhalten getrennte Profile, private Kennungen und eigene Verbindungen. Suche und Einrichtung laufen am erfassenden Handy; Anzeigen bedienen den Ablauf. Die neue direkte Ersteinrichtung verlangt eine Bestätigung am Lader und muss am eigenen 608PD praktisch geprüft werden. Vorhandene Verbindungen aus der eigenen Bluetooth-Aufzeichnung bleiben erhalten. Unterstützt sind die nachgewiesenen Livefelder und das Beenden von Laden/Powerbank-Betrieb. App-Start ist zunächst auf das beobachtete **3S-LiPo-Profil 4,21 V/Zelle / 0,50 A** mit ausdrücklicher Profilbestätigung begrenzt. Powerbank und andere Profile am Gerät starten. Nicht belegte Temperatur-/USB-/CC-CV-Felder werden nicht erfunden.
+
+## Update 3.0.13
+
+Enthalten sind die vorbereitete Archivkorrektur, der schnellere Anzeigeabgleich, die gewünschte Grundeinstellung für neue Installationen und freiwillige tägliche verschlüsselte Sicherungen. Bestehende Messwerte, Geräteverbindungen, Farben und Kachelanordnungen werden beim Update erhalten. Die neue Grundeinstellung wird ausschließlich auf eine leere Neuinstallation angewandt.
+
+Die Archivprüfung liest große Bestände in begrenzten Datenbankabschnitten statt wiederholt einen vollständigen Ergebnissatz. Fehlgeschlagene Anmeldungen erhalten einen begrenzten Neuversuch mit frischem Bluetooth-Client; fehlende Geräteantworten bleiben als Fehler sichtbar. Physische Funkstabilität am eigenen Gerät ist damit weiterhin praktisch zu bestätigen.
+
+Anzeigen bündeln versionierte Rohdaten und übertragen gezielt geänderte Abschnitte. Im neutralen SQLite-/TCP-Vergleich ergaben 81.442 Messwerte identische Energiekurven bei 102 statt 690 Netzwerkaufrufen. Berechnungen laufen weiterhin auf den Anzeigehandys. Die Diagnose trennt Verbindung, Übertragung, Speichern und Berechnung; daraus folgt keine feste Ladezeit für ein bestimmtes Handy.
+
+**Sicherung:** Einstellungen → Daten & Sicherung → **Datensicherung · automatisch / jetzt**. Auf der Zentrale unter **Einstellungen und Daten**. Anfangs ausgeschaltet; frei wählbare Ortszeit, beschreibbarer lokaler oder Android-Online-Ordner, eigenes Kennwort, zwei bis 30 Stände und **Jetzt sichern**. Dateien werden nach dem Speichern vollständig zurückgelesen und geprüft; erst dann werden ältere eigene Stände entfernt. Für den gemeinsamen Verlauf die Zentrale sichern, für eigene lokale Einstellungen bei Bedarf auch die Anzeigen. Beim Wiederherstellen auf einem anderen Handy werden Geräteschlüssel neu im dortigen AndroidKeyStore geschützt. Neue vollständige Sicherungen benötigen 3.0.13 oder neuer; alte Sicherungen bleiben lesbar. [Einrichtung und Wiederherstellung](docs/changes-3.0.13.md).
+
+Der [vollständige Freigabelauf 44046201191](https://github.com/Tim-Gurke/AutarPie/actions/runs/44046201191) ist erfolgreich: APK-Bau und Lint, 613 Unit-Prüfungen, 1.068 Integrationsprüfungen und 22 native Android-Prüfungen auf Android 8/11, außerdem die bisherigen Browser-Szenarien. Dazu gehören echte Android-Speicherfreigaben, Versionserhalt bei Speicherfehlern und eine vollständige Wiederherstellung zwischen getrennten App-UIDs mit echten AndroidKeyStore-Schlüsseln. Kein physischer Funk-, nächtlicher G5-Neustart- oder allgemeiner Cloud-Anbietertest.
+
+**Zuerst die Zentrale beziehungsweise das direkt erfassende Handy, danach alle Anzeigen auf 3.0.13 aktualisieren.** Über die vorhandene App mit ursprünglicher Updatesignatur installieren. Nicht deinstallieren. Alte Anzeigen bleiben über das bisherige Verbundprotokoll kompatibel; neue Übertragung und Darstellung benötigen das eigene Update. Automatische Sicherungen anschließend einmalig am jeweiligen Handy einrichten. Ausgewählte Quellschritte werden vor langen Prüfungen dauerhaft auf GitHub gesichert. [Vollständiger Umfang und Grenzen](docs/changes-3.0.13.md).
 
 ## Update 3.0.12
 
@@ -124,8 +138,3 @@ Der Roller kann aus kurzen ausreichend vollständig erfassten Ladungen lernen, o
 **E-Scooter → Verbrauch lernen** zeigt die Grundlage und führt zur vorläufigen Wochenannahme. Alle ausgewählten Kurzwahlen einschließlich eigener Dashboards verwenden die gemeinsame App-Akzentfarbe; sie bleibt beim Umordnen, bei Farbänderungen und abweichendem Dashboard-Design erhalten. Der historische Haushaltsabgleich aus 3.0.5 bleibt enthalten.
 
 **Die Funktionen aus 3.0.6 bleiben im aktuellen Update enthalten.** Über die vorhandene Installation installieren und anschließend den ersten Abgleich abwarten. Daten, Ladejournal, Kopplungen und Layouts bleiben erhalten. [Änderungen, Bedienung und Prüfgrenzen 3.0.6](docs/changes-3.0.6.md) · [Historisches Verbrauchslernen 3.0.5](docs/changes-3.0.5.md) · [Vollständige Historie](CHANGELOG.md).
-
-
-### Vollständiges Update 3.0.13
-
-Archivkorrektur, gebündelter Anzeigeabgleich, gewünschte Darstellung für Neuinstallationen und freiwillige tägliche verschlüsselte Sicherung. [Bedienung, Wiederherstellung und Prüfgrenzen](docs/changes-3.0.13.md). Bau freigegeben; abschließende Android-Prüfung vor Veröffentlichung erforderlich.
