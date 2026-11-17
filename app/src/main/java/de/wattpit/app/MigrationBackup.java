@@ -59,7 +59,7 @@ final class MigrationBackup {
     }
     /** Consistent per-database copies; encryption and upload hold no live database transaction. */
     static synchronized void exportLive(Context c,OutputStream destination,char[] password)throws Exception{
-        if(Repository.get(c).archiveBusy||pending(c))throw new IOException("Archivabruf oder Wiederherstellung läuft. Sicherung später erneut versuchen.");
+        if(Repository.get(c).archiveBusy||pending(c))throw new DailyBackup.Deferred("Archivabruf oder Wiederherstellung läuft; Sicherung später erneut versuchen.");
         File snapshots=new File(c.getCacheDir(),"daily-backup-snapshot");remove(snapshots);if(!snapshots.mkdirs())throw new IOException("Kein Platz für die Sicherung.");
         try{
             JSONObject prefs=preferences(c);prefs.remove("autarpie-backups");BackupCredentials.transform(prefs,true);long start=System.currentTimeMillis();JSONArray captures=new JSONArray();File folder=c.getDatabasePath("wattpit-history.db").getParentFile();File[] files=folder.listFiles();

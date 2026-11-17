@@ -124,3 +124,8 @@ Der Roller kann aus kurzen ausreichend vollständig erfassten Ladungen lernen, o
 **E-Scooter → Verbrauch lernen** zeigt die Grundlage und führt zur vorläufigen Wochenannahme. Alle ausgewählten Kurzwahlen einschließlich eigener Dashboards verwenden die gemeinsame App-Akzentfarbe; sie bleibt beim Umordnen, bei Farbänderungen und abweichendem Dashboard-Design erhalten. Der historische Haushaltsabgleich aus 3.0.5 bleibt enthalten.
 
 **Die Funktionen aus 3.0.6 bleiben im aktuellen Update enthalten.** Über die vorhandene Installation installieren und anschließend den ersten Abgleich abwarten. Daten, Ladejournal, Kopplungen und Layouts bleiben erhalten. [Änderungen, Bedienung und Prüfgrenzen 3.0.6](docs/changes-3.0.6.md) · [Historisches Verbrauchslernen 3.0.5](docs/changes-3.0.5.md) · [Vollständige Historie](CHANGELOG.md).
+
+
+### Vollständiges Update 3.0.13
+
+Archivkorrektur, gebündelter Anzeigeabgleich, gewünschte Darstellung für Neuinstallationen und freiwillige tägliche verschlüsselte Sicherung. [Bedienung, Wiederherstellung und Prüfgrenzen](docs/changes-3.0.13.md). Bau freigegeben; abschließende Android-Prüfung vor Veröffentlichung erforderlich.

@@ -12,7 +12,7 @@ final class BackupSnapshot {
     static void copy(File source,File target)throws Exception{
         if(target.exists())throw new IOException("Zwischenstand bereits vorhanden.");
         try(SQLiteDatabase in=SQLiteDatabase.openDatabase(source.getAbsolutePath(),null,SQLiteDatabase.OPEN_READWRITE|SQLiteDatabase.NO_LOCALIZED_COLLATORS|SQLiteDatabase.ENABLE_WRITE_AHEAD_LOGGING);
-            SQLiteDatabase out=SQLiteDatabase.openOrCreateDatabase(target,null)){
+            SQLiteDatabase out=SQLiteDatabase.openDatabase(target.getAbsolutePath(),null,SQLiteDatabase.OPEN_READWRITE|SQLiteDatabase.CREATE_IF_NECESSARY|SQLiteDatabase.NO_LOCALIZED_COLLATORS)){
             in.beginTransactionNonExclusive();try{
                 List<String[]> tables=new ArrayList<>(),schema=new ArrayList<>();
                 try(Cursor c=in.rawQuery("SELECT type,name,sql FROM sqlite_master WHERE sql IS NOT NULL ORDER BY CASE type WHEN 'table' THEN 0 WHEN 'index' THEN 1 WHEN 'view' THEN 2 ELSE 3 END,name",null)){

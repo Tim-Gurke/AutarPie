@@ -1,0 +1,22 @@
+package de.wattpit.app;
+import android.content.*;
+import androidx.test.platform.app.InstrumentationRegistry;
+import junit.framework.TestCase;
+import org.json.*;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.*;
+
+/** Invoked in two genuinely separate Android users/UIDs, using their real AndroidKeyStore. */
+public final class BackupIsolationTest extends TestCase {
+    private static final char[] PASSWORD="Neutral-isolation-proof-2026!".toCharArray();
+    private static byte[] expected(){byte[] b=new byte[16];for(int i=0;i<16;i++)b[i]=(byte)(i*7+3);return b;}
+    public void testFullBackupAcrossRealUids()throws Exception{
+        String phase=InstrumentationRegistry.getArguments().getString("backupPhase","");if(phase.isEmpty())return;android.app.Instrumentation instrumentation=InstrumentationRegistry.getInstrumentation();Context c=instrumentation.getTargetContext();assertTrue("Only disposable debug users",(c.getApplicationInfo().flags&android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0&&android.os.Process.myUid()/100000>0);File archive=new File(c.getFilesDir(),"isolation.wohnpit"),identity=new File(c.getFilesDir(),"isolation-source.json");
+        if(phase.equals("source")){Repository repo=Repository.get(c);byte[] value=expected();String cipher;try{cipher=KeyVault.encrypt(value);}finally{Arrays.fill(value,(byte)0);}repo.prefs.edit().putString("devices",new JSONArray().put(new JSONObject().put("kind","shunt").put("mac","AA:00:00:00:00:01").put("name","Neutral proof").put("secret",cipher)).toString()).putBoolean("recording",true).putString("dashboard-v1","neutral-layout-marker").commit();de.wattpit.app.core.Reading reading=new de.wattpit.app.core.Reading();reading.timestamp=1700000000000L;reading.device="AA:00:00:00:00:01";reading.kind="shunt";reading.origin="live";reading.power=-12.5;repo.db.insert(reading);repo.running=true;try(OutputStream out=new FileOutputStream(archive)){MigrationBackup.exportLive(c,out,PASSWORD);}assertTrue(repo.running);assertTrue(repo.prefs.getBoolean("recording",false));Files.write(identity.toPath(),new JSONObject().put("uid",android.os.Process.myUid()).put("cipher",cipher).toString().getBytes(StandardCharsets.UTF_8));}
+        else if(phase.equals("prepare")){JSONObject source=new JSONObject(new String(Files.readAllBytes(identity.toPath()),StandardCharsets.UTF_8));assertTrue(source.getInt("uid")!=android.os.Process.myUid());KeyVault.encrypt(new byte[16]);boolean rejected=false;try{KeyVault.decrypt(source.getString("cipher"));}catch(Exception expected){rejected=true;}assertTrue("Foreign UID cannot decrypt the source key",rejected);c.getSharedPreferences("wattpit",0).edit().putString("before","target-intact").commit();try(InputStream in=new FileInputStream(archive)){assertEquals(2,MigrationBackup.prepare(c,in,PASSWORD).getInt("version"));}assertEquals("target-intact",c.getSharedPreferences("wattpit",0).getString("before",""));assertFalse(MigrationBackup.pending(c));MigrationBackup.schedule(c);assertTrue(MigrationBackup.pending(c));}
+        else if(phase.equals("restore")){assertTrue(MigrationBackup.pending(c));MigrationBackup.applyPending(c);assertFalse(MigrationBackup.pending(c));Repository repo=Repository.get(c);JSONObject device=new JSONArray(repo.prefs.getString("devices","[]")).getJSONObject(0);byte[] plain=KeyVault.decrypt(device.getString("secret"));try{assertTrue(Arrays.equals(expected(),plain));}finally{Arrays.fill(plain,(byte)0);}assertEquals("neutral-layout-marker",repo.prefs.getString("dashboard-v1",""));assertEquals(-12.5,repo.db.last("AA:00:00:00:00:01").power,0.00001);assertFalse(repo.prefs.getBoolean("recording",true));assertFalse(BackupScheduler.prefs(c).getBoolean("enabled",false));}
+        else fail("Unknown proof phase");android.os.Bundle report=new android.os.Bundle();report.putString("stream","AUTARPIE_BACKUP_PHASE_"+phase+"_UID_"+android.os.Process.myUid()+"\n");instrumentation.sendStatus(0,report);
+    }
+}

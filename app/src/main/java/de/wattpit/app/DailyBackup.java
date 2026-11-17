@@ -13,10 +13,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 final class DailyBackup {
     private static final AtomicBoolean ACTIVE=new AtomicBoolean();static boolean running(){return ACTIVE.get();}
     private static final long LIMIT=MigrationBackup.MAX_BYTES;
+    static final class Deferred extends IOException{Deferred(String message){super(message);}}
     static void run(Context context)throws Exception{
         Context c=context.getApplicationContext();SharedPreferences p=BackupScheduler.prefs(c);if(MigrationBackup.pending(c))throw new IOException("Wiederherstellung wartet auf Neustart.");if(!ACTIVE.compareAndSet(false,true))throw new IOException("Eine Sicherung läuft bereits.");
         File staged=new File(c.getCacheDir(),"daily-backup-encrypted.tmp");Uri partial=null,completed=null;char[] password=null;
         try{
+            if(Repository.get(c).archiveBusy)throw new Deferred("Archivabruf läuft; die Sicherung später erneut versuchen.");
             Uri tree=Uri.parse(p.getString("tree",""));if(tree.toString().isEmpty())throw new IOException("Bitte einen Sicherungsordner wählen.");byte[] b=KeyVault.decrypt(p.getString("password",""));try{password=new String(b,StandardCharsets.UTF_8).toCharArray();}finally{Arrays.fill(b,(byte)0);}
             p.edit().putString("progress","Datenstand wird gesichert und verschlüsselt …").remove("error").commit();try(OutputStream out=new FileOutputStream(staged)){MigrationBackup.exportLive(c,out,password);}check();if(staged.length()>LIMIT)throw new IOException("Sicherung ist zu groß.");
             byte[] expected;try(InputStream in=new FileInputStream(staged)){expected=digest(in);}ContentResolver r=c.getContentResolver();Uri parent=DocumentsContract.buildDocumentUriUsingTree(tree,DocumentsContract.getTreeDocumentId(tree));String owner=p.getString("owner","");if(!owner.matches("[a-f0-9]{32}"))throw new IOException("Sicherung erneut einrichten.");String name="AutarPie-"+owner+"-"+new SimpleDateFormat("yyyyMMdd-HHmmss",Locale.ROOT).format(new Date())+"-"+UUID.randomUUID().toString().substring(0,8)+".wohnpit";
@@ -25,7 +27,7 @@ final class DailyBackup {
             verify(r,completed,expected);check();if(partial!=null){try{DocumentsContract.deleteDocument(r,partial);}catch(Exception ignored){}partial=null;}
             Uri newest=completed;if(!p.edit().putLong("success",System.currentTimeMillis()).putString("lastFile",newest.toString()).putLong("bytes",staged.length()).putString("progress","").remove("error").commit())throw new IOException("Sicherungsstatus nicht gespeichert.");completed=null;
             try{retain(r,tree,owner,p.getInt("keep",7),newest);}catch(Exception e){p.edit().putString("error","Sicherung gespeichert; ältere Stände konnten nicht alle entfernt werden.").apply();}
-        }catch(Exception e){p.edit().putString("progress","").putString("error",Thread.currentThread().isInterrupted()?"Sicherung durch Android unterbrochen; wird später erneut versucht.":"Sicherung fehlgeschlagen. Zielzugriff, Speicherplatz und gegebenenfalls Internet prüfen.").commit();throw e;}
+        }catch(Exception e){p.edit().putString("progress","").putString("error",e instanceof Deferred?e.getMessage():Thread.currentThread().isInterrupted()?"Sicherung durch Android unterbrochen; wird später erneut versucht.":"Sicherung fehlgeschlagen. Zielzugriff, Speicherplatz und gegebenenfalls Internet prüfen.").commit();throw e;}
         finally{if(password!=null)Arrays.fill(password,'\0');if(partial!=null)try{DocumentsContract.deleteDocument(c.getContentResolver(),partial);}catch(Exception ignored){}if(completed!=null)try{DocumentsContract.deleteDocument(c.getContentResolver(),completed);}catch(Exception ignored){}staged.delete();ACTIVE.set(false);}
     }
     private static void check()throws InterruptedIOException{if(Thread.currentThread().isInterrupted())throw new InterruptedIOException("Sicherung unterbrochen.");}

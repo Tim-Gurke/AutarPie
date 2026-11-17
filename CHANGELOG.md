@@ -8,6 +8,17 @@ Das bestehende GitHub-Repository heißt jetzt [`Tim-Gurke/AutarPie`](https://git
 
 ## Aktuelles Update
 
+### 3.0.13 · Archiv, Anzeigeabgleich, Startdarstellung und Datensicherung
+
+Am 17.11.2026 für den vollständigen Umfang zum Bau und zur Veröffentlichung freigegeben. Die Archiv-Bestandsprüfung verwendet begrenzte SQL-Seiten und eine frische Wiederanmeldung nach einem vorübergehenden Anmeldefehler. Anzeigen übertragen mehrere unabhängig geprüfte Rohdaten-Seiten je Netzwerkaufruf und protokollieren Verbindung, Übertragung, Speicherung und Berechnung getrennt. Bereits vorhandene Blöcke bleiben erhalten; das ältere Protokoll bleibt kompatibel.
+
+Leere Neuinstallationen starten mit der gewünschten Darstellung: acht Bereiche, 21 Übersichtskacheln, 75 % Größe, eigene Wetterfarben und Kurzwahlreihenfolge. Bestehende Installationen behalten ihre Darstellung und Kopplungen.
+
+Optional täglich vollständige verschlüsselte Sicherungen mit frei gewählter Ortszeit, lokalem oder unterstütztem Online-Ordner, geschütztem Kennwort, zwei bis 30 Ständen, „Jetzt sichern“, Status und geprüfter Wiederherstellung. Anfangs ausgeschaltet. Neue Sicherungen übertragen App-Geräteschlüssel innerhalb der Verschlüsselung und verschlüsseln sie beim Import im Ziel-AndroidKeyStore neu. Aufwendige Auswertungen bleiben auf den Anzeigen. [Bedienung und Prüfgrenzen](docs/changes-3.0.13.md).
+
+Die Freigabe ist dokumentiert; eine Veröffentlichung erfolgt nach bestandener APK-/Android-Gesamtprüfung. Die konkreten Nachweise stehen im Release und im README.
+
+
 ### 3.0.12 · Archiv-Bluetooth vom Hauptthread trennen
 
 Android-Bluetooth-Aufträge und ihre Rückmeldungen im Archivdienst verwenden einen eigenen HandlerThread. Ein beschäftigter Hauptthread blockiert damit nicht mehr Diensterkennung, Schreibbestätigungen und den bestehenden seriellen Sitzungserhalt. Abbruch und Freigabe des GATT-Clients bleiben erhalten. Die lokale Bestandsplanung verlängert zusammenhängende Messintervalle ohne unnötiges Entfernen und erneutes Einfügen; vorhandene Daten und echte Lücken werden unverändert erkannt.
