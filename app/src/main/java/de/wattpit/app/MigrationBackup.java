@@ -87,6 +87,13 @@ final class MigrationBackup {
             File[] databases=new File(temp,"databases").listFiles();if(databases!=null)for(File file:databases)if(file.getName().endsWith(".db")){
                 try(SQLiteDatabase db=SQLiteDatabase.openDatabase(file.getAbsolutePath(),null,SQLiteDatabase.OPEN_READWRITE|SQLiteDatabase.NO_LOCALIZED_COLLATORS);Cursor cursor=db.rawQuery("PRAGMA quick_check",null)){if(!cursor.moveToFirst()||!cursor.getString(0).equals("ok"))throw new IOException("Die Datenbankprüfung ist fehlgeschlagen.");}
             }
+            if(manifest.optInt("version")==2){
+                // An online VACUUM snapshot may renumber implicit rowids. Stored values/explicit IDs survive;
+                // reset transfer identities on the staged copy, never on the running source installation.
+                try(SQLiteDatabase history=SQLiteDatabase.openDatabase(primary.getAbsolutePath(),null,SQLiteDatabase.OPEN_READWRITE|SQLiteDatabase.NO_LOCALIZED_COLLATORS);Cursor c2=history.rawQuery("SELECT 1 FROM sqlite_master WHERE type='table' AND name='analysis_meta'",null)){if(c2.moveToFirst()){android.content.ContentValues identity=new android.content.ContentValues();identity.put("epoch",UUID.randomUUID().toString());history.update("analysis_meta",identity,"1=1",null);}}
+                for(Iterator<String> names=prefs.keys();names.hasNext();){String name=names.next();if(!name.startsWith("wattpit-view-"))continue;JSONObject values=prefs.getJSONObject(name);java.util.List<String> removeKeys=new java.util.ArrayList<>();for(Iterator<String> keys=values.keys();keys.hasNext();){String key=keys.next();if(key.startsWith("analysis."))removeKeys.add(key);}for(String key:removeKeys)values.remove(key);}
+                write(new File(temp,"preferences.json"),prefs.toString().getBytes(StandardCharsets.UTF_8));
+            }
             remove(stage(c));Files.move(temp.toPath(),stage(c).toPath(),StandardCopyOption.ATOMIC_MOVE);return manifest.put("bytes",total);
         }catch(Exception e){remove(temp);throw e;}
     }

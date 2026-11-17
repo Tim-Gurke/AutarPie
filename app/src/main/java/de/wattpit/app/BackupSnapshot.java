@@ -6,10 +6,19 @@ import android.content.ContentValues;
 import java.io.*;
 import java.util.*;
 
-/** Cross-version SQLite snapshot with stable rowids. No ATTACH or journal-mode changes on live helpers. */
+/** Native online snapshot when supported; bounded legacy copier for older SQLite. */
 final class BackupSnapshot {
     private static String q(String s){return "\""+s.replace("\"","\"\"")+"\"";}
     static void copy(File source,File target)throws Exception{
+        if(target.exists())throw new IOException("Zwischenstand bereits vorhanden.");
+        try(SQLiteDatabase db=SQLiteDatabase.openDatabase(source.getAbsolutePath(),null,SQLiteDatabase.OPEN_READONLY|SQLiteDatabase.NO_LOCALIZED_COLLATORS)){
+            String version;try(Cursor c=db.rawQuery("SELECT sqlite_version()",null)){if(!c.moveToFirst())throw new IOException("SQLite-Version fehlt.");version=c.getString(0);}
+            String[] parts=version.split("\\.");int major=Integer.parseInt(parts[0]),minor=Integer.parseInt(parts[1]);
+            if(major>3||major==3&&minor>=27){check();db.execSQL("VACUUM INTO ?",new Object[]{target.getAbsolutePath()});try(SQLiteDatabase verify=SQLiteDatabase.openDatabase(target.getAbsolutePath(),null,SQLiteDatabase.OPEN_READONLY|SQLiteDatabase.NO_LOCALIZED_COLLATORS);Cursor c=verify.rawQuery("PRAGMA quick_check",null)){if(!c.moveToFirst()||!"ok".equals(c.getString(0)))throw new IOException("Datenbankprüfung fehlgeschlagen.");}return;}
+        }
+        copyPreservingRowids(source,target);
+    }
+    static void copyPreservingRowids(File source,File target)throws Exception{
         if(target.exists())throw new IOException("Zwischenstand bereits vorhanden.");
         try(SQLiteDatabase in=SQLiteDatabase.openDatabase(source.getAbsolutePath(),null,SQLiteDatabase.OPEN_READWRITE|SQLiteDatabase.NO_LOCALIZED_COLLATORS|SQLiteDatabase.ENABLE_WRITE_AHEAD_LOGGING);
             SQLiteDatabase out=SQLiteDatabase.openDatabase(target.getAbsolutePath(),null,SQLiteDatabase.OPEN_READWRITE|SQLiteDatabase.CREATE_IF_NECESSARY|SQLiteDatabase.NO_LOCALIZED_COLLATORS)){
