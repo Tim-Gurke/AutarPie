@@ -48,3 +48,7 @@ Am 12.11.2026 beauftragt: sichtbarer Name AutarPie und Ressourcen-Kreislauf-Symb
 Alle Prognosen, Energieauswertungen, Lernmodelle und Statistiken laufen auf Anzeigehandys oder im eigenständigen Betrieb. Die native Zentrale sammelt, speichert und synchronisiert Grundlagen und führt bestätigte Steueraufträge sowie zeitlich begrenzte Ladepläne mit direkten Abschaltbedingungen aus. Keine neue automatische Ladung ohne gültigen Anzeigeplan. Hardwarestatus und gesendeten Auftrag getrennt darstellen.
 
 Alle Standardbereiche und selbst erstellte Dashboards verwenden denselben Kacheleditor. Layouts sind gerätelokal, Bereichsfarben gemeinsam; Einzelkachel-Abweichungen erkennbar erhalten. Entfernen einer Kachel erfordert eine Bestätigung. Darstellungsgröße nur nach ausdrücklichem Speichern ändern.
+
+## Dauerhafte Zwischenstände ab 17.11.2026
+
+Nach jedem abgeschlossenen fachlichen Teilschritt und vor langen Prüfungen den Quellstand als Commit auf einem Vorbereitungsbranch dauerhaft auf GitHub sichern. Lokale Arbeitsverzeichnisse und allein lokale Commits genügen nicht. Private Messdaten, Sicherungen, Kopplungs- und Signierschlüssel ausschließen. Nach einem Ausfall zuerst den tatsächlich gesicherten Stand feststellen; frühere Testergebnisse nur für den dazugehörigen Quellstand angeben. Die ausdrückliche Bau-/Veröffentlichungsfreigabe vom 17.11.2026 gilt für den vollständigen Umfang aus Archivkorrektur, neuer Darstellung nur bei Neuinstallation, schnellerem Anzeigeabgleich und freiwilligen automatischen Sicherungen.
