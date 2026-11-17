@@ -62,6 +62,14 @@ final class HistoryExchange {
         long[] end=version(db,block);
         return new JSONObject().put("changed",end[0]!=expected).put("block",block).put("revision",expected).put("n",before[1]).put("rows",rows).put("cursor",cursor).put("complete",rows.length()<PAGE);
     }
+    /** Share one authenticated round trip, retaining independent page revision checks. */
+    static JSONObject batch(HistoryDb history,JSONArray requests)throws Exception{
+        if(requests.length()<1||requests.length()>8)throw new IllegalArgumentException("Ungültige Sammelabfrage.");JSONArray pages=new JSONArray();
+        for(int i=0;i<requests.length();i++){JSONArray r=requests.getJSONArray(i);if(r.length()!=3)throw new IllegalArgumentException();pages.put(page(history,r.getLong(0),r.getLong(1),r.getLong(2)));}return new JSONObject().put("pages",pages);
+    }
+    static Map<Long,Long> cachedVersions(HistoryDb history,long from,long to){
+        Map<Long,Long> result=new HashMap<>();try(Cursor c=history.getReadableDatabase().rawQuery("SELECT block,revision FROM replica_blocks WHERE block>=? AND block<=?",new String[]{""+(from/BLOCK),""+(to/BLOCK)})){while(c.moveToNext())result.put(c.getLong(0),c.getLong(1));}return result;
+    }
     static long cachedVersion(HistoryDb history,long block){try(Cursor c=history.getReadableDatabase().rawQuery("SELECT revision FROM replica_blocks WHERE block=?",new String[]{""+block})){return c.moveToFirst()?c.getLong(0):-1;}}
     static void replace(HistoryDb history,long block,long revision,long count,JSONArray rows)throws Exception{
         if(rows.length()!=count||count>100000)throw new IllegalArgumentException("Datenblock ist noch unvollständig.");

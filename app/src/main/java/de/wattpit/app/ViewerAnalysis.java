@@ -23,6 +23,8 @@ final class ViewerAnalysis {
     private long progressAt;
     private String epoch="";
     private long rawRevision,downloadedRows,downloadedBlocks;
+    private long networkNanos,storageNanos,operationNanos,computeNanos,connectNanos;private int requests;private String operation="";private boolean completed;
+    private volatile JSONObject lastTiming=new JSONObject();
     ViewerAnalysis(Context context,LanSync lan,String id){
         if(!id.matches("[A-Za-z0-9_-]{22}"))throw new IllegalArgumentException("Ungültige Anlage.");
         this.lan=lan;identity=lan.identity();plant=id;String prefix="wattpit-view-"+id;
@@ -34,7 +36,7 @@ final class ViewerAnalysis {
     }
     private JSONObject get(String method,JSONArray args)throws Exception{
         if(identity!=lan.identity()||!lan.viewer())throw new IOException("Anlage wurde gewechselt.");
-        JSONObject value=lan.queryInput(method,args);
+        long started=System.nanoTime();JSONObject value;try{value=lan.queryInput(method,args);}finally{networkNanos+=System.nanoTime()-started;connectNanos+=lan.lastConnectNanos();requests++;}
         if(identity!=lan.identity()||!lan.viewer())throw new IOException("Anlage wurde gewechselt.");return value;
     }
     private void note(String value){long now=System.currentTimeMillis();if(progress!=null&&now-progressAt>=300){progressAt=now;progress.accept(value);}}
@@ -48,6 +50,7 @@ final class ViewerAnalysis {
             JSONObject manifest=get("analysisManifest",new JSONArray().put(start).put(Math.min(to,start+90L*86400000)));
             String next=manifest.getString("epoch");if(!next.equals(repo.prefs.getString("analysis.epoch","")))reset(next);epoch=next;rawRevision=manifest.getLong("revision");
             JSONArray blocks=manifest.getJSONArray("blocks");
+            if(lan.analysisBatch()){rawBatch(blocks);continue;}
             for(int i=0;i<blocks.length();i++){
                 JSONArray b=blocks.getJSONArray(i);long block=b.getLong(0),revision=b.getLong(1),count=b.getLong(2);
                 rawRevision=Math.max(rawRevision,revision);if(HistoryExchange.cachedVersion(repo.db,block)==revision)continue;
@@ -64,7 +67,7 @@ final class ViewerAnalysis {
                         if(page.getBoolean("complete"))break;
                         if(nextCursor<=cursor||rows.length()>count)throw new IOException("Unvollständige Messdatenübertragung.");cursor=nextCursor;note("Messdaten werden abgeglichen …");
                     }
-                    if(!changed){HistoryExchange.replace(repo.db,block,revision,count,rows);downloadedBlocks++;installed=true;}
+                    if(!changed){long saving=System.nanoTime();HistoryExchange.replace(repo.db,block,revision,count,rows);storageNanos+=System.nanoTime()-saving;downloadedBlocks++;installed=true;}
                     else{
                         JSONObject fresh=get("analysisManifest",new JSONArray().put(block*HistoryExchange.BLOCK).put((block+1)*HistoryExchange.BLOCK));
                         if(!epoch.equals(fresh.getString("epoch")))throw new IOException("Der Datenbestand der Zentrale wurde gewechselt. Bitte erneut laden.");
@@ -75,6 +78,33 @@ final class ViewerAnalysis {
             }
         }
     }
+    private static final class PendingBlock{
+        long block,revision,count,cursor;int attempts;JSONArray rows=new JSONArray();
+        PendingBlock(JSONArray b)throws Exception{block=b.getLong(0);revision=b.getLong(1);count=b.getLong(2);if(count<0||count>100000)throw new IOException("Datenabschnitt ist zu groß.");}
+    }
+    private void rawBatch(JSONArray blocks)throws Exception{
+        Map<Long,Long> saved=HistoryExchange.cachedVersions(repo.db,blocks.length()==0?0:blocks.getJSONArray(0).getLong(0)*HistoryExchange.BLOCK,blocks.length()==0?1:(blocks.getJSONArray(blocks.length()-1).getLong(0)+1)*HistoryExchange.BLOCK);
+        ArrayDeque<PendingBlock> pending=new ArrayDeque<>();for(int i=0;i<blocks.length();i++){JSONArray b=blocks.getJSONArray(i);rawRevision=Math.max(rawRevision,b.getLong(1));if(!Objects.equals(saved.get(b.getLong(0)),b.getLong(1)))pending.add(new PendingBlock(b));}
+        while(!pending.isEmpty()){
+            List<PendingBlock> active=new ArrayList<>();JSONArray ask=new JSONArray();
+            while(active.size()<8&&!pending.isEmpty()){if(!active.isEmpty()&&(active.get(0).count>4096||pending.peekFirst().count>4096))break;PendingBlock b=pending.removeFirst();active.add(b);ask.put(new JSONArray().put(b.block).put(b.revision).put(b.cursor));}
+            JSONArray pages=get("analysisBatch",new JSONArray().put(ask)).getJSONArray("pages");if(pages.length()!=active.size())throw new IOException("Unvollständige Messdatenübertragung.");
+            for(int i=0;i<active.size();i++){
+                PendingBlock b=active.get(i);JSONObject page=pages.getJSONObject(i);
+                if(page.optBoolean("changed")){
+                    if(++b.attempts>3)throw new IOException("Messdaten ändern sich gerade. Die letzten Werte bleiben erhalten.");
+                    JSONObject fresh=get("analysisManifest",new JSONArray().put(b.block*HistoryExchange.BLOCK).put((b.block+1)*HistoryExchange.BLOCK-1));if(!epoch.equals(fresh.getString("epoch")))throw new IOException("Der Datenbestand der Zentrale wurde gewechselt. Bitte erneut laden.");
+                    JSONArray current=fresh.getJSONArray("blocks");b.revision=0;b.count=0;for(int k=0;k<current.length();k++){JSONArray v=current.getJSONArray(k);if(v.getLong(0)==b.block){b.revision=v.getLong(1);b.count=v.getLong(2);}}
+                    if(b.count<0||b.count>100000)throw new IOException("Datenabschnitt ist zu groß.");b.cursor=0;b.rows=new JSONArray();pending.addFirst(b);continue;
+                }
+                if(page.getLong("block")!=b.block||page.getLong("revision")!=b.revision||page.getLong("n")!=b.count)throw new IOException("Falscher Messdatenabschnitt.");JSONArray rows=page.getJSONArray("rows");for(int k=0;k<rows.length();k++)b.rows.put(rows.get(k));downloadedRows+=rows.length();
+                long next=page.getLong("cursor");if(b.rows.length()>b.count||(!page.getBoolean("complete")&&next<=b.cursor))throw new IOException("Unvollständige Messdatenübertragung.");b.cursor=next;
+                if(page.getBoolean("complete")){long start=System.nanoTime();HistoryExchange.replace(repo.db,b.block,b.revision,b.count,b.rows);storageNanos+=System.nanoTime()-start;downloadedBlocks++;}else pending.addFirst(b);
+            }note("Messdaten werden abgeglichen · "+downloadedBlocks+" Abschnitte gespeichert");
+        }
+    }
+    private void beginTiming(String name){operation=name;completed=false;networkNanos=storageNanos=computeNanos=connectNanos=0;requests=0;operationNanos=System.nanoTime();}
+    private void endTiming(){try{long total=System.nanoTime()-operationNanos;lastTiming=new JSONObject().put("method",operation).put("at",System.currentTimeMillis()).put("completed",completed).put("totalMs",total/1000000).put("networkMs",networkNanos/1000000).put("connectionMs",connectNanos/1000000).put("storageMs",storageNanos/1000000).put("calculationMs",computeNanos/1000000).put("localMs",Math.max(0,total-networkNanos-storageNanos)/1000000).put("requests",requests).put("rows",downloadedRows).put("blocks",downloadedBlocks).put("batch",lan.analysisBatch());repo.prefs.edit().putString("analysis.timing",lastTiming.toString()).apply();}catch(Exception ignored){}}
     private void model(long from,long to)throws Exception{
         from=Math.min(from,System.currentTimeMillis()-90L*86400000)/86400000L*86400000L;to=Math.min((to+86399999)/86400000L*86400000L,(System.currentTimeMillis()/86400000L+1)*86400000L);
         for(int retry=0;retry<3;retry++){
@@ -98,7 +128,7 @@ final class ViewerAnalysis {
                     if(next<=cursor||rows.length()>250000)throw new IOException("Unvollständige Berechnungsgrundlagen.");cursor=next;note("Berechnungsgrundlagen werden abgeglichen …");
                 }
                 if(changed)break;
-                AnalysisExchange.install(table,repo,planning,ledger,from,to,rows);if(table.equals("roller_raw"))for(int i=0;i<rows.length();i++){JSONArray row=rows.getJSONArray(i);dirtyRollerFrom=Math.min(dirtyRollerFrom,row.getLong(1));dirtyRollerTo=Math.max(dirtyRollerTo,row.getLong(2));}
+                long saving=System.nanoTime();AnalysisExchange.install(table,repo,planning,ledger,from,to,rows);storageNanos+=System.nanoTime()-saving;if(table.equals("roller_raw"))for(int i=0;i<rows.length();i++){JSONArray row=rows.getJSONArray(i);dirtyRollerFrom=Math.min(dirtyRollerFrom,row.getLong(1));dirtyRollerTo=Math.max(dirtyRollerTo,row.getLong(2));}
                 SharedPreferences.Editor edit=repo.prefs.edit().putString(key,version);if(incremental)edit.putLong(cursorKey,cursor);edit.commit();
             }
             if(changed)continue;
@@ -144,11 +174,11 @@ final class ViewerAnalysis {
         for(String key:new String[]{"solar","consumption","balance","mobile"})if(result.optJSONObject(key)!=null){JSONObject part=result.getJSONObject(key).put("analysis",state);if(changed)part.put("stale",true);else part.remove("stale");}return result;
     }
     synchronized JSONObject query(String method,JSONArray args,Consumer<String> progress)throws Exception{
-        this.progress=progress;downloadedRows=downloadedBlocks=0;
+        this.progress=progress;downloadedRows=downloadedBlocks=0;beginTiming(method);
         try{
             long from=args.getLong(0),to=args.getLong(1),now=System.currentTimeMillis();
             if(from<0||to<=from||to-from>(method.equals("dailyEnergy")?32L:366L)*86400000||(!method.equals("dailyEnergy")&&to>now+86400000))throw new IOException("Ungültiger Zeitraum.");
-            prepare(from,Math.max(from+1,Math.min(to,now)));note("Auswertung auf diesem Handy …");JSONObject result;
+            prepare(from,Math.max(from+1,Math.min(to,now)));note("Auswertung auf diesem Handy …");long calculating=System.nanoTime();JSONObject result;
             switch(method){
                 case "chargerJournal":if(!metadata.getJSONObject("tables").has("charger_raw"))throw new IOException("Für das Laderjournal zuerst die Zentrale auf 3.0.8 aktualisieren.");result=ChargerJournal.query(ledger,ChargerJournal.source(repo),from,to,args.optString(2),now);break;
                 case "loadHistory":result=ledger.loadHistory(RollerLedger.source(repo.prefs),from,to,args.getString(2),args.optString(3));break;
@@ -159,11 +189,11 @@ final class ViewerAnalysis {
                 case "energyHistory":result=planning.energyFlow(from,to,args.getLong(3),args.getString(2));break;
                 case "dailyEnergy":result=planning.dailyEnergy(from,to,new JSONObject(repo.prefs.getString("weatherCache","{}")).put("analysisTimezone",repo.prefs.getString("analysisTimezone",TimeZone.getDefault().getID())));break;
                 default:throw new IllegalArgumentException("Unbekannte Auswertung.");
-            }return stamp(result);
-        }finally{this.progress=null;}
+            }computeNanos+=System.nanoTime()-calculating;JSONObject stamped=stamp(result);completed=true;return stamped;
+        }finally{endTiming();this.progress=null;}
     }
     synchronized JSONObject knowledge(Consumer<String> progress)throws Exception{
-        this.progress=progress;downloadedRows=downloadedBlocks=0;try{
+        this.progress=progress;downloadedRows=downloadedBlocks=0;beginTiming("knowledge");try{
             requireProtocol();long now=System.currentTimeMillis(),since=now-7L*86400000,previous=repo.prefs.getLong("analysis.learningRevision",0);
             JSONObject changes=get("analysisChanges",new JSONArray().put(previous));
             if(!changes.getString("epoch").equals(repo.prefs.getString("analysis.epoch","")))reset(changes.getString("epoch"));
@@ -181,17 +211,17 @@ final class ViewerAnalysis {
             else model(support(since),now);
             raw(support(since),now);
             planning.analysisPresence(presence==null?metadata.getJSONArray("presenceHistory"):presence,metadata.getJSONObject("presence"),since,now);if(previous>0){if(changes.has("ranges"))planning.invalidateLearning(changes.getJSONArray("ranges"));else planning.invalidateLearning(correction);}
-            note("Verbrauch und Solarvorschau werden auf diesem Handy berechnet …");JSONObject result=planning.calculateKnowledge();
+            note("Verbrauch und Solarvorschau werden auf diesem Handy berechnet …");long calculating=System.nanoTime();JSONObject result=planning.calculateKnowledge();computeNanos+=System.nanoTime()-calculating;
             if(result.has("error"))throw new IOException(result.getString("error"));
             stamp(result);if(recovering&&!result.optBoolean("historyRecoveryPending"))planning.completeHistoricalRecovery(since,now);
-            repo.prefs.edit().putLong("analysis.learningRevision",changes.getLong("revision")).commit();return result;
-        }finally{this.progress=null;}
+            repo.prefs.edit().putLong("analysis.learningRevision",changes.getLong("revision")).commit();completed=true;return result;
+        }finally{endTiming();this.progress=null;}
     }
-    synchronized JSONObject diagnostics()throws Exception{return new JSONObject().put("downloadedRows",downloadedRows).put("downloadedBlocks",downloadedBlocks).put("epoch",epoch).put("revision",rawRevision);}
+    synchronized JSONObject diagnostics()throws Exception{return new JSONObject().put("downloadedRows",downloadedRows).put("downloadedBlocks",downloadedBlocks).put("epoch",epoch).put("revision",rawRevision).put("timing",lastTiming);}
     synchronized void rebuildHistory()throws Exception{planning.rebuildHistory();}
     synchronized void exportDiagnostics(java.io.OutputStream output)throws Exception{
         JSONObject diagnostic=planning.diagnosticSnapshot().get(2,java.util.concurrent.TimeUnit.MINUTES);
-        diagnostic.put("analysis",new JSONObject().put("plant",plant).put("epoch",epoch).put("revision",rawRevision).put("inputMetadata",metadata).put("cached",true));
+        diagnostic.put("viewerTiming",lastTiming);diagnostic.put("analysis",new JSONObject().put("plant",plant).put("epoch",epoch).put("revision",rawRevision).put("inputMetadata",metadata).put("cached",true));
         JSONObject roller=new JSONObject(lan.part("roller"));diagnostic.remove("rollerHandover");diagnostic.put("roller",roller);
         try(java.util.zip.ZipOutputStream zip=new java.util.zip.ZipOutputStream(output)){
             zip.putNextEntry(new java.util.zip.ZipEntry("diagnose.json"));zip.write(diagnostic.toString(2).getBytes(java.nio.charset.StandardCharsets.UTF_8));zip.closeEntry();

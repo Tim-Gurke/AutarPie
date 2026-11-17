@@ -243,6 +243,7 @@ final class LanSync {
         if(Arrays.asList("chargerJournal","rollerEnergy","loadHistory","history","dashboardHistory","energyHistoryWindow","energyHistory","dailyEnergy").contains(method)){analysisPending=true;try{JSONObject result=analysis().query(method,args,progress);analysisAt=result.getJSONObject("analysis").optLong("at");return result;}finally{analysisPending=false;}}
         return queryInput(method,args);
     }
+    boolean analysisBatch(){return remote.optInt("analysisBatch")==1;}
     int analysisProtocol(){return remote.optInt("analysisProtocol");}
     private synchronized ViewerAnalysis analysis(){
         if(!viewer())throw new IllegalStateException();if(analysis==null||analysisIdentity!=config){if(analysis!=null)analysis.close();analysis=new ViewerAnalysis(context,this,config.optString("id"));analysisIdentity=config;}return analysis;
@@ -274,14 +275,16 @@ final class LanSync {
         JSONObject bundle=rpc(active,"rollerSession",new JSONArray().put(start).put(expectedRevision).put(LanWire.random(16)));
         validateBundle(bundle);if(active!=config)throw new IOException("Anlage wurde gewechselt.");accept(bundle,active);return bundle.getJSONObject("roller");
     }
+    private final ThreadLocal<Long> connectTiming=ThreadLocal.withInitial(()->0L);
+    long lastConnectNanos(){return connectTiming.get();}
     private JSONObject rpc(JSONObject target,String method,JSONArray args)throws Exception{
-        List<String> hosts=new ArrayList<>();int port=target.getInt("port");
+        connectTiming.set(0L);List<String> hosts=new ArrayList<>();int port=target.getInt("port");
         if(target==config&&LanWire.localAddress(resolvedHost)){hosts.add(resolvedHost);if(resolvedPort>0)port=resolvedPort;}
         JSONArray listed=target.getJSONArray("addresses");for(int i=0;i<listed.length();i++)if(!hosts.contains(listed.getString(i)))hosts.add(listed.getString(i));
         long deadline=SystemClock.elapsedRealtime()+(method.equals("rollerLink")?3000:10000);
         boolean command=method.equals("rollerSession")||method.equals("control")||method.equals("rollerLink");
         for(String host:hosts){long remaining=deadline-SystemClock.elapsedRealtime();if(remaining<=0)break;if(!LanWire.localAddress(host))continue;try(Socket socket=new Socket()){
-            socket.connect(new InetSocketAddress(host,port),(int)Math.min(1800,remaining));remaining=deadline-SystemClock.elapsedRealtime();if(remaining<=0)break;socket.setSoTimeout((int)Math.min(command?4000:10000,remaining));
+            long connecting=System.nanoTime();try{socket.connect(new InetSocketAddress(host,port),(int)Math.min(1800,remaining));}finally{connectTiming.set(connectTiming.get()+System.nanoTime()-connecting);}remaining=deadline-SystemClock.elapsedRealtime();if(remaining<=0)break;socket.setSoTimeout((int)Math.min(command?4000:10000,remaining));
             String nonce=LanWire.random(18);JSONObject request=new JSONObject().put("group",target.getString("id")).put("nonce",nonce).put("at",System.currentTimeMillis())
                 .put("peer",prefs.getString("deviceId","")).put("name",Build.MODEL).put("method",method).put("args",args);
             byte[] key=LanWire.key(target.getString("key"));LanWire.write(socket.getOutputStream(),key,request.toString(),LanWire.MAX_REQUEST);
@@ -319,6 +322,7 @@ final class LanSync {
         }catch(Exception ignored){/* Authentication errors never reveal data or key material. */}
     }
     private JSONObject read(String method,JSONArray args)throws Exception{
+        if(method.equals("analysisBatch"))return HistoryExchange.batch(repository.db,args.getJSONArray(0));
         if(method.equals("analysisManifest"))return HistoryExchange.manifest(repository.db,args.getLong(0),args.getLong(1));
         if(method.equals("analysisChanges"))return HistoryExchange.changes(repository.db,args.getLong(0));
         if(method.equals("analysisInputState"))return AnalysisExchange.state(repository,planning,currentControlRevision());
@@ -333,7 +337,7 @@ final class LanSync {
         if(method.equals("bundle")){
             backgroundInputs();
             JSONObject snapshot=repository.archiveBusy?new JSONObject(repository.backgroundSnapshot()):repository.snapshot();snapshot.remove("archiveDiagnostics");snapshot.remove("event");snapshot.remove("eventId");
-            return new JSONObject().put("analysisProtocol",1).put("snapshot",snapshot).put("setup",planning.setup()).put("planning",new JSONObject().put("source",RollerLedger.source(repository.prefs))).put("roller",RollerHandover.view(context))
+            return new JSONObject().put("analysisProtocol",1).put("analysisBatch",1).put("snapshot",snapshot).put("setup",planning.setup()).put("planning",new JSONObject().put("source",RollerLedger.source(repository.prefs))).put("roller",RollerHandover.view(context))
                 .put("supplies",SuppliesStore.snapshot(repository)).put("specialUses",SpecialUses.snapshot(repository.prefs)).put("presence",PresenceStore.get(context).snapshot()).put("controlProtocol",1).put("controlRevision",currentControlRevision()).put("sync",new JSONObject(repository.syncState())).put("bonded",PlantCommands.bonded(context));
         }
         long from=args.getLong(0);if(method.equals("sunsetSoc")){

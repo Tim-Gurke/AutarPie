@@ -3,7 +3,7 @@
  const app=window.AutarPieApp,ui=window.AutarPieUI,A=window.AutarPieCore,C=window.WattDashboardCore,U=window.AutarPieUpdate,H=window.WattColorInput,$=id=>document.getElementById(id),esc=app.escapeHtml,copy=A.clone;
  const field=(label,html)=>`<label class="form-field">${label}${html}</label>`;
  const paletteKey='autarpie-own-colors-v1';
- try{if(!localStorage.getItem('autarpie-ui-defaults-304')){const defaults=JSON.parse(app.native?.uiDefaults?.()||'{}');if(defaults.version===1){if(!localStorage.getItem(paletteKey))localStorage.setItem(paletteKey,JSON.stringify(defaults.ownColors||[]));if(!localStorage.getItem('autarpie-weather-trend-v1'))localStorage.setItem('autarpie-weather-trend-v1',String(defaults.viewSettings?.weatherTrend===true));}localStorage.setItem('autarpie-ui-defaults-304','true');}}catch(_){}
+ try{if(!localStorage.getItem('autarpie-ui-defaults-304')){const defaults=JSON.parse(app.native?.uiDefaults?.()||'{}');if([1,2].includes(defaults.version)){if(!localStorage.getItem(paletteKey))localStorage.setItem(paletteKey,JSON.stringify(defaults.ownColors||[]));if(!localStorage.getItem('autarpie-weather-trend-v1'))localStorage.setItem('autarpie-weather-trend-v1',String(defaults.viewSettings?.weatherTrend===true));}localStorage.setItem('autarpie-ui-defaults-304','true');}}catch(_){}
 
  H.ownColors=()=>{try{return [...new Set(JSON.parse(localStorage.getItem(paletteKey)||'[]').filter(v=>/^#[0-9a-f]{6}$/i.test(v)).map(v=>v.toLowerCase()))].slice(0,512);}catch(_){return [];}};
  H.remember=colors=>{const next=[...new Set([...H.ownColors(),...colors.filter(v=>/^#[0-9a-f]{6}$/i.test(v)).map(v=>v.toLowerCase())])].slice(-512);localStorage.setItem(paletteKey,JSON.stringify(next));};

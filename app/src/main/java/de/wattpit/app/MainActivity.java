@@ -17,6 +17,7 @@ public final class MainActivity extends Activity {
         }else ready();
     }
     private void ready(){
+        try{UiPreset.install(this,getSharedPreferences("wattpit",0));}catch(Exception e){failure("Grundeinstellungen konnten nicht geladen werden.");return;}
         String role=AppRole.infer(this);
         if(!getIntent().getBooleanExtra("chooseRole",false)&&AppRole.valid(role)){
             try{if(!AppRole.get(this).equals(role))AppRole.save(this,role);launch(role);return;}catch(Exception e){failure("Die bisherige Betriebsart konnte nicht übernommen werden.");return;}
