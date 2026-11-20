@@ -29,11 +29,19 @@ Lernformeln, Steuerfreigaben, Layouts oder gespeicherten Farben.
   Abrufintervalle, einschließlich Antworten während neuer Revisionen.
 - Weitere Prüfungen decken alle vier Energieströme, Null/unbekannt, langsame
   Antworten, Fehler und ausdrücklich ungültig gewordene Ergebnisse ab.
-- 103 Prüfungen der Read-Bridge und Dashboardlogik erfolgreich.
+- Alle 347 JavaScript-Prüfungen erfolgreich, darunter 103 Prüfungen der
+  Read-Bridge und Dashboardlogik.
 - Die Browserprüfung `tools/energy-refresh-smoke.cjs` wurde um drei aufeinander
   folgende Aktualisierungszyklen ergänzt. Sie kontrolliert die tatsächliche
   Graustufenklasse vor und nach Antworten sowie den Übergang zu wirklich
-  verspäteten Daten. Ausführung und Ergebnis werden nach dem Lauf ergänzt.
+  verspäteten Daten. Erfolgreich im Browser auf dem gesicherten Quellstand.
+- Auch `tools/quick-start-smoke.cjs` erfolgreich: unabhängige aktuelle/graue
+  Kacheln, unveränderte gespeicherte Hintergründe, Bildpunktprüfung der
+  vollständigen Graustufen sowie Erhalt des gekennzeichneten Lernstands.
+- [Erfolgreicher UI-Prüflauf](https://github.com/Tim-Gurke/AutarPie/actions/runs/44695042497),
+  Quellstand `9702743ef783e3568d15645a8a9d4d29477cd9d3`. Dieser Lauf baut
+  ausdrücklich keine APK. Die tatsächliche G5-/WLAN-Verbindung ist damit
+  nicht vor Ort gemessen.
 
 Vorbereiteter Quellcode; noch kein neuer APK-Bau und kein neues Release.
 Die gesonderte Bau-Freigabe gemäß AGENTS.md steht aus.
