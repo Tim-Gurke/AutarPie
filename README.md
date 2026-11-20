@@ -16,7 +16,7 @@ Android 8 oder neuer; das Cockpit benötigt einen aktuellen Android-System-WebVi
 
 ![AutarPie 3.0.15: native Zentrale auf Android 11](docs/images/autarpie-3.0.15-central.svg)
 
-Aufnahmen aus dem erfolgreichen Prüflauf für 3.0.15: native Zentrale auf Android 11 sowie Cockpit im Browser mit neutralen Geräte- und Versionsattrappen. Die Aufnahmen sind kein Funk- oder Hardwaretest. Eigene Farben und Layouts bleiben beim Update erhalten.
+Aufnahmen aus den erfolgreichen Android- und Browser-Oberflächenprüfungen für 3.0.15: native Zentrale auf Android 11 sowie Cockpit im Browser mit neutralen Geräte- und Versionsattrappen. Die Aufnahmen sind kein Funk- oder Hardwaretest. Eigene Farben und Layouts bleiben beim Update erhalten.
 
 ## Ein Cockpit, mehrere Anwendungen
 
@@ -55,7 +55,7 @@ Bis zu drei 608PD erhalten getrennte Profile, private Kennungen und eigene Verbi
 
 **Stabile Kachelfarben beim Nachladen:** Ein frisch vollständig geladener Diagrammstand bleibt bei der nächsten normalen Messwertrevision und während der Hintergrundaktualisierung farbig. „Aktualisierung im Hintergrund“ erklärt den laufenden Abruf. Die normale Aktualisierung läuft weiter. Erste fehlende Daten, Fehler, ausdrücklich ungültige Grundlagen und tatsächlich verspätete Folgeabrufe bleiben grau erkennbar. Die Aktualitätsfrist von höchstens 45 Sekunden zählt ab Abfragestart.
 
-Der [vollständige Freigabelauf 44716593721](https://github.com/Tim-Gurke/AutarPie/actions/runs/44716593721) prüft den APK-Quellstand einschließlich Android 8/11, Datenbanken und Übertragung. Die neue Ablaufprüfung kontrolliert 180 fortlaufende Revisionen; die Browserprüfung mehrere aufeinanderfolgende Aktualisierungszyklen sowie tatsächlich verspätete Daten. Die ursprüngliche Updatesignatur bleibt erhalten. Die echte G5-/WLAN-/Victron-Verbindung wurde nicht vor Ort gemessen.
+Der [vollständige Freigabelauf 44717836364](https://github.com/Tim-Gurke/AutarPie/actions/runs/44717836364) ist erfolgreich: APK-Bau/Lint, 629 Unit-Prüfungen (347 JavaScript, 275 JVM, sieben Veröffentlichungstests), 1086 native Integrationsprüfungen, 16 Android-Oberflächenprüfungen, acht Sicherungs-/UID-Wiederherstellungsausführungen auf Android 8/11 und 37 verschiedene Browser-Prüfskripte. Die neue Ablaufprüfung kontrolliert 180 fortlaufende Revisionen; die Browserprüfung mehrere aufeinanderfolgende Aktualisierungszyklen sowie tatsächlich verspätete Daten. Die ursprüngliche Updatesignatur bleibt erhalten. Die echte G5-/WLAN-/Victron-Verbindung wurde nicht vor Ort gemessen.
 
 **Zuerst G5/Zentrale beziehungsweise das direkt erfassende Handy, danach S20 und S10/Anzeigen auf 3.0.15 aktualisieren.** Über die vorhandene App installieren. Zentrale und Anzeigen mit 3.0.14 bleiben im Verbund kompatibel; die sichtbare Korrektur benötigt das jeweilige Anzeige-Update. Messdaten, Lernmodelle, Kopplungen, gespeicherte Farben und Layouts bleiben erhalten. [Installation und Prüfgrenzen](docs/changes-3.0.15.md).
 
