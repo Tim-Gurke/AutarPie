@@ -182,7 +182,7 @@
       } catch(_){const missing={points:[],summary:{},error:true};data=m.flow?{solar:missing,consumption:missing,balance:missing,mobile:missing,error:true}:missing;}
       // A fixed period (for example sunset) must retry a failed first read. Its
       // bounds will not move, so caching an error here would hide the retry path.
-      if(!data.pending&&!data.error&&!data.stale&&!data.refreshError){if(this.cache.size>128)this.cache.clear();this.cache.set(key,data);}
+      if(!data.pending&&!data.refreshing&&!data.error&&!data.stale&&!data.refreshError){if(this.cache.size>128)this.cache.clear();this.cache.set(key,data);}
       return m.flow?data[m.flow]:data;
     }
     summary(points) {
@@ -291,6 +291,7 @@
         if(data?.pending)hint=data.stale?'Letzter Stand · neue Daten werden geladen …':'Daten werden im Hintergrund geladen …';
         else if(data?.refreshError)hint='Letzter Stand · Aktualisierung fehlgeschlagen';
         else if(data?.stale)hint='Letzter Stand · '+hint;
+        else if(data?.refreshing)hint+=' · Aktualisierung im Hintergrund';
         if(m.modelPower||m.estimated||data?.summary?.modelledMillis>0)hint='Geschätzt · '+hint;
         if(data?.summary?.inconsistentMillis>0)hint+=' · Schätzung und Messbilanz passen teilweise nicht zusammen';
         if(data?.summary?.adjustedMillis>0)hint+=' · bilanzgestützt';

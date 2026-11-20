@@ -31,7 +31,7 @@
       if(value.scope!=null)for(const [oldKey,old] of this.cache)if(old.method===value.method&&old.scope===value.scope)this.cache.delete(oldKey);
       this.cache.delete(key);if(this.cache.size>=128)this.cache.delete(this.cache.keys().next().value);this.cache.set(key,value);
     }
-    // A new revision invalidates freshness, not the last successfully displayed values.
+    // Routine revisions schedule new data; explicit rebuilds invalidate freshness.
     invalidate(drop=false,throttled=false){
       this.throttled=throttled;if(!throttled)this.forcedGeneration=this.generation+1;if(!throttled){clearTimeout(this.deferTimer);this.deferTimer=null;}
       this.generation++;
@@ -49,11 +49,24 @@
         return scope!=null||x.args.slice(2).every((v,i)=>method==='dailyEnergy'||v===args[i+2])&&Math.abs(x.args[0]-args[0])<30000&&Math.abs(x.args[1]-args[1])<30000;
       });
     }
-    value(entry,method,refreshing=false){
+    recent(entry,query){
+      if(!entry||!query||query.scope==null||entry.error||entry.epoch!==this.epoch||entry.generation<(this.forcedGeneration||0))return false;
+      const age=Date.now()-(entry.startedAt??entry.at);
+      if(age<0||age>=45000||[0,1].some(i=>Math.abs(entry.args[i]-query.args[i])>=45000))return false;
+      const parts=[entry.data];
+      if(query.method.startsWith('energy')){
+        for(let i=3;i<query.args.length;i++)if(query.args[i]!==entry.args[i]&&![0,1].some(j=>query.args[i]===query.args[j]&&entry.args[i]===entry.args[j]))return false;
+        for(const key of ['solar','consumption','balance','mobile'])if(entry.data?.[key])parts.push(entry.data[key]);
+      }
+      return parts.every(part=>part&&!part.stale&&!part.pending&&!part.error&&!part.refreshError&&!part.syncing);
+    }
+    value(entry,method,refreshing=false,query){
       if(!entry?.data){const data=entry?.error?{error:entry.error}:pending(method);if(refreshing&&this.inflight?.progress)data.progress=this.inflight.progress;return JSON.stringify(data);}
       if(!refreshing&&!entry.error&&entry.generation===this.generation)return JSON.stringify(entry.data);
-      const data=JSON.parse(JSON.stringify(entry.data)),mark=part=>{
-        part.pending=refreshing;part.stale=true;part.dataAt=entry.at;
+      // A successful recent result stays current during routine background
+      // refresh. Missing, failed, explicitly invalidated or delayed data stays gray.
+      const current=this.recent(entry,query),data=JSON.parse(JSON.stringify(entry.data)),mark=part=>{
+        part.pending=refreshing&&!current;part.stale=!current;part.refreshing=current;part.dataAt=entry.startedAt??entry.at;
         if(refreshing&&this.inflight?.progress)part.progress=this.inflight.progress;
         if(entry.error)part.refreshError=entry.error;else delete part.refreshError;
       };
@@ -79,7 +92,7 @@
       if(cached?.generation===this.generation&&(!cached.error||cached.retryAt>Date.now()))return this.value(cached,method);
       if(cached?.data&&!cached.error&&cached.generation>=(this.forcedGeneration||0)&&cached.generation!==this.generation&&this.throttled&&Date.now()-cached.at<30000){
         if(!this.deferTimer){this.deferTimer=setTimeout(()=>{this.deferTimer=null;if(this.active)this.ready('refresh');},Math.max(1,30000-(Date.now()-cached.at)));this.deferTimer?.unref?.();}
-        return this.value(cached,method,false);
+        return this.value(cached,method,false,query);
       }
       const running=this.inflight?.key===key&&(this.inflight.generation===this.generation||scope!=null&&this.inflight.epoch===this.epoch);
       if(!running){
@@ -88,12 +101,12 @@
         if(!this.queue.has(slot)&&this.queue.size>=24)this.queue.delete(this.queue.keys().next().value);
         this.queue.set(slot,query);this.pump();
       }
-      return this.value(this.previous(method,args,scope),method,true);
+      return this.value(this.previous(method,args,scope),method,true,query);
     }
     pump(){
       if(!this.active||this.inflight||!this.queue.size)return;
       const [key,query]=this.queue.entries().next().value;this.queue.delete(key);
-      const request={...query,generation:this.generation,id:++this.nextId};this.inflight=request;
+      const request={...query,generation:this.generation,startedAt:Date.now(),id:++this.nextId};this.inflight=request;
       this.armTimeout(request.id);
       try{this.raw.requestHistory(JSON.stringify(request));}
       catch(_){this.result({id:request.id,data:{error:'Zeitraum konnte nicht geladen werden.'}});}

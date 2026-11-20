@@ -141,7 +141,7 @@ test('initial visible reads take priority over learning, while later refreshes d
 });
 test('routine revisions throttle cached reads, but explicit refresh and import completion keep priority',()=>{
  const {b,requests,reply}=viewer(),args=[0,100000,'power','all'];b.read('history',args,'tile');reply({points:[{v:1}]});const first=requests.length;
- b.invalidate(false,true);const old=JSON.parse(b.read('history',args,'tile'));assert.equal(old.stale,true);assert.equal(old.pending,false);assert.equal(requests.length,first);
+ b.invalidate(false,true);const old=JSON.parse(b.read('history',args,'tile'));assert.equal(old.stale,false);assert.equal(old.pending,false);assert.equal(old.refreshing,true);assert.equal(requests.length,first);
  b.invalidate();b.invalidate(false,true);b.read('history',args,'tile');assert.equal(requests.length,first+1,'a following routine revision cannot suppress an explicit refresh');reply({points:[{v:2}]});
 });
 
@@ -152,4 +152,43 @@ test('charger journal reads stay asynchronous and cannot reuse another charger u
  const known=JSON.parse(bridge.read('chargerJournal',[0,100000,'charger-a'],'journal'));assert.equal(known.sessions[0].batteryWh,0);assert.equal(known.sessions[0].state,'unknown');
  const other=JSON.parse(bridge.read('chargerJournal',[0,100000,'charger-b'],'journal'));assert.equal(other.pending,true);assert.equal(other.sessions,undefined);
  bridge.result({id:requests[1].id,data:{sessions:[],sampleCount:0}});assert.deepEqual(JSON.parse(bridge.read('chargerJournal',[0,100000,'charger-b'],'journal')).sessions,[]);
+});
+
+test('routine live revisions and moving windows keep recently completed tiles current across repeated polls',t=>{
+ let now=1000000;t.mock.method(Date,'now',()=>now);
+ const {b,requests,reply}=viewer(),args=()=>[0,now,'power','all'];
+ const read=()=>JSON.parse(b.read('history',args(),'tile'));
+ read();reply({points:[{v:12}],summary:{last:12}});
+ let answered=requests.length;
+ for(let second=1;second<=180;second++){
+  now+=1000;b.invalidate(false,true);
+  const value=read();assert.equal(!!value.stale,false,'a normal live revision must not gray a recent complete curve');assert.equal(!!value.pending,false);
+  if(requests.length>answered){now+=200;b.invalidate(false,true);reply({points:[{v:12}],summary:{last:12}});answered=requests.length;assert.equal(!!read().stale,false,'an intervening live revision must not gray the completed response');}
+ }
+ assert.ok(requests.length>=6,'background refresh must continue through multiple 30-second windows');
+});
+
+test('a recent energy result stays current while the next bounded refresh is in flight',t=>{
+ let now=1000000;t.mock.method(Date,'now',()=>now);
+ const {b,reply}=viewer(),args=()=>[0,now,'all',0,now],read=()=>JSON.parse(b.read('energyHistoryWindow',args(),'flow'));
+ read();const flow=Object.fromEntries(['solar','consumption','balance','mobile'].map(kind=>[kind,{points:[],summary:{last:kind==='mobile'?null:0}}]));reply({accountingVersion:2,...flow});
+ now+=31000;b.invalidate(false,true);const value=read();
+ for(const key of Object.keys(flow)){assert.equal(!!value[key].stale,false);assert.equal(!!value[key].pending,false);assert.equal(value[key].refreshing,true);assert.equal(value[key].summary.last,flow[key].summary.last);}
+ now+=15000;b.invalidate(false,true);const delayed=read();assert.equal(delayed.solar.stale,true);assert.equal(delayed.solar.pending,true,'a genuinely delayed refresh must still gray the tile');
+});
+
+test('refresh failures, explicit invalidation and native stale results still gray recent data',t=>{
+ let now=1000000;t.mock.method(Date,'now',()=>now);
+ const {b,reply}=viewer(),args=()=>[0,now,'power','all'],read=()=>JSON.parse(b.read('history',args(),'tile'));
+ read();reply({points:[{v:12}]});now+=31000;b.invalidate(false,true);assert.equal(!!read().stale,false);
+ reply({error:'Hauptgerät nicht erreichbar'});let value=read();assert.equal(value.stale,true);assert.match(value.refreshError,/nicht erreichbar/);assert.equal(value.points[0].v,12);
+ b.invalidate();read();reply({points:[{v:13}]});b.invalidate();assert.equal(read().stale,true,'an explicit rebuild invalidates freshness immediately');
+ reply({points:[{v:14}],stale:true});b.invalidate(false,true);assert.equal(read().stale,true,'native incomplete inputs must not become current');
+});
+
+test('a slow response is aged from request start rather than arrival',t=>{
+ let now=1000000;t.mock.method(Date,'now',()=>now);
+ const {b,reply}=viewer(),read=()=>JSON.parse(b.read('history',[0,1000000,'power','all'],'tile'));
+ read();now+=46000;b.invalidate(false,true);reply({points:[{v:12}]});
+ assert.equal(read().stale,true,'a delayed response must not receive another full freshness interval');
 });

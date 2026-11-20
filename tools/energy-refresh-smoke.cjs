@@ -54,8 +54,22 @@ board.tiles=['solarEnergy','mobileSolarEnergy','consumptionEnergy','energyBalanc
   }
   assert.equal(await page.evaluate(()=>fixture.calls.length),initialCalls,'unchanged windows must not repeatedly request or borrow each other');
   assert.deepEqual(await page.evaluate(()=>dashboard.config.tiles.filter(t=>t.metric!=='lan').map(t=>t.period.mode)),['sunrise','sunrise','today','today']);
-  await page.clock.setFixedTime(new Date((await page.evaluate(()=>Date.now()))+31000));await page.evaluate(()=>{fixture.hold=true;fixture.revision++;poll();});
+  const energyTiles=['solarEnergy','mobileSolarEnergy','consumptionEnergy','energyBalance'];
+  const current=async()=>{for(const metric of energyTiles)assert.equal(await page.locator(`[data-tile="check-${metric}"]`).evaluate(e=>e.classList.contains('data-outdated')),false,metric+' must remain colored during routine background refresh');};
+  // Exercise successive time buckets and revisions both before and after each
+  // asynchronous reply. Static current/stale screenshots miss this regression.
+  for(let cycle=0;cycle<3;cycle++){
+   await page.clock.setFixedTime(new Date((await page.evaluate(()=>Date.now()))+31000));await page.evaluate(()=>{fixture.hold=true;fixture.revision++;poll();});
+   await current();assert.match(await hint('mobileSolarEnergy').textContent(),/Aktualisierung im Hintergrund/);
+   for(let tick=0;tick<3;tick++){
+    await page.clock.setFixedTime(new Date((await page.evaluate(()=>Date.now()))+1000));await page.evaluate(()=>{fixture.revision++;poll();});await current();
+   }
+   for(let i=0;i<8;i++)await page.evaluate(()=>{for(const reply of fixture.held.splice(0))reply();});
+   await page.evaluate(()=>{fixture.revision++;poll();});await current();
+  }
+  await page.clock.setFixedTime(new Date((await page.evaluate(()=>Date.now()))+46000));await page.evaluate(()=>{fixture.revision++;poll();});
   assert.equal(await number('mobileSolarEnergy').textContent(),'42,84');assert.match(await hint('mobileSolarEnergy').textContent(),/Geschätzt · Letzter Stand · neue Daten werden geladen/);
+  assert.equal(await page.locator('[data-tile="check-mobileSolarEnergy"]').evaluate(e=>e.classList.contains('data-outdated')),true,'a refresh beyond the freshness interval still becomes gray');
   // Drain every queued refresh as an error; the original estimates remain visible.
   for(let i=0;i<8;i++)await page.evaluate(()=>{for(const reply of fixture.held.splice(0))reply(true);});
   await waitForText(hint('mobileSolarEnergy'),/Aktualisierung fehlgeschlagen/);
