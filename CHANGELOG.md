@@ -8,6 +8,14 @@ Das bestehende GitHub-Repository heißt jetzt [`Tim-Gurke/AutarPie`](https://git
 
 ## Aktuelles Update
 
+### 3.0.14 · Sofortiger Lernstand, begrenzte Modellpakete und graue Zwischenstände
+
+Am 20.11.2026 ausdrücklich zum Bau und zur Veröffentlichung freigegeben. Beim Öffnen den letzten gültigen Verbrauchslernstand je Anlage lokal lesen, während neue Historien- und Modellgrundlagen abgeglichen werden. Bisherigen Stand mit Zeitpunkt kennzeichnen; anfänglich wartende Lerndaten nicht als null ausgewertete Stunden darstellen. Akku-Prognosen benötigen weiterhin frische Shuntwerte.
+
+Geänderte Modelltabellen werden in begrenzten Seiten gebündelt übertragen. Bestehende Rohdatenblöcke bleiben wiederverwendbar, alte Gegenstellen kompatibel. Die Archiv-Lückenvorprüfung läuft getrennt vom passiven Live-Empfang; Wetteranforderungen warten nicht mehr auf das Gerätearchiv.
+
+Noch nicht aktuelle Kacheln einschließlich Hintergrund, Zahlen, Skalen und Diagramm erscheinen in Graustufen mit Textstatus. Jede Kachel kehrt unabhängig zu ihren gespeicherten Farben zurück. Geladene historische Daten werden durch ihr Datum allein nicht als veraltet eingestuft. [Installation, Bedienung und Prüfgrenzen](docs/changes-3.0.14.md).
+
 ### 3.0.13 · Archiv, Anzeigeabgleich, Startdarstellung und Datensicherung
 
 Am 17.11.2026 für den vollständigen Umfang zum Bau und zur Veröffentlichung freigegeben. Die Archiv-Bestandsprüfung verwendet begrenzte SQL-Seiten und eine frische Wiederanmeldung nach einem vorübergehenden Anmeldefehler. Anzeigen übertragen mehrere unabhängig geprüfte Rohdaten-Seiten je Netzwerkaufruf und protokollieren Verbindung, Übertragung, Speicherung und Berechnung getrennt. Bereits vorhandene Blöcke bleiben erhalten; das ältere Protokoll bleibt kompatibel.

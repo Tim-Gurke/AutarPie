@@ -24,3 +24,7 @@ Die Graustufen sind eine reine Darstellung. Sie verändern keine gespeicherten F
 Noch ausstehend: Android-Bau/Lint und tatsächliche Oberflächenaufnahmen nach Bau-Freigabe; Darstellung auf den Handys sowie reale G5-/WLAN-/Victron-Laufzeiten. Die gesamte beobachtete Wartezeit von zehn Minuten ist damit nicht nachträglich vermessen. Keine vollständige Hardwareabnahme aus diesen Softwareprüfungen ableiten.
 
 Der automatische G5-Neustart mit anschließendem App-Start über Automate wurde inzwischen als funktionierend zurückgemeldet und gehört nicht mehr zu den offenen Fehlerpunkten.
+
+## Bau-Freigabe
+
+Tim hat am 20.11.2026 den vorbereiteten Umfang ausdrücklich zum Bau und zur Veröffentlichung freigegeben. Release-Version 3.0.14, Code 89. Die oben genannten Vorprüfungen bleiben als datierter Vorbereitungsnachweis erhalten; die abgeschlossenen Veröffentlichungsnachweise stehen anschließend unter `changes-3.0.14.md`.
