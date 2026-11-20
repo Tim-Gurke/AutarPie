@@ -456,14 +456,14 @@
     if(live){
       let reading;
       if(m.kind==='shunt'||m.kind==='solar'){
-        reading=m.kind==='shunt'?shunt:solar;
+        reading=m.kind==='shunt'?shunt:t.device?((snapshot.readings||[]).find(r=>r.device===t.device&&M.fresh(r,now)&&snapshot.running!==false)||null):solar;
         const device=t.device||(snapshot.devices||[]).find(d=>d.kind===m.kind)?.mac;
         at=(snapshot.readings||[]).find(r=>r.device===device)?.t||reading?.t||at;
         missing=!reading;
       }else if(m.kind==='roller'||m.resourceCategory==='scooter'){
         missing=!snapshot.roller?.fresh;at=(missing?snapshot.roller?.lastKnown:snapshot.roller?.live)?.at||at;
       }else if(m.kind==='isdt'||m.kind==='output'){
-        const reading=m.kind==='isdt'?snapshot.energy?.charger:snapshot.energy?.output;
+        const reading=m.kind==='isdt'?snapshot.energy?.charger:M.output(snapshot,t,now);
         at=reading?.at||at;missing=!at||now<at||now-at>(m.kind==='isdt'?10000:45000);
       }else if(m.kind==='computed')missing=info?.value==null;
     }

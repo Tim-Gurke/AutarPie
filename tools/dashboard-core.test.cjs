@@ -528,10 +528,19 @@ test('expired charger and cached scooter readings keep an explicit outdated stat
 test('the productive tile status marker removes grayscale and the badge only after that tile becomes current',()=>{
  const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path'),classes=new Set(),attributes={};let badge=null;
  const context={window:{WattDashboardCore:C},document:{createElement:()=>({remove(){badge=null;}})}};vm.createContext(context);vm.runInContext(fs.readFileSync(path.join(__dirname,'../app/src/main/assets/dashboard.js'),'utf8'),context);
- const head={insertBefore(node){badge=node;}},el={classList:{toggle(name,on){if(on)classes.add(name);else classes.delete(name);}},querySelector(selector){return selector==='.tile-head'?head:selector==='.tile-data-status'?badge:{};},setAttribute(name,value){attributes[name]=value;}};
+ const head={insertBefore(node){badge=node;}},el={dataset:{},classList:{toggle(name,on){if(on)classes.add(name);else classes.delete(name);}},querySelector(selector){return selector==='.tile-head'?head:selector==='.tile-data-status'?badge:{};},setAttribute(name,value){attributes[name]=value;}};
  const mark=status=>context.window.WattDashboard.prototype.markDataStatus.call({},el,status,'Solarertrag');
  mark({stale:true,pending:true,at:1000000});assert.equal(classes.has('data-outdated'),true);assert.equal(badge.textContent,'Lädt');assert.match(attributes['aria-label'],/Aktualisierung läuft/);
  mark({stale:true,pending:false,at:1000000});assert.equal(badge.textContent,'Letzter Stand');assert.match(badge.title,/Stand/);
  mark({stale:false});assert.equal(classes.has('data-outdated'),false);assert.equal(badge,null);assert.doesNotMatch(attributes['aria-label'],/Letzter Stand|Aktualisierung/);
  mark({stale:true});assert.equal(badge.textContent,'Nicht aktuell');
+});
+
+
+test('freshness follows the selected regulator instead of another live regulator',()=>{
+ const now=1000000,snapshot={running:true,devices:[{kind:'solar',mac:'one'},{kind:'solar',mac:'two'}],readings:[{device:'one',t:now},{device:'two',t:now-60000}],energy:{output:{device:'one',at:now},outputs:[{device:'one',at:now},{device:'two',at:now-60000}]}};
+ const solar=C.tile('solar');solar.device='two';assert.equal(C.dataStatus(solar,null,snapshot,null,snapshot.readings[0],now).stale,true);
+ const output=C.tile('loadState');output.device='two';assert.equal(C.dataStatus(output,null,snapshot,null,null,now).stale,true);
+ snapshot.readings[1].t=now;snapshot.energy.outputs[1].at=now;snapshot.energy.output.at=now-60000;
+ assert.equal(C.dataStatus(solar,null,snapshot,null,null,now).stale,false);assert.equal(C.dataStatus(output,null,snapshot,null,null,now).stale,false);
 });
