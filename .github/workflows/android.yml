@@ -36,6 +36,24 @@ jobs:
           name: AutarPie-Oberflaeche
           path: app/build/reports/autarpie-ui/
 
+  quick-start-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sofortigen Lernstand und graue Kachelhintergründe prüfen
+        env:
+          WATTPIT_CHROMIUM: /usr/bin/google-chrome
+          WATTPIT_SCREENSHOT_DIR: app/build/reports/quick-start
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/quick-start-ui" playwright@1.51.1 pngjs@7.0.0
+          NODE_PATH="$RUNNER_TEMP/quick-start-ui/node_modules" node tools/quick-start-smoke.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: AutarPie-3.0.14-Schnellstart
+          path: app/build/reports/quick-start/
+
   period-storage-ui:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -119,7 +137,7 @@ jobs:
           WATTPIT_QR_FIXTURE: ${{ runner.temp }}/pairing-qr-fixture.json
           WATTPIT_VIEWER_FIXTURE: app/build/reports/lan-proof/statistics/statistics.json
         run: |
-          npm install --no-save --prefix "$RUNNER_TEMP/wattpit-ui" playwright@1.51.1 pngjs@7.0.0
+          npm install --no-save --prefix "$RUNNER_TEMP/wattpit-ui" playwright@1.51.1
           mkdir -p "$RUNNER_TEMP/wattpit-java"
           classes=app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes
           javac -cp "$classes" -d "$RUNNER_TEMP/wattpit-java" tools/SyncCoverageFixture.java
