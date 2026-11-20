@@ -1,10 +1,10 @@
-# AutarPie 3.0.14
+# AutarPie 3.0.15
 
 ![AutarPie Ressourcen-Kreislauf](app/src/main/assets/brand.svg)
 
 **Das lokale Cockpit für autarkes Leben.** Solar und Stromverteilung, Wohnwagenakku, E-Scooter, Modellbau, Gas und Wasser in einer gemeinsamen App. AutarPie führt **Watt’n’Pit und WohnPit** weiter.
 
-**[AutarPie 3.0.14 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.0.14/AutarPie-v3.0.14.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.0.14.md) · [Vollständige Versionshistorie](CHANGELOG.md)
+**[AutarPie 3.0.15 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.0.15/AutarPie-v3.0.15.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.0.15.md) · [Vollständige Versionshistorie](CHANGELOG.md)
 
 Android 8 oder neuer; das Cockpit benötigt einen aktuellen Android-System-WebView. Kein Pflichtkonto, keine Werbung. Mess- und Lerndaten werden lokal gespeichert; eine freiwillige verschlüsselte Sicherung kann in einem selbst gewählten lokalen oder unterstützten Online-Ordner abgelegt werden. Der optionale Wetterabruf verwendet Open-Meteo. Der Anlagenverbund überträgt Daten verschlüsselt im lokalen WLAN.
 
@@ -12,11 +12,11 @@ Android 8 oder neuer; das Cockpit benötigt einen aktuellen Android-System-WebVi
 
 | Aktueller Diagrammstand | Noch nicht aktuell · einschließlich Hintergrund grau |
 | --- | --- |
-| ![AutarPie 3.0.14: unabhängige aktuelle Kacheln](docs/images/autarpie-3.0.14-dark.svg) | ![AutarPie 3.0.14: grauer Zwischenstand neben aktueller Kachel](docs/images/autarpie-3.0.14-light.svg) |
+| ![AutarPie 3.0.15: unabhängige aktuelle Kacheln](docs/images/autarpie-3.0.15-dark.svg) | ![AutarPie 3.0.15: grauer Zwischenstand neben aktueller Kachel](docs/images/autarpie-3.0.15-light.svg) |
 
-![AutarPie 3.0.14: native Zentrale auf Android 11](docs/images/autarpie-3.0.14-central.svg)
+![AutarPie 3.0.15: native Zentrale auf Android 11](docs/images/autarpie-3.0.15-central.svg)
 
-Aufnahmen aus dem erfolgreichen Prüflauf für 3.0.14: native Zentrale auf Android 11 sowie Cockpit im Browser mit neutralen Geräte- und Versionsattrappen. Die Aufnahmen sind kein Funk- oder Hardwaretest. Eigene Farben und Layouts bleiben beim Update erhalten.
+Aufnahmen aus dem erfolgreichen Prüflauf für 3.0.15: native Zentrale auf Android 11 sowie Cockpit im Browser mit neutralen Geräte- und Versionsattrappen. Die Aufnahmen sind kein Funk- oder Hardwaretest. Eigene Farben und Layouts bleiben beim Update erhalten.
 
 ## Ein Cockpit, mehrere Anwendungen
 
@@ -50,6 +50,14 @@ Der SmartSolar-Lastausgang ist E-Scooter, Modellbau oder einem anderen Verbrauch
 Die **optionale Rollerautomatik ist zunächst aus**. Ladeziel, Wohnwagenreserve, Tagesziel, Überschussschwellen und Prognosereserve sind variabel. Ein aktives Anzeigehandy erstellt den zeitlich begrenzten Plan; die Zentrale kontrolliert direkte Abschaltbedingungen. Ein Schaltauftrag ist erst mit der tatsächlichen Geräteantwort bestätigt. Ohne gültigen Plan wird zum Ausschalten angefordert. BMS-Empfang allein beweist noch keinen eingesteckten Ladestecker.
 
 Bis zu drei 608PD erhalten getrennte Profile, private Kennungen und eigene Verbindungen. Suche und Einrichtung laufen am erfassenden Handy; Anzeigen bedienen den Ablauf. Die neue direkte Ersteinrichtung verlangt eine Bestätigung am Lader und muss am eigenen 608PD praktisch geprüft werden. Vorhandene Verbindungen aus der eigenen Bluetooth-Aufzeichnung bleiben erhalten. Unterstützt sind die nachgewiesenen Livefelder und das Beenden von Laden/Powerbank-Betrieb. App-Start ist zunächst auf das beobachtete **3S-LiPo-Profil 4,21 V/Zelle / 0,50 A** mit ausdrücklicher Profilbestätigung begrenzt. Powerbank und andere Profile am Gerät starten. Nicht belegte Temperatur-/USB-/CC-CV-Felder werden nicht erfunden.
+
+## Update 3.0.15
+
+**Stabile Kachelfarben beim Nachladen:** Ein frisch vollständig geladener Diagrammstand bleibt bei der nächsten normalen Messwertrevision und während der Hintergrundaktualisierung farbig. „Aktualisierung im Hintergrund“ erklärt den laufenden Abruf. Die normale Aktualisierung läuft weiter. Erste fehlende Daten, Fehler, ausdrücklich ungültige Grundlagen und tatsächlich verspätete Folgeabrufe bleiben grau erkennbar. Die Aktualitätsfrist von höchstens 45 Sekunden zählt ab Abfragestart.
+
+Der [vollständige Freigabelauf 44716593721](https://github.com/Tim-Gurke/AutarPie/actions/runs/44716593721) prüft den APK-Quellstand einschließlich Android 8/11, Datenbanken und Übertragung. Die neue Ablaufprüfung kontrolliert 180 fortlaufende Revisionen; die Browserprüfung mehrere aufeinanderfolgende Aktualisierungszyklen sowie tatsächlich verspätete Daten. Die ursprüngliche Updatesignatur bleibt erhalten. Die echte G5-/WLAN-/Victron-Verbindung wurde nicht vor Ort gemessen.
+
+**Zuerst G5/Zentrale beziehungsweise das direkt erfassende Handy, danach S20 und S10/Anzeigen auf 3.0.15 aktualisieren.** Über die vorhandene App installieren. Zentrale und Anzeigen mit 3.0.14 bleiben im Verbund kompatibel; die sichtbare Korrektur benötigt das jeweilige Anzeige-Update. Messdaten, Lernmodelle, Kopplungen, gespeicherte Farben und Layouts bleiben erhalten. [Installation und Prüfgrenzen](docs/changes-3.0.15.md).
 
 ## Update 3.0.14
 

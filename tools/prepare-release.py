@@ -94,6 +94,7 @@ def prepare(manifest, repository, target, api, output):
     body = body.replace("](AUTARPIE-3.md)", "](https://github.com/" + repository + "/blob/main/docs/AUTARPIE-3.md)")
     body = body.replace("](archive-bounded-reads.md)", "](https://github.com/" + repository + "/blob/main/docs/archive-bounded-reads.md)")
     body = body.replace("](quick-start-20261120.md)", "](https://github.com/" + repository + "/blob/main/docs/quick-start-20261120.md)")
+    body = body.replace("](stable-tile-freshness-20261120.md)", "](https://github.com/" + repository + "/blob/main/docs/stable-tile-freshness-20261120.md)")
     body += ("\n\nGeprüfter APK-Quellstand: `" + source + "`.\n\n"
              "Validierung: " + str(manifest["unit_tests"]) + " Tests, "
              + str(manifest["integration_checks"]) + " Integrationsprüfungen und "
