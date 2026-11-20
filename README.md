@@ -1,20 +1,22 @@
-# AutarPie 3.0.13
+# AutarPie 3.0.14
 
 ![AutarPie Ressourcen-Kreislauf](app/src/main/assets/brand.svg)
 
 **Das lokale Cockpit für autarkes Leben.** Solar und Stromverteilung, Wohnwagenakku, E-Scooter, Modellbau, Gas und Wasser in einer gemeinsamen App. AutarPie führt **Watt’n’Pit und WohnPit** weiter.
 
-**[AutarPie 3.0.13 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.0.13/AutarPie-v3.0.13.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.0.13.md) · [Vollständige Versionshistorie](CHANGELOG.md)
+**[AutarPie 3.0.14 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.0.14/AutarPie-v3.0.14.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.0.14.md) · [Vollständige Versionshistorie](CHANGELOG.md)
 
 Android 8 oder neuer; das Cockpit benötigt einen aktuellen Android-System-WebView. Kein Pflichtkonto, keine Werbung. Mess- und Lerndaten werden lokal gespeichert; eine freiwillige verschlüsselte Sicherung kann in einem selbst gewählten lokalen oder unterstützten Online-Ordner abgelegt werden. Der optionale Wetterabruf verwendet Open-Meteo. Der Anlagenverbund überträgt Daten verschlüsselt im lokalen WLAN.
 
 ## Ansichten
 
-| Übersicht und Wetterfarben | Native Zentrale |
+| Aktueller Diagrammstand | Noch nicht aktuell · einschließlich Hintergrund grau |
 | --- | --- |
-| ![AutarPie 3.0.13: Cockpit und eigene Wetterfarben](docs/images/autarpie-3.0.13-dark.svg) | ![AutarPie 3.0.13: native Zentrale](docs/images/autarpie-3.0.13-central.svg) |
+| ![AutarPie 3.0.14: unabhängige aktuelle Kacheln](docs/images/autarpie-3.0.14-dark.svg) | ![AutarPie 3.0.14: grauer Zwischenstand neben aktueller Kachel](docs/images/autarpie-3.0.14-light.svg) |
 
-Aufnahmen aus dem erfolgreichen Prüflauf für 3.0.13: native Zentrale auf Android 11 sowie Cockpit im Browser mit neutralen Geräte- und Versionsattrappen. Die Aufnahmen sind kein Funk- oder Hardwaretest. Eigene Farben und Layouts bleiben bei Updates erhalten. [Wetterkachel bearbeiten](docs/images/autarpie-3.0.13-settings.svg).
+![AutarPie 3.0.14: native Zentrale auf Android 11](docs/images/autarpie-3.0.14-central.svg)
+
+Aufnahmen aus dem erfolgreichen Prüflauf für 3.0.14: native Zentrale auf Android 11 sowie Cockpit im Browser mit neutralen Geräte- und Versionsattrappen. Die Aufnahmen sind kein Funk- oder Hardwaretest. Eigene Farben und Layouts bleiben beim Update erhalten.
 
 ## Ein Cockpit, mehrere Anwendungen
 
@@ -48,6 +50,18 @@ Der SmartSolar-Lastausgang ist E-Scooter, Modellbau oder einem anderen Verbrauch
 Die **optionale Rollerautomatik ist zunächst aus**. Ladeziel, Wohnwagenreserve, Tagesziel, Überschussschwellen und Prognosereserve sind variabel. Ein aktives Anzeigehandy erstellt den zeitlich begrenzten Plan; die Zentrale kontrolliert direkte Abschaltbedingungen. Ein Schaltauftrag ist erst mit der tatsächlichen Geräteantwort bestätigt. Ohne gültigen Plan wird zum Ausschalten angefordert. BMS-Empfang allein beweist noch keinen eingesteckten Ladestecker.
 
 Bis zu drei 608PD erhalten getrennte Profile, private Kennungen und eigene Verbindungen. Suche und Einrichtung laufen am erfassenden Handy; Anzeigen bedienen den Ablauf. Die neue direkte Ersteinrichtung verlangt eine Bestätigung am Lader und muss am eigenen 608PD praktisch geprüft werden. Vorhandene Verbindungen aus der eigenen Bluetooth-Aufzeichnung bleiben erhalten. Unterstützt sind die nachgewiesenen Livefelder und das Beenden von Laden/Powerbank-Betrieb. App-Start ist zunächst auf das beobachtete **3S-LiPo-Profil 4,21 V/Zelle / 0,50 A** mit ausdrücklicher Profilbestätigung begrenzt. Powerbank und andere Profile am Gerät starten. Nicht belegte Temperatur-/USB-/CC-CV-Felder werden nicht erfunden.
+
+## Update 3.0.14
+
+**Bisheriger Lernstand sofort sichtbar:** Die Anzeige liest ihre vorhandenen Verbrauchslerndaten lokal, während der neue Verlaufabgleich noch arbeitet. „Bisheriger Lernstand … wird aktualisiert“ enthält den Zeitpunkt. Wartende Daten erscheinen als „Lernstand wird geladen“, statt eine scheinbar neue Lernphase mit null Stunden zu melden. Akku-Prognosen verwenden weiterhin frische Shuntwerte und die verfügbaren Wetterdaten.
+
+**Begrenzte Modellpakete:** Mehrere kleine Modellseiten teilen sich eine Verbindung; vorhandene unveränderte Tabellen und Rohdatenblöcke werden wiederverwendet. Die Archivvorprüfung erhält eine vom passiven Live-Empfang getrennte Arbeitswarteschlange. Wetteranforderungen warten nicht mehr auf das Gerätearchiv. Alte Gegenstellen bleiben kompatibel.
+
+**Vollständig graue Zwischenstände:** Noch nicht aktuelle Kacheln zeigen Hintergrund, Zahlen, Skalen und Diagramm in Graustufen, mit Textstatus und Zeitpunkt. Jede Kachel bekommt nach ihrem eigenen erfolgreichen Abgleich ihre gespeicherten Farben zurück. Ein fertig geladener Rückblick wird durch sein historisches Datum allein nicht als veraltet markiert. Der bisherige Roller-Hinweis „Alt · Uhrzeit“ bleibt erhalten.
+
+Der [vollständige Freigabelauf 44685933005](https://github.com/Tim-Gurke/AutarPie/actions/runs/44685933005) ist erfolgreich: APK-Bau/Lint, 625 Unit-Prüfungen, 1086 Integrationsprüfungen, 16 native Oberflächen-/Cacheprüfungen und acht Sicherungs-/UID-Wiederherstellungsausführungen auf Android 8/11 sowie 37 verschiedene Browser-Prüfskripte. Der neue Browsertest prüft auch Bildpunkte des grauen Kachelhintergrunds. Die ursprüngliche Updatesignatur bleibt erhalten. G5-/WLAN-/Victron-Laufzeiten wurden dabei nicht physisch gemessen.
+
+**Zuerst G5/Zentrale beziehungsweise das direkt erfassende Handy, danach alle Anzeigen auf 3.0.14 aktualisieren.** Über die vorhandene App installieren, nicht deinstallieren und keine App-Daten löschen. Ein erstmals neu eingerichtetes Anzeigehandy ohne passenden lokalen Lernstand benötigt weiterhin seinen ersten Abgleich. Die bereits veröffentlichte freiwillige tägliche vollständige Sicherung bleibt enthalten. Der G5-Neustart über Automate wurde als funktionierend zurückgemeldet. [Installation, Verhalten und Prüfgrenzen](docs/changes-3.0.14.md).
 
 ## Update 3.0.13
 
