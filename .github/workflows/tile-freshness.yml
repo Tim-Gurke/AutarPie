@@ -1,0 +1,32 @@
+name: Kachelaktualität ohne APK prüfen
+
+on:
+  push:
+    branches: ['prepare/stable-tile-freshness-20261120']
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ablauf- und Rechenprüfungen
+        run: node --test tools/*.test.cjs
+      - name: Browserabhängigkeiten
+        run: npm install --no-save --prefix "$RUNNER_TEMP/tile-freshness" playwright@1.51.1 pngjs@7.0.0
+      - name: Fortlaufende Aktualisierung und Graustufen prüfen
+        env:
+          NODE_PATH: ${{ runner.temp }}/tile-freshness/node_modules
+          WATTPIT_CHROMIUM: /usr/bin/google-chrome
+          WATTPIT_SCREENSHOT_DIR: app/build/reports/tile-freshness
+        run: |
+          node tools/energy-refresh-smoke.cjs
+          node tools/quick-start-smoke.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tile-freshness-browser-results
+          path: app/build/reports/tile-freshness
