@@ -2,7 +2,7 @@
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs');
 const fixture=require('./autarpie-fixture.cjs'),C=require('../app/src/main/assets/dashboard-core.js'),wait=require('./browser-wait.cjs');
 (async()=>{
- const browser=await chromium.launch({headless:true,executablePath:process.env.WATTPIT_CHROMIUM,args:['--no-sandbox','--single-process','--no-zygote','--disable-gpu']});
+ const browser=await chromium.launch({headless:true,executablePath:process.env.WATTPIT_CHROMIUM,args:['--no-sandbox','--disable-gpu']});
  const page=await browser.newPage({viewport:{width:412,height:915},locale:'de-DE',timezoneId:'Europe/Berlin'}),errors=[],out=process.env.WATTPIT_SCREENSHOT_DIR||'app/build/reports/quick-start';fs.mkdirSync(out,{recursive:true});page.on('pageerror',e=>errors.push(e.message));
  const soc=C.tile('soc','fixture-soc'),chart=C.tile('solar','fixture-chart'),weather=C.tile('weather','fixture-weather');soc.type='gauge';chart.type='chart';chart.period.mode='today';chart.period.aggregate='last';chart.background='#cc6600';chart.opacity=100;
  soc.layouts.compact={x:0,y:0,w:5,h:6};chart.layouts.compact={x:5,y:0,w:7,h:6};weather.layouts.compact={x:0,y:6,w:12,h:5};

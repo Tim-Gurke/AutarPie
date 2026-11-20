@@ -15,13 +15,15 @@ const waitForPage=require('./browser-wait.cjs');
   },D.defaults());
   await page.goto('file://'+path.resolve(__dirname,'../app/src/main/assets/index.html'));await autarpieControls.prepare(page);
   const heading=page.locator('#weatherPlaceName'),detail=heading.locator('.weather-place-detail');
+  // Select and inspect in one browser task: a resize can rebuild the heading.
+  const detailWeight=()=>page.evaluate(()=>{const e=document.querySelector('#weatherPlaceName .weather-place-detail');return e?getComputedStyle(e).fontWeight:'';});
   assert.equal(await heading.textContent(),'GPS · 52.520°, 13.410°');assert.equal(await page.evaluate(()=>gpsStarts),0,'opening the app must not request a GPS fix');
   const layouts=await page.evaluate(()=>JSON.stringify(dashboard.config.tiles.map(t=>t.layouts)));
   await page.evaluate(()=>{fixture.settings.weatherPlace.name='GPS · Testort';poll();});assert.equal(await heading.textContent(),'GPS · Testort');assert.equal(await detail.textContent(),' · Testort');
-  assert.equal(await detail.evaluate(e=>getComputedStyle(e).fontWeight),'400');assert.equal(await heading.evaluate(e=>e.firstChild.textContent),'GPS');
+  assert.equal(await detailWeight(),'400');assert.equal(await heading.evaluate(e=>e.firstChild.textContent),'GPS');
   for(const width of [320,390,412,844])for(const theme of ['dark','light']){
    await page.setViewportSize({width,height:844});await page.evaluate(theme=>{fixture.settings.theme=theme;poll();dashboard.render();},theme);
-   assert.equal(await heading.textContent(),'GPS · Testort');assert.equal(await detail.evaluate(e=>getComputedStyle(e).fontWeight),'400');assert.equal(await page.evaluate(()=>document.body.scrollWidth>innerWidth),false);
+   assert.equal(await heading.textContent(),'GPS · Testort');assert.equal(await detailWeight(),'400');assert.equal(await page.evaluate(()=>document.body.scrollWidth>innerWidth),false);
    assert.equal(await page.evaluate(()=>JSON.stringify(dashboard.config.tiles.map(t=>t.layouts))),layouts);
   }
   await page.evaluate(()=>{fixture.settings.weatherPlace.name='GPS · '+('Langer Testort ').repeat(10).trim();poll();});assert.equal(await page.evaluate(()=>document.body.scrollWidth>innerWidth),false);assert.ok((await heading.getAttribute('aria-label')).includes('Langer Testort'));
