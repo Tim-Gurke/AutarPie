@@ -15,26 +15,27 @@ const fixture=require('./autarpie-fixture.cjs'),C=require('../app/src/main/asset
   WattPit.dashboardHistory=()=>JSON.stringify({points:[{t:now-60000,last:now-60000,v:10,min:10,max:10,n:1},{t:now,last:now,v:148,min:148,max:148,n:1}],summary:{last:148,avg:79,min:10,max:148},stale:apFixture.chartStale,pending:false,dataAt:now-120000});
   WattPit.requestCachedSolarData=id=>apFixture.cachedRequests.push(id);WattPit.requestSolarData=()=>apFixture.freshRequests++;
  },{version:1,lanTileVersion:1,energyFlowVersion:1,dischargeSignVersion:1,tiles:[soc,chart,weather],blockOrder:['tiles','history','record']});
+ const failures=[],check=new Proxy(assert,{get:(target,key)=>(...args)=>{try{return target[key](...args);}catch(error){failures.push(error.message);console.error('CHECK '+key+': '+error.message);}}});
  const repaint=()=>page.evaluate(()=>{AutarPieApp.dashboard.cache.clear();AutarPieApp.poll();AutarPieApp.solar.renderKey='';AutarPieApp.solar.render();AutarPieApp.dashboard.update();});
  const filter=locator=>locator.evaluate(e=>getComputedStyle(e).filter),card=page.locator('[data-tile="fixture-chart"]'),battery=page.locator('[data-tile="fixture-soc"]');
  try{
   await page.goto('file://'+path.resolve(__dirname,'../app/src/main/assets/index.html'));await wait(page,()=>!!window.AutarPieApp?.solar&&apFixture.cachedRequests.length>0);
-  assert.match(await filter(card),/grayscale\(1\)/);assert.equal(await filter(battery),'none');assert.match(await card.locator('.tile-hint').textContent(),/Letzter Stand/);assert.equal(await card.locator('.tile-data-status').textContent(),'Letzter Stand');assert.equal(await card.locator('.tile-number').textContent(),'148');
-  assert.equal(await card.evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(204, 102, 0)','grayscale must not overwrite the stored background');
-  await page.evaluate(()=>onSolarCachedData({id:apFixture.cachedRequests.at(-1),data:{source:'synthetic-source',observations:[{day:'2026-10-20',slot:0,from:1,to:2}],forecasts:[],updated:Date.now()-86400000}}));
-  assert.equal(await page.evaluate(()=>AutarPieApp.solar.knowledgeState),'cached');assert.match(await page.locator('#solarLearningNote').textContent(),/Bisheriger Lernstand/);await repaint();assert.match(await filter(page.locator('[data-tile="fixture-weather"]')),/grayscale\(1\)/);
+  check.match(await filter(card),/grayscale\(1\)/);check.equal(await filter(battery),'none');check.match(await card.locator('.tile-hint').textContent(),/Letzter Stand/);check.equal(await card.locator('.tile-data-status').textContent(),'Letzter Stand');check.equal(await card.locator('.tile-number').textContent(),'148');
+  check.equal(await page.evaluate(()=>AutarPieApp.dashboard.config.tiles.find(t=>t.id==='fixture-chart').background),'#cc6600','grayscale must not overwrite the stored background');
+  await page.evaluate(()=>onSolarCachedData({id:apFixture.cachedRequests.at(-1),data:{source:'synthetic-source',observations:[{day:new Date(Date.now()-86400000).toLocaleDateString('sv-SE'),slot:0,from:Date.now()-90000000,to:Date.now()-86400000,mobileFree:true,learningVersion:2,usage:{wh:20,duration:3600000,estimatedDuration:0,latest:Date.now()-86400000}}],forecasts:[],updated:Date.now()-86400000}}));
+  check.equal(await page.evaluate(()=>AutarPieApp.solar.knowledgeState),'cached');check.match(await page.locator('#solarLearningNote').textContent(),/Bisheriger Lernstand/);await repaint();check.match(await filter(page.locator('[data-tile="fixture-weather"]')),/grayscale\(1\)/);
   await page.evaluate(()=>{apFixture.chartStale=false;onSolarPlanData({source:'synthetic-source',observations:[],forecasts:[],updated:Date.now()});});await repaint();
-  assert.equal(await filter(card),'none');assert.equal(await card.locator('.tile-data-status').count(),0);assert.equal(await filter(page.locator('[data-tile="fixture-weather"]')),'none');
-  await page.evaluate(()=>onSolarCachedData({id:apFixture.cachedRequests.at(-1),data:{source:'synthetic-source',observations:[{old:true}],forecasts:[],updated:Date.now()-86400000}}));assert.equal(await page.evaluate(()=>AutarPieApp.solar.knowledge.observations.length),0,'a delayed prior cannot replace a successful empty refresh');
+  check.equal(await filter(card),'none');check.equal(await card.locator('.tile-data-status').count(),0);check.equal(await filter(page.locator('[data-tile="fixture-weather"]')),'none');
+  await page.evaluate(()=>onSolarCachedData({id:apFixture.cachedRequests.at(-1),data:{source:'synthetic-source',observations:[{old:true}],forecasts:[],updated:Date.now()-86400000}}));check.equal(await page.evaluate(()=>AutarPieApp.solar.knowledge.observations.length),0,'a delayed prior cannot replace a successful empty refresh');
   await page.screenshot({path:path.join(out,'autarpie-3.0.14-dark.png'),animations:'disabled'});
   await page.evaluate(()=>{apFixture.chartStale=true;AutarPieUI.appearance.theme='light';AutarPieUI.applyAppearance();});await repaint();
-  assert.match(await filter(card),/grayscale\(1\)/);assert.equal(await filter(battery),'none');
+  check.match(await filter(card),/grayscale\(1\)/);check.equal(await filter(battery),'none');
   await page.screenshot({path:path.join(out,'autarpie-3.0.14-light.png'),animations:'disabled'});
   // Validate actual screenshot pixels, including the colored tile background.
   const {PNG}=require('pngjs');
   const png=PNG.sync.read(await card.screenshot({animations:'disabled'}));let opaque=0,gray=0;
   for(let i=0;i<png.data.length;i+=4)if(png.data[i+3]>250){opaque++;if(Math.max(...png.data.slice(i,i+3))-Math.min(...png.data.slice(i,i+3))<=2)gray++;}
-  assert.ok(opaque>1000&&gray/opaque>.98,'the whole stale tile, including its background, must render in grayscale');
-  assert.deepEqual(errors,[]);console.log('PASS independent current/stale tiles, unchanged stored background, pixel-verified grayscale, immediate cached knowledge and rejection of delayed priors.');
+  check.ok(opaque>1000&&gray/opaque>.98,'the whole stale tile, including its background, must render in grayscale');
+  check.deepEqual(errors,[]);assert.deepEqual(failures,[],'All pixel/knowledge checks must pass');console.log('PASS independent current/stale tiles, unchanged stored background, pixel-verified grayscale, immediate cached knowledge and rejection of delayed priors.');
  }catch(error){await page.screenshot({path:path.join(out,'quick-start-failure.png'),fullPage:true}).catch(()=>{});console.error(errors);throw error;}finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});
