@@ -449,5 +449,26 @@
     const detail=gps?(gps[1]||coordinates):'',description=gps?'GPS'+(detail?' · '+detail:''):name||'Wetter';
     return {prefix:customTitle|| (gps?'GPS':name||'Wetter'),detail:customTitle?'':detail,description,gps:!!gps};
   }
-  return {Metrics:M,seriesGap,CATALOG,PHASES,BLOCK_ORDER,finite,clamp,color,valueColors,metricColor,ChargeEstimator,BatteryTimeEstimator,chargeHint,tileLabel,readableColor,convert,unconvert,position,tile,defaults,normalize,windowFor,liveValue,historicalValue,usesLiveValue,signedValue,fixedRange,displayValue,format,chartRange,axisLabel,miniWindow,solarQueryWindow,solarPlotWindow,weatherPlaceLabel};
+  /** Presentation only: a historical date is not itself a stale result. */
+  function dataStatus(t,data,snapshot,shunt,solar,now=Date.now(),info){
+    const m=CATALOG[t.metric],live=usesLiveValue(t),viewer=snapshot.lan?.role==='viewer',offline=viewer&&!snapshot.lan.connected;
+    let at=data?.dataAt||data?.analysis?.at||info?.at||0,missing=false;
+    if(live){
+      let reading;
+      if(m.kind==='shunt'||m.kind==='solar'){
+        reading=m.kind==='shunt'?shunt:solar;
+        const device=t.device||(snapshot.devices||[]).find(d=>d.kind===m.kind)?.mac;
+        at=(snapshot.readings||[]).find(r=>r.device===device)?.t||reading?.t||at;
+        missing=!reading;
+      }else if(m.kind==='roller'||m.resourceCategory==='scooter'){
+        missing=!snapshot.roller?.fresh;at=(missing?snapshot.roller?.lastKnown:snapshot.roller?.live)?.at||at;
+      }else if(m.kind==='isdt'||m.kind==='output'){
+        const reading=m.kind==='isdt'?snapshot.energy?.charger:snapshot.energy?.output;
+        at=reading?.at||at;missing=!at||now<at||now-at>(m.kind==='isdt'?10000:45000);
+      }else if(m.kind==='computed')missing=info?.value==null;
+    }
+    const stale=!!(data?.stale||data?.pending||data?.refreshError||data?.error||info?.stale||missing||offline);
+    return {stale,pending:!!data?.pending,at:finite(at)&&at>0&&at<=now?at:0};
+  }
+  return {Metrics:M,seriesGap,CATALOG,PHASES,BLOCK_ORDER,finite,clamp,color,valueColors,metricColor,ChargeEstimator,BatteryTimeEstimator,chargeHint,tileLabel,readableColor,convert,unconvert,position,tile,defaults,normalize,windowFor,liveValue,historicalValue,usesLiveValue,signedValue,fixedRange,displayValue,format,chartRange,axisLabel,miniWindow,solarQueryWindow,solarPlotWindow,weatherPlaceLabel,dataStatus};
 });

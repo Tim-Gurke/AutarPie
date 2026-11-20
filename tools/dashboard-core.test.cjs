@@ -497,3 +497,41 @@ test('a custom weather caption stays intact while the actual GPS place remains d
   assert.deepEqual(C.weatherPlaceLabel(place,'Mein Wetter'),{prefix:'Mein Wetter',detail:'',description:'GPS · Testort',gps:true});
   assert.deepEqual(place,before);
 });
+
+test('pending or failed chart refreshes mark only their own tile as outdated and retain the original timestamp',()=>{
+ const t=C.tile('solarEnergy'),now=1000000,snapshot={settings:{capacity:100},devices:[],readings:[]},original={summary:{last:25},points:[{t:20000,v:25}],stale:true,pending:true,dataAt:900000},saved=structuredClone(original);
+ assert.deepEqual(C.dataStatus(t,original,snapshot,null,null,now),{stale:true,pending:true,at:900000});assert.deepEqual(original,saved);
+ assert.equal(C.dataStatus(t,{summary:{last:25}},snapshot,null,null,now).stale,false);
+ assert.equal(C.dataStatus(t,{refreshError:'unavailable',dataAt:900000},snapshot,null,null,now).stale,true);
+});
+test('a historical date alone does not make a fully loaded chart outdated',()=>{
+ const t=C.tile('solar');t.type='chart';t.valueMode='last';t.period.mode='yesterday';
+ assert.equal(C.dataStatus(t,{points:[{t:1,v:0}],summary:{last:0}},{settings:{},devices:[],readings:[]},null,null,1000000).stale,false);
+});
+test('fresh live readings become current independently while another tile still loads',()=>{
+ const now=1000000,snapshot={devices:[{kind:'shunt',mac:'fixture'}],readings:[{device:'fixture',t:990000}]},shunt={t:990000,soc:0};
+ assert.deepEqual(C.dataStatus(C.tile('soc'),null,snapshot,shunt,null,now),{stale:false,pending:false,at:990000});
+ assert.equal(C.dataStatus(C.tile('solarEnergy'),{stale:true,pending:true},snapshot,shunt,null,now).stale,true);
+ assert.deepEqual(C.dataStatus(C.tile('soc'),null,snapshot,null,null,now),{stale:true,pending:false,at:990000});
+});
+test('a disconnected viewer cannot present cached values as a current read',()=>{
+ const t=C.tile('solarEnergy'),snapshot={settings:{},lan:{role:'viewer',connected:false}};
+ assert.equal(C.dataStatus(t,{summary:{last:0}},snapshot,null,null,1000000).stale,true);snapshot.lan.connected=true;assert.equal(C.dataStatus(t,{summary:{last:0}},snapshot,null,null,1000000).stale,false);
+});
+test('expired charger and cached scooter readings keep an explicit outdated state',()=>{
+ const now=1000000,snapshot={roller:{fresh:false,lastKnown:{at:800000}},energy:{charger:{at:980000}}};
+ assert.equal(C.dataStatus(C.tile('rollerSoc'),null,snapshot,null,null,now).stale,true);
+ assert.equal(C.dataStatus(C.tile('isdtVoltage'),null,snapshot,null,null,now).stale,true);
+ snapshot.energy.charger.at=now;assert.equal(C.dataStatus(C.tile('isdtVoltage'),null,snapshot,null,null,now).stale,false);
+});
+
+test('the productive tile status marker removes grayscale and the badge only after that tile becomes current',()=>{
+ const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path'),classes=new Set(),attributes={};let badge=null;
+ const context={window:{WattDashboardCore:C},document:{createElement:()=>({remove(){badge=null;}})}};vm.createContext(context);vm.runInContext(fs.readFileSync(path.join(__dirname,'../app/src/main/assets/dashboard.js'),'utf8'),context);
+ const head={insertBefore(node){badge=node;}},el={classList:{toggle(name,on){if(on)classes.add(name);else classes.delete(name);}},querySelector(selector){return selector==='.tile-head'?head:selector==='.tile-data-status'?badge:{};},setAttribute(name,value){attributes[name]=value;}};
+ const mark=status=>context.window.WattDashboard.prototype.markDataStatus.call({},el,status,'Solarertrag');
+ mark({stale:true,pending:true,at:1000000});assert.equal(classes.has('data-outdated'),true);assert.equal(badge.textContent,'Lädt');assert.match(attributes['aria-label'],/Aktualisierung läuft/);
+ mark({stale:true,pending:false,at:1000000});assert.equal(badge.textContent,'Letzter Stand');assert.match(badge.title,/Stand/);
+ mark({stale:false});assert.equal(classes.has('data-outdated'),false);assert.equal(badge,null);assert.doesNotMatch(attributes['aria-label'],/Letzter Stand|Aktualisierung/);
+ mark({stale:true});assert.equal(badge.textContent,'Nicht aktuell');
+});

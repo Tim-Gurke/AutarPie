@@ -18,6 +18,8 @@ body{background:var(--ap-app-background);background-attachment:fixed;letter-spac
 #rollerPanel{--mint:var(--ap-scooter)}#apChargerPanel .ap-energy-values strong{color:var(--ap-model)}
 
 .cached-reading .tile-hint{color:var(--ap-system);font-weight:600}.cached-reading .tile-number,.cached-reading .tile-unit{color:var(--muted)!important;opacity:1}.cached-reading .tile-gauge>svg{filter:grayscale(1);opacity:.6}
+.cockpit-tile.data-outdated,.cockpit-tile.cached-reading,.detail-main.data-outdated{filter:grayscale(1);backdrop-filter:grayscale(1)}
+.data-outdated .tile-head>.tile-label{flex:1;min-width:0}
 
 .bottom-nav button.active>.icon{stroke:var(--ap-navigation-accent,var(--ap-accent));stroke-width:2.2}.bottom-nav button[aria-current=page]{box-shadow:inset 0 -2px 0 var(--ap-navigation-accent,var(--ap-accent));border-radius:6px}
 

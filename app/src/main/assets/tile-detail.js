@@ -144,6 +144,8 @@
       if(this.tile.metric==='chargeTime')$('tileDetailTitle').textContent=C.tileLabel(this.tile,chargeEstimate);
       let value=m.modelPower&&this.valueMode==='live'?C.displayValue({...this.tile,period:{...this.tile.period,mode:'live'},valueMode:'live'},primary.data.summary,shunt,this.a.reading('solar'),snapshot):this.valueMode==='live'?C.signedValue(this.tile,C.liveValue(this.tile.metric,shunt,this.a.reading('solar'),snapshot,Date.now(),chargeEstimate)):C.signedValue(this.tile,C.historicalValue(this.tile.metric,primary.data.summary?.[this.valueMode],snapshot.settings.capacity||100));
       value=C.convert(value,this.tile.unit,this.tile.metric,snapshot);
+      const status=C.dataStatus({...this.tile,type:'chart',valueMode:this.valueMode},primary.data,snapshot,shunt,this.a.reading('solar'),Date.now(),globalThis.AutarPieMetricUI?.describe(this.tile,snapshot,shunt,this.a.reading('solar'),Date.now()));
+      this.root.querySelector('.detail-main').classList.toggle('data-outdated',status.stale||this.series.some(s=>s.data.stale||s.data.pending||s.data.refreshError));
       const color=this.d.paint(this.tile.color,this.tile,true),reading=$('detailReading');reading.style.setProperty('--tile-color',color);reading.style.setProperty('--number-size','42px');
       const number=`<strong class="detail-number">${esc(C.format(value,this.tile))}</strong><span>${esc(m.status?'':this.tile.unit)}${m.modelPower||m.estimated||primary.data.summary?.modelledMillis>0?' · geschätzt':''}</span>`;
       this.value=value;reading.innerHTML=this.tile.type==='gauge'?this.gauge():`<div class="detail-number-row">${number}</div>`;
@@ -152,6 +154,7 @@
       $('detailCompareCount').textContent=this.selected.size>1?'('+String(this.selected.size-1)+')':'';
       $('detailLegend').innerHTML=this.series.map((s,i)=>`<span><i style="background:${this.color(s,i)}"></i>${esc(label(s.tile))} · ${esc(s.tile.unit)}</span>`).join('');
       const notes=[this.base.note||'',m.hint||''];
+      if(status.stale)notes.unshift((status.pending?'Aktualisierung läuft':'Letzter Stand')+(status.at?' · '+new Date(status.at).toLocaleString('de-DE'):'')+'.');
       if(m.modelPower||m.estimated||primary.data.summary?.modelledMillis>0)notes.push('Geschätzt · enthält Modellwerte der mobilen Solarerzeugung.');
       if(primary.data.summary?.inconsistentMillis>0)notes.push('Schätzung und Messbilanz passen teilweise nicht zusammen; diese Abschnitte bleiben ohne Geräteverbrauchswert.');
       if(primary.data.summary?.adjustedMillis>0)notes.push('Bilanzgestützt geschätzt: Aus gemessener Akku- und Solarleistung sowie einem zuvor unabhängig beobachteten Grundbedarf, einschließlich bekannter Rollerladung. Dies bleibt eine Schätzung des mobilen Ertrags und des Geräteverbrauchs.');

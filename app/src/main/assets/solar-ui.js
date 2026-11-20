@@ -15,7 +15,7 @@
       $('solarMobileToggle').onclick=()=>this.mobile();$('solarGpsSettings').onclick=()=>{this.openSetup();this.locate();};
       window.onSolarLearningProgress=data=>{if($('solarHistoryStatus'))$('solarHistoryStatus').textContent=data.message||'';};
       window.onSolarPlanData=data=>{const snapshot=this.a.getSnapshot();this.knowledgeSource(snapshot);if(!this.sameKnowledgeSource(data,snapshot))return;if($('solarHistoryStatus'))$('solarHistoryStatus').textContent=data.error||'Lernstand aktualisiert. Geeignete historische Abschnitte werden weiterverwendet.';if(data.error){this.knowledge.error=data.error;this.lastRequest=Math.min(this.lastRequest,Date.now()-270000);}else{this.knowledge=data;this.knowledge.observations??=[];this.knowledge.forecasts??=[];this.knowledgeState='ready';if(data.stale)this.lastRequest=Math.min(this.lastRequest,Date.now()-270000);}this.renderKey='';this.render();};
-      window.onSolarCachedData=result=>{const snapshot=this.a.getSnapshot();this.knowledgeSource(snapshot);if(result.id!==this.cachedRead?.id||this.knowledgeState==='ready'||!result.data||!this.sameKnowledgeSource(result.data,snapshot))return;this.knowledge={...result.data,cached:true,stale:true};this.knowledgeState='cached';this.renderKey='';this.render();};
+      window.onSolarCachedData=result=>{const snapshot=this.a.getSnapshot();this.knowledgeSource(snapshot);if(result.id!==this.cachedRead?.id||this.knowledgeState==='ready'||!result.data||!this.sameKnowledgeSource(result.data,snapshot))return;this.knowledge={...result.data,cached:true,stale:true,...(this.knowledge.error?{error:this.knowledge.error}:{})};this.knowledgeState='cached';this.renderKey='';this.render();};
       window.onSolarSunsetSoc=result=>{
         if(result.id!==this.sunsetRead?.id)return;
         const read=this.sunsetRead;if(!result.error||!read.point)read.point=result.point;
@@ -72,6 +72,9 @@
       let rollerState={};try{rollerState=JSON.parse(this.a.native?.rollerSnapshot?.()||'{}');}catch(_){}
       const specialConfig=this.special.read(),rollerLoads=[];
       const snapshot=this.a.getSnapshot(),weather=snapshot.weather||{},eq=this.equipment(),plan=this.plan(),now=Date.now(),shunt=this.a.getReading?.('shunt'),key=JSON.stringify([weather,eq,plan,this.knowledge.updated,this.knowledge.error,Math.floor(now/60000),shunt?[Math.round(shunt.soc),Math.round(shunt.voltage*10)/10]:null,snapshot.settings.capacity,snapshot.deviceSettings,[rollerState.profile,rollerState.fresh,rollerState.session?.active,Math.round(rollerState.live?.soc??0),Math.round((rollerState.live?.power??0)/10)],specialConfig,this.a.getPresence?.()]);
+      const weatherStale=!weather.updated||now<weather.updated||now-weather.updated>6*3600000||!!snapshot.weatherError,knowledgeStale=this.knowledgeState==='cached'||this.knowledgeState==='loading'||!!this.knowledge.error||!!this.knowledge.stale;
+      $('weatherStrip').dataset.outdated=String(weatherStale||knowledgeStale);$('weatherStrip').dataset.pending=String(this.knowledgeState==='loading');$('weatherStrip').dataset.updated=String(knowledgeStale&&this.knowledge.updated?Math.min(weather.updated||this.knowledge.updated,this.knowledge.updated):weather.updated||0);
+      const tile=$('weatherStrip').closest?.('.cockpit-tile');tile?.classList.toggle('data-outdated',weatherStale||knowledgeStale);
       if(this.a.native?.requestSolarData&&!snapshot.archiveBusy&&this.a.canRequestData?.()!==false&&(Date.now()-this.lastRequest>300000||this.revision!==snapshot.historyRevision&&Date.now()-this.lastRequest>30000)){
         this.lastRequest=Date.now();this.revision=snapshot.historyRevision;this.a.native.requestSolarData();
       }

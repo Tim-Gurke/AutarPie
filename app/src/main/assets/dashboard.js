@@ -247,9 +247,10 @@
         if(t.metric==='weather'){
           const configured=!!snapshot.settings.weatherPlace?.name,hidden=!configured&&!this.editing;
           if(el.hidden!==hidden){el.hidden=hidden;visibilityChanged=true;}
+          this.markDataStatus(el,{stale:this.weatherContent.dataset.outdated==='true',pending:this.weatherContent.dataset.pending==='true',at:Number(this.weatherContent.dataset.updated)||0},'Wetter und Solarvorschau');
           el.querySelector('.weather-disabled').hidden=configured;continue;
         }
-        if(C.CATALOG[t.metric].widget){if(t.colorSource==='value')t.color=C.metricColor(this.config,t.metric);el.style.setProperty('--tile-color',this.paint(t.color,t,true));if(t.metric==='rollerCharge')this.widgets.charge.content.innerHTML=globalThis.AutarPieMetricUI?.chargeWidget(snapshot)||'';continue;}
+        if(C.CATALOG[t.metric].widget){if(t.colorSource==='value')t.color=C.metricColor(this.config,t.metric);el.style.setProperty('--tile-color',this.paint(t.color,t,true));if(t.metric==='rollerCharge')this.widgets.charge.content.innerHTML=globalThis.AutarPieMetricUI?.chargeWidget(snapshot)||'';const paired=snapshot.rollerPairedSummary;this.markDataStatus(el,{stale:t.metric==='rollerCharge'?!snapshot.roller?.fresh||!!(paired?.stale||paired?.pending||paired?.refreshError):snapshot.lan?.role==='viewer'&&!snapshot.lan.connected,pending:!!paired?.pending,at:t.metric==='rollerCharge'?snapshot.roller?.live?.at:snapshot.lan?.receivedAt},C.CATALOG[t.metric].label);continue;}
         if(t.colorSource==='value')t.color=C.metricColor(this.config,t.metric);
         el.style.setProperty('--tile-color',this.paint(t.color,t,true));
         el.style.setProperty('--tile-muted',this.paint(getComputedStyle(document.documentElement).getPropertyValue('--muted').trim(),t,true));
@@ -300,13 +301,23 @@
         if(data?.updateRequired)hint='Bitte auch das Hauptgerät auf 1.6.10 oder neuer aktualisieren';
         const coverage=m.energy?Math.floor((data?.summary?.coverage||0)*100)+' % des Zeitraums abgedeckt'+(data?.summary?.interpolatedMillis>0?' · davon '+(data.summary.interpolatedMillis/60000).toLocaleString('de-DE',{maximumFractionDigits:1})+' min kurz interpoliert':''):'';
         const cachedRoller=(m.kind==='roller'||info?.stale)&&!snapshot.roller?.fresh&&snapshot.roller?.lastKnown?.at;el.classList.toggle('cached-reading',!!cachedRoller);
+        const status=C.dataStatus(t,data,snapshot,shunt,solar,Date.now(),info);
+        if(status.stale&&!cachedRoller){if(!/Letzter Stand|geladen|verfügbar/.test(hint))hint='Letzter Stand · '+hint;if(status.at)hint+=' · Stand '+new Date(status.at).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}
         if(cachedRoller)hint='Letzter Stand – keine aktuellen BMS-Daten · '+new Date(snapshot.roller.lastKnown.at).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+' · Roller nicht erreichbar';
         if(m.kind==='roller'||t.metric==='rollerRange'){const at=snapshot.roller?.fresh?snapshot.roller?.live?.at:snapshot.roller?.lastKnown?.at;globalThis.WattRoller.markTile(el,at,!!cachedRoller,hint);el.setAttribute('aria-label',(t.title||m.label)+(cachedRoller?' · '+hint:'')+' anpassen');}
+        this.markDataStatus(el,status,t.title||m.label);
         const hintElement=el.querySelector('.tile-hint');hintElement.textContent=t.metric==='consumptionEnergy'&&C.finite(value)&&value<0?'Zusätzliche Einspeisung · '+hint:hint;hintElement.title=[hint,window?.note||'',coverage,m.hint||''].filter(Boolean).join(' ');hintElement.classList.toggle('period-sunrise',t.period.mode==='sunrise');
         el.classList.toggle('no-value',!C.finite(value));
       }
       if(visibilityChanged)this.layout();else this.fitNumbers();
       this.detail?.themeChanged();
+    }
+    markDataStatus(el,status,label){
+      el.classList.toggle('data-outdated',!!status.stale);
+      let badge=el.querySelector('.tile-data-status');
+      if(status.stale){if(!badge){badge=document.createElement('span');badge.className='tile-data-status';el.querySelector('.tile-head').insertBefore(badge,el.querySelector('.tile-menu'));}badge.textContent=status.pending?'Lädt':status.at?'Letzter Stand':'Nicht aktuell';badge.title=status.at?'Stand '+new Date(status.at).toLocaleString('de-DE'):'Aktualisierung noch nicht abgeschlossen';}
+      else if(badge)badge.remove();
+      el.setAttribute('aria-label',label+(status.stale?' · '+(status.pending?'Aktualisierung läuft':'Letzter Stand')+(status.at?' · '+new Date(status.at).toLocaleString('de-DE'):''):'')+' anpassen');
     }
     fitNumbers() {
       for(const el of this.elements.values()){
