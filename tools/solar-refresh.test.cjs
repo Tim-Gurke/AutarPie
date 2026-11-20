@@ -40,3 +40,28 @@ test('a changed shunt does not inherit the previously measured sunset value',()=
 test('a first pending query and an invalid successful point remain unknown',()=>{
  const f=fixture();f.render();assert.equal(f.point().soc,undefined);f.reply({soc:42,t:f.at-16*60000});assert.equal(f.point().soc,undefined);
 });
+
+function knowledgeFixture(){
+ const elements=new Map(),requests=[],context={window:{WattSolarCore:{},WattSpecialUses:class{}},document:{getElementById:id=>{if(!elements.has(id))elements.set(id,{setAttribute(){}});return elements.get(id);},addEventListener(){},querySelector(){return null;}},console};
+ vm.createContext(context);vm.runInContext(source,context);
+ const snapshot={lan:{id:'plant-one',sourceEpoch:'epoch-one'},archiveBusy:true,devices:[{kind:'shunt',mac:'TEST-SHUNT'}]},native={requestCachedSolarData:id=>requests.push(id),requestSolarData(){}};
+ const plan=new context.window.WattSolarPlan({native,getSnapshot:()=>snapshot,canRequestData:()=>false});plan.render=()=>plan.requestCachedKnowledge(snapshot);plan.render();
+ const data=(wh=250)=>({source:'test-source',updated:Date.now()-86400000,observations:[{wh}],forecasts:[],analysis:{plant:snapshot.lan.id,epoch:snapshot.lan.sourceEpoch}});
+ return {plan,snapshot,requests,data,elements,cached:(value,id=requests.at(-1))=>context.window.onSolarCachedData({id,data:value}),fresh:value=>context.window.onSolarPlanData(value)};
+}
+test('local knowledge is requested while archive and initial network histories are still pending',()=>{
+ const f=knowledgeFixture();assert.equal(f.requests.length,1);assert.equal(f.plan.knowledgeState,'loading');const panel=f.plan.learningPanel({slotStats:[]});assert.match(panel,/Lernstand wird geladen/);assert.doesNotMatch(panel,/0 ausgewertete|Noch keine eigene/);
+ f.cached(f.data());assert.equal(f.plan.knowledge.observations[0].wh,250);assert.equal(f.plan.knowledgeState,'cached');assert.match(f.plan.knowledgeStatus(),/Bisheriger Lernstand.*wird aktualisiert/);f.plan.render();assert.equal(f.requests.length,1);
+});
+test('a delayed local cache cannot replace a newer successful result, including a successful empty result',()=>{
+ for(const observations of [[{wh:300}],[]]){const f=knowledgeFixture();f.fresh({...f.data(),observations});f.cached(f.data(100));assert.equal(f.plan.knowledgeState,'ready');assert.equal(f.plan.knowledge.observations.length,observations.length);if(observations.length)assert.equal(f.plan.knowledge.observations[0].wh,300);}
+});
+test('knowledge survives a transient refresh failure and stays explicitly provisional',()=>{
+ const f=knowledgeFixture();f.cached(f.data());f.fresh({error:'Network unavailable'});assert.equal(f.plan.knowledge.observations[0].wh,250);assert.equal(f.plan.knowledge.error,'Network unavailable');assert.equal(f.plan.knowledgeState,'cached');
+});
+test('changing plant, shunt or central database withdraws prior knowledge and rejects delayed cached replies',()=>{
+ for(const change of [f=>f.snapshot.lan.id='plant-two',f=>f.snapshot.devices[0].mac='OTHER-SHUNT',f=>f.snapshot.lan.sourceEpoch='epoch-two']){const f=knowledgeFixture(),old=f.data(),id=f.requests[0];f.cached(old);change(f);f.plan.render();assert.equal(f.plan.knowledge.observations.length,0);assert.notEqual(f.requests.at(-1),id);f.cached(old,id);assert.equal(f.plan.knowledge.observations.length,0);f.cached(f.data(200));assert.equal(f.plan.knowledge.observations[0].wh,200);}
+});
+test('a late fresh result for a previous source epoch cannot replace current knowledge',()=>{
+ const f=knowledgeFixture(),old=f.data(900);f.snapshot.lan.sourceEpoch='epoch-two';f.plan.render();f.cached(f.data(200));f.fresh(old);assert.equal(f.plan.knowledge.observations[0].wh,200);
+});

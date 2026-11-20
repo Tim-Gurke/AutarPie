@@ -527,6 +527,14 @@ public final class DisplayActivity extends Activity {
         @JavascriptInterface public void rememberSolarContext(String key){if(!lan.viewer())solarPlanning.context(key);}
         @JavascriptInterface public void rememberSolarForecasts(String json){if(!lan.viewer())solarPlanning.remember(json);}
         private final java.util.concurrent.atomic.AtomicBoolean analysisBusy=new java.util.concurrent.atomic.AtomicBoolean();
+        @JavascriptInterface public void requestCachedSolarData(long id){
+            if(!foreground)return;Object owner=lan.identity();boolean viewer=lan.viewer();
+            // Local derived knowledge must not queue behind network/history reads.
+            files.execute(()->{JSONObject value=null;try{
+                if(owner!=lan.identity()||viewer!=lan.viewer()||!foreground)return;
+                value=viewer?lan.cachedKnowledge():solarPlanning.cachedKnowledge(SolarPlanning.selectedSource(repository.configs()),HistoryExchange.epoch(repository.db));
+            }catch(Exception ignored){}finally{try{if(owner==lan.identity()&&viewer==lan.viewer()&&foreground)call("onSolarCachedData",new JSONObject().put("id",id).put("data",value==null?JSONObject.NULL:value));}catch(Exception ignored){}}});
+        }
         @JavascriptInterface public void requestSolarData(){if(!foreground)return;if(!lan.viewer()){solarPlanning.request();return;}if(!analysisBusy.compareAndSet(false,true))return;Object owner=lan.identity();historyReads.execute(()->{try{if(owner!=lan.identity()||!lan.viewer()||!foreground)return;JSONObject result=lan.analysisKnowledge(null);if(owner==lan.identity()&&lan.viewer())call("onSolarPlanData",result);}catch(Exception e){try{if(owner==lan.identity()&&lan.viewer())call("onSolarPlanData",new JSONObject().put("error",e instanceof java.io.IOException?e.getMessage():"Lerndaten gerade nicht verfügbar. Die letzte Vorschau bleibt erhalten."));}catch(JSONException ignored){}}finally{analysisBusy.set(false);}});}
         @JavascriptInterface public void startSolarCompass(String place){runOnUiThread(()->{try{siteSensors.startCompass(new JSONObject(place));}catch(Exception e){siteSensors.startCompass(new JSONObject());}});}
         @JavascriptInterface public void stopSolarCompass(){runOnUiThread(()->siteSensors.stopCompass());}

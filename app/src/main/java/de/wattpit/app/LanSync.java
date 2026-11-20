@@ -145,7 +145,7 @@ final class LanSync {
             long now=SystemClock.elapsedRealtime();JSONArray connected=new JSONArray();for(JSONObject peer:peers.values())if(now-peer.optLong("seen")<20000)connected.put(new JSONObject().put("name",peer.optString("name")));
             result.put("role",config.optString("role","off")).put("id",config.optString("id")).put("name",config.optString("name")).put("hosting",hosting).put("connected",viewer()?receivedElapsed>0&&now-receivedElapsed<10000:hosting)
                 .put("receivedAt",receivedAt).put("analysisAt",analysisAt).put("analysisPending",analysisPending).put("error",error).put("peers",connected).put("address",resolvedHost)
-                .put("backgroundPresence",backgroundPresenceEnabled());
+                .put("backgroundPresence",backgroundPresenceEnabled()).put("sourceEpoch",remote.optString("analysisEpoch"));
             if(hosting)result.put("addresses",addresses()).put("port",server.getLocalPort());
         }catch(Exception ignored){}return result;
     }
@@ -249,6 +249,14 @@ final class LanSync {
         if(!viewer())throw new IllegalStateException();if(analysis==null||analysisIdentity!=config){if(analysis!=null)analysis.close();analysis=new ViewerAnalysis(context,this,config.optString("id"));analysisIdentity=config;}return analysis;
     }
     JSONObject analysisKnowledge(Consumer<String> progress)throws Exception{analysisPending=true;try{JSONObject result=analysis().knowledge(progress);analysisAt=result.getJSONObject("analysis").optLong("at");return result;}finally{analysisPending=false;}}
+    JSONObject cachedKnowledge()throws Exception{
+        Object owner=identity();JSONObject bundle=remote;ViewerAnalysis replica=analysis();JSONObject snapshot=bundle.optJSONObject("snapshot");
+        if(snapshot==null||snapshot.optJSONArray("devices")==null)return null;
+        String epoch=bundle.optString("analysisEpoch",replica.repo.prefs.getString("analysis.epoch",""));
+        JSONObject result=replica.planning.cachedKnowledge(SolarPlanning.selectedSource(snapshot.getJSONArray("devices")),epoch);
+        if(owner!=identity()||!viewer())return null;
+        return result==null?null:result.put("analysis",new JSONObject().put("plant",config.optString("id")).put("epoch",epoch).put("local",true));
+    }
     JSONObject analysisDiagnostics()throws Exception{return analysis().diagnostics();}
     void rebuildLearningHistory()throws Exception{analysis().rebuildHistory();}
     void exportAnalysisDiagnostics(java.io.OutputStream output)throws Exception{Object owner=identity();analysis().exportDiagnostics(output);if(owner!=identity())throw new IOException("Anlage wurde gewechselt. Bitte Diagnose erneut exportieren.");}
@@ -337,7 +345,7 @@ final class LanSync {
         if(method.equals("bundle")){
             backgroundInputs();
             JSONObject snapshot=repository.archiveBusy?new JSONObject(repository.backgroundSnapshot()):repository.snapshot();snapshot.remove("archiveDiagnostics");snapshot.remove("event");snapshot.remove("eventId");
-            return new JSONObject().put("analysisProtocol",1).put("analysisBatch",1).put("snapshot",snapshot).put("setup",planning.setup()).put("planning",new JSONObject().put("source",RollerLedger.source(repository.prefs))).put("roller",RollerHandover.view(context))
+            return new JSONObject().put("analysisProtocol",1).put("analysisBatch",1).put("analysisEpoch",HistoryExchange.epoch(repository.db)).put("snapshot",snapshot).put("setup",planning.setup()).put("planning",new JSONObject().put("source",RollerLedger.source(repository.prefs))).put("roller",RollerHandover.view(context))
                 .put("supplies",SuppliesStore.snapshot(repository)).put("specialUses",SpecialUses.snapshot(repository.prefs)).put("presence",PresenceStore.get(context).snapshot()).put("controlProtocol",1).put("controlRevision",currentControlRevision()).put("sync",new JSONObject(repository.syncState())).put("bonded",PlantCommands.bonded(context));
         }
         long from=args.getLong(0);if(method.equals("sunsetSoc")){
@@ -360,8 +368,8 @@ final class LanSync {
         }
     }
     synchronized void backgroundInputs(){
-        long now=System.currentTimeMillis();if(!host()||planning==null||repository.archiveBusy||now-lastPlanRequest<30000)return;
-        lastPlanRequest=now;WeatherClient.refresh(repository,false);planning.captureNative();
+        long now=System.currentTimeMillis();if(!host()||planning==null||now-lastPlanRequest<30000)return;
+        lastPlanRequest=now;WeatherClient.refresh(repository,false);if(!repository.archiveBusy)planning.captureNative();
     }
     synchronized void stopHost(){
         if(host())RollerHandover.get(context).reset();

@@ -11,6 +11,7 @@ final class HistoryExchange {
     static final long BLOCK=900000L;
     static final int PAGE=512;
     static final String[] COLUMNS=(de.wattpit.app.core.HistorySchema.COLUMNS+",archiveCounter,archiveOriginalTs").split(",");
+    static String epoch(HistoryDb history){try(Cursor c=history.getReadableDatabase().rawQuery("SELECT epoch FROM analysis_meta",null)){return c.moveToFirst()?c.getString(0):"";}}
     static void create(SQLiteDatabase db){
         db.execSQL("CREATE TABLE IF NOT EXISTS analysis_meta(epoch TEXT NOT NULL,revision INTEGER NOT NULL)");
         db.execSQL("INSERT INTO analysis_meta SELECT ?,1 WHERE NOT EXISTS(SELECT 1 FROM analysis_meta)",new Object[]{UUID.randomUUID().toString()});

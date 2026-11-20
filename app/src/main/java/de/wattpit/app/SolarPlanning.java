@@ -18,6 +18,7 @@ final class SolarPlanning extends SQLiteOpenHelper {
     static final int ALGORITHM=1722;
     private final RollerLedger rollerLedger;
     private final Context context;
+    private final String previewName;
     private JSONArray rollerInputs=new JSONArray(),presenceHistory=new JSONArray();
     static volatile String sharedKnowledge="{}";
     private final Repository repository;
@@ -47,7 +48,7 @@ final class SolarPlanning extends SQLiteOpenHelper {
         this(context,repository,callback,"wattpit-planning.db",null);
     }
     SolarPlanning(Context context,Repository repository,Consumer<JSONObject> callback,String database,RollerLedger ledger){
-        super(context,database,null,6);this.repository=repository;this.callback=callback;this.context=context.getApplicationContext();analysis=ledger!=null;rollerLedger=ledger==null?RollerLedger.get(context):ledger;display=new MobileSolarDisplay(repository,this);setWriteAheadLoggingEnabled(true);
+        super(context,database,null,6);this.repository=repository;this.callback=callback;this.context=context.getApplicationContext();previewName=database;analysis=ledger!=null;rollerLedger=ledger==null?RollerLedger.get(context):ledger;display=new MobileSolarDisplay(repository,this);setWriteAheadLoggingEnabled(true);
     }
     @Override public void onCreate(SQLiteDatabase db){
         db.execSQL("CREATE TABLE observations(start INTEGER NOT NULL,end INTEGER NOT NULL,source TEXT NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(start,end,source))");
@@ -89,6 +90,21 @@ final class SolarPlanning extends SQLiteOpenHelper {
         if(!AppRole.get(context).equals("central")&&!seen.equals(nativeForecastSeen)){JSONObject w=new JSONObject(weather);String signature=repository.prefs.getString("equipment-v1","{\"version\":1,\"groups\":[]}")+"|"+repository.prefs.getString("solar-setup-v1","{}");if(w.optInt("version")<4||signature.equals(w.optString("signature"))){JSONArray rows=NativeForecast.rows(eq,plan,w,src);if(rows.length()>0)remember(rows.toString());}nativeForecastSeen=seen;}
     }catch(Exception ignored){}}
     JSONObject knowledge(){return lastKnowledge;}
+    /** Read already derived rows, without downloading inputs or rebuilding measurement history. */
+    JSONObject cachedKnowledge(String expectedSource,String epoch)throws Exception{
+        String own=source(devices());if(!own.equals(expectedSource))return null;
+        if(analysis&&!epoch.equals(repository.prefs.getString("analysis.epoch","")))return null;
+        JSONObject saved=SolarPreviewCache.read(context,previewName,own,epoch,System.currentTimeMillis());if(saved!=null)return saved;
+        if(repository.prefs.getInt("planningEnergyVersion."+own,0)!=ALGORITHM)return null;
+        long revision=modelRevision(),updated=0;JSONArray samples=new JSONArray(),forecasts=new JSONArray();Set<String> keys=new HashSet<>();SQLiteDatabase db=getReadableDatabase();
+        try(Cursor c=db.rawQuery("SELECT payload FROM observations WHERE source=? AND end>=? ORDER BY start DESC LIMIT 3500",new String[]{own,""+LearningWindow.since(System.currentTimeMillis())})){while(c.moveToNext()){JSONObject row=new JSONObject(c.getString(0));samples.put(row);updated=Math.max(updated,row.optLong("to"));keys.add(row.optString("key"));keys.add(row.optString("solarKey",row.optString("key")));}}
+        if(samples.length()==0)return null;
+        try(Cursor c=db.rawQuery("SELECT payload,MIN(issued) FROM forecasts WHERE issued<=start-43200000 AND issued>=start-259200000 GROUP BY key,start,end ORDER BY start DESC LIMIT 15000",null)){while(c.moveToNext()&&forecasts.length()<3500){JSONObject row=new JSONObject(c.getString(0));if(keys.contains(row.optString("key")))forecasts.put(row);}}
+        if(revision!=modelRevision()||!own.equals(source(devices())))return null;
+        saved=new JSONObject().put("source",own).put("updated",updated).put("observations",samples).put("forecasts",forecasts).put("confirmedSetups",new JSONArray()).put("cached",true).put("stale",true);
+        try{SolarPreviewCache.save(context,previewName,epoch,saved);}catch(Exception ignored){}return saved;
+    }
+    void clearPreview(){SolarPreviewCache.clear(context,previewName);}
     JSONObject calculateKnowledge()throws Exception{request();JSONObject value=worker.submit(()->lastKnowledge).get(120,TimeUnit.SECONDS);if(value.length()==0||!lastFailure.isEmpty())throw new java.io.IOException(lastFailure.isEmpty()?"Lerndaten konnten nicht berechnet werden.":lastFailure);return value;}
     void flushInputs()throws Exception{worker.submit(()->{}).get(10,TimeUnit.SECONDS);}
     private MobileSolarDisplay.Model displayModel(long from,long to,String source)throws Exception{
@@ -158,8 +174,10 @@ final class SolarPlanning extends SQLiteOpenHelper {
         if(!edit.commit())throw new java.io.IOException();SuppliesStore.recordSite(repository);WeatherClient.refresh(repository,true);
     }
     private String[] devices()throws JSONException{
-        String solar="",shunt="";JSONArray configs=repository.configs();for(int i=0;i<configs.length();i++){JSONObject d=configs.getJSONObject(i);if(d.optString("kind").equals("solar"))solar=d.optString("mac");if(d.optString("kind").equals("shunt"))shunt=d.optString("mac");}return new String[]{solar,shunt};
+        return selectedDevices(repository.configs());
     }
+    private static String[] selectedDevices(JSONArray configs)throws JSONException{String solar="",shunt="";for(int i=0;i<configs.length();i++){JSONObject d=configs.getJSONObject(i);if(d.optString("kind").equals("solar"))solar=d.optString("mac");if(d.optString("kind").equals("shunt"))shunt=d.optString("mac");}return new String[]{solar,shunt};}
+    static String selectedSource(JSONArray configs)throws Exception{return source(selectedDevices(configs));}
     private static String source(String[] devices)throws Exception{
         byte[] hash=MessageDigest.getInstance("SHA-256").digest(String.join("|",devices).getBytes(StandardCharsets.UTF_8));StringBuilder out=new StringBuilder();for(byte b:hash)out.append(String.format(Locale.ROOT,"%02x",b&255));return out.toString();
     }
@@ -429,7 +447,7 @@ final class SolarPlanning extends SQLiteOpenHelper {
             if(!analysis){JSONObject learning=rollerLedger.usageLearning(source,RollerStore.get(context).snapshot(),now,weather.optString("timezone",TimeZone.getDefault().getID()));result.put("rollerLearning",learning);repository.prefs.edit().putString("roller-usage-cache-v1",learning.toString()).apply();}
             result.put("historyRange",repository.db.stats()).put("historyScanFrom",since).put("historyScanTo",now).put("historyRecoveryPending",weatherPending).put("source",source).put("observations",samples).put("forecasts",forecasts).put("confirmedSetups",notices).put("presence",suppliedPresenceState==null?PresenceStore.get(context).snapshot():suppliedPresenceState).put("updated",now);
         }catch(Exception e){try{result.put("error","Lerndaten gerade nicht verfügbar. Die Solarvorschau bleibt nutzbar.");}catch(JSONException ignored){}}
-        finally{busy.set(false);lastFailure=result.optString("error","");if(!closed&&result.length()>0){if(!result.has("error")){lastKnowledge=result;forcedSince=invalidateSince=Long.MAX_VALUE;invalidationRanges=null;if(!analysis)sharedKnowledge=result.toString();}callback.accept(result);}if(!closed&&requestedAgain.getAndSet(false))request();}});
+        finally{busy.set(false);lastFailure=result.optString("error","");if(!closed&&result.length()>0){if(!result.has("error")){lastKnowledge=result;forcedSince=invalidateSince=Long.MAX_VALUE;invalidationRanges=null;try{SolarPreviewCache.save(context,previewName,analysis?repository.prefs.getString("analysis.epoch",""):HistoryExchange.epoch(repository.db),result);}catch(Exception ignored){}if(!analysis)sharedKnowledge=result.toString();}callback.accept(result);}if(!closed&&requestedAgain.getAndSet(false))request();}});
     }
     private static void retainForRebuild(SQLiteDatabase db,String source,long from,long to)throws JSONException{
         java.util.List<JSONObject> rows=new java.util.ArrayList<>();
