@@ -105,7 +105,7 @@ final class ViewerAnalysis {
         }
     }
     private void beginTiming(String name){operation=name;completed=false;networkNanos=storageNanos=computeNanos=connectNanos=0;requests=0;operationNanos=System.nanoTime();}
-    private void endTiming(){try{long total=System.nanoTime()-operationNanos;lastTiming=new JSONObject().put("method",operation).put("at",System.currentTimeMillis()).put("completed",completed).put("totalMs",total/1000000).put("networkMs",networkNanos/1000000).put("connectionMs",connectNanos/1000000).put("storageMs",storageNanos/1000000).put("calculationMs",computeNanos/1000000).put("localMs",Math.max(0,total-networkNanos-storageNanos)/1000000).put("requests",requests).put("rows",downloadedRows).put("blocks",downloadedBlocks).put("batch",lan.analysisBatch());repo.prefs.edit().putString("analysis.timing",lastTiming.toString()).apply();}catch(Exception ignored){}}
+    private void endTiming(){try{long total=System.nanoTime()-operationNanos;lastTiming=new JSONObject().put("method",operation).put("at",System.currentTimeMillis()).put("completed",completed).put("totalMs",total/1000000).put("networkMs",networkNanos/1000000).put("connectionMs",connectNanos/1000000).put("storageMs",storageNanos/1000000).put("calculationMs",computeNanos/1000000).put("localMs",Math.max(0,total-networkNanos-storageNanos)/1000000).put("requests",requests).put("rows",downloadedRows).put("blocks",downloadedBlocks).put("batch",lan.analysisBatch()).put("modelBatch",lan.analysisModelBatch());repo.prefs.edit().putString("analysis.timing",lastTiming.toString()).apply();}catch(Exception ignored){}}
     private void model(long from,long to)throws Exception{
         from=Math.min(from,System.currentTimeMillis()-90L*86400000)/86400000L*86400000L;to=Math.min((to+86399999)/86400000L*86400000L,(System.currentTimeMillis()/86400000L+1)*86400000L);
         for(int retry=0;retry<3;retry++){
@@ -122,11 +122,17 @@ final class ViewerAnalysis {
                 String cursorKey="analysis.cursor."+table+scope;long cursor=incremental?repo.prefs.getLong(cursorKey,0):0;JSONArray rows=new JSONArray();
                 note("Berechnungsgrundlagen werden abgeglichen …");
                 while(true){
-                    JSONObject page=get("analysisModelPage",new JSONArray().put(table).put(from).put(to).put(version).put(cursor));
-                    if(page.optBoolean("changed")){changed=true;break;}
-                    JSONArray values=page.getJSONArray("rows");for(int i=0;i<values.length();i++)rows.put(values.get(i));
-                    long next=page.getLong("cursor");if(page.getBoolean("complete")){cursor=next;break;}
-                    if(next<=cursor||rows.length()>250000)throw new IOException("Unvollständige Berechnungsgrundlagen.");cursor=next;note("Berechnungsgrundlagen werden abgeglichen …");
+                    boolean batch=lan.analysisModelBatch(),complete=false;JSONObject response=get(batch?"analysisModelBatch":"analysisModelPage",new JSONArray().put(table).put(from).put(to).put(version).put(cursor));
+                    JSONArray pages=batch?response.getJSONArray("pages"):new JSONArray().put(response);
+                    if(pages.length()==0||pages.length()>AnalysisExchange.BATCH_PAGES)throw new IOException("Unvollständige Berechnungsgrundlagen.");
+                    for(int p=0;p<pages.length();p++){
+                        JSONObject page=pages.getJSONObject(p);if(page.optBoolean("changed")){changed=true;break;}
+                        JSONArray values=page.getJSONArray("rows");for(int i=0;i<values.length();i++)rows.put(values.get(i));
+                        long next=page.getLong("cursor");complete=page.getBoolean("complete");
+                        if(next<cursor||!complete&&next==cursor||rows.length()>250000)throw new IOException("Unvollständige Berechnungsgrundlagen.");cursor=next;
+                        if(complete)break;
+                    }
+                    if(changed||complete)break;note("Berechnungsgrundlagen werden abgeglichen …");
                 }
                 if(changed)break;
                 long saving=System.nanoTime();AnalysisExchange.install(table,repo,planning,ledger,from,to,rows);storageNanos+=System.nanoTime()-saving;if(table.equals("roller_raw"))for(int i=0;i<rows.length();i++){JSONArray row=rows.getJSONArray(i);dirtyRollerFrom=Math.min(dirtyRollerFrom,row.getLong(1));dirtyRollerTo=Math.max(dirtyRollerTo,row.getLong(2));}

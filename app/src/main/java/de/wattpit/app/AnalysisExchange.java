@@ -11,6 +11,7 @@ final class AnalysisExchange {
     static final String[] TABLES={"contexts","display_contexts","model_weather","observations","forecasts","confirmed_setups"};
     static final String[] ALL={"contexts","display_contexts","model_weather","observations","forecasts","confirmed_setups","device_settings","input_intervals","roller_raw","load_raw","charger_raw","archive_clock_state"};
     static final int PAGE=256;
+    static final int BATCH_PAGES=4,BATCH_BYTES=256*1024;
     static String schema(String table){switch(table){
         case "contexts":return "at:l,key:s,mobile_free:l,source:s,solar_key:s,payload:s";
         case "display_contexts":return "source:s,at:l,payload:s";
@@ -70,21 +71,36 @@ final class AnalysisExchange {
             .put("epoch",before.getString("epoch")).put("timezone",TimeZone.getDefault().getID()).put("at",System.currentTimeMillis());
     }
     static JSONObject page(Context context,Repository repo,SolarPlanning plan,String table,long from,long to,String expected,long after)throws Exception{
+        return page(context,repo,plan,table,from,to,expected,after,Integer.MAX_VALUE);
+    }
+    /** Several bounded pages share one connection. Old peers retain their page endpoint. */
+    static JSONObject batch(Context context,Repository repo,SolarPlanning plan,String table,long from,long to,String expected,long after)throws Exception{
+        JSONArray pages=new JSONArray();int remaining=BATCH_BYTES;
+        for(int i=0;i<BATCH_PAGES;i++){
+            JSONObject page=page(context,repo,plan,table,from,to,expected,after,remaining);pages.put(page);
+            if(page.optBoolean("changed")||page.getBoolean("complete"))break;
+            long next=page.getLong("cursor");if(next<=after)throw new IllegalArgumentException("Unvollständige Berechnungsgrundlagen.");after=next;
+            remaining-=page.toString().length()*3;if(remaining<=0)break;
+        }
+        return new JSONObject().put("pages",pages);
+    }
+    private static JSONObject page(Context context,Repository repo,SolarPlanning plan,String table,long from,long to,String expected,long after,int budget)throws Exception{
         if(from<0||to<=from||to-from>376L*86400000||to>System.currentTimeMillis()+86400000||after<0)throw new IllegalArgumentException("Ungültiger Datenzeitraum.");
         RollerLedger ledger=RollerLedger.get(context);SQLiteDatabase db=database(table,repo,plan,ledger,false);String before=version(table,repo,plan,ledger,from,to);
         boolean bounded=table.equals("roller_raw")||(table.equals("load_raw")||table.equals("charger_raw"))||table.equals("input_intervals");long highWater=Long.MAX_VALUE;
         if(bounded){if(!expected.matches("[0-9]+:[0-9]+"))throw new IllegalArgumentException("Ungültiger Datenstand.");highWater=Long.parseLong(expected.split(":")[0]);}
         else if(!before.equals(expected))return new JSONObject().put("changed",true);
-        String[] fields=schema(table).split(",");List<String> columns=new ArrayList<>();for(String f:fields)columns.add(f.split(":")[0]);JSONArray rows=new JSONArray();long cursor=after;
+        String[] fields=schema(table).split(",");List<String> columns=new ArrayList<>();for(String f:fields)columns.add(f.split(":")[0]);JSONArray rows=new JSONArray();long cursor=after;int estimated=64;boolean limited=false;
         try(Cursor c=db.rawQuery("SELECT rowid,"+String.join(",",columns)+" FROM "+table+" WHERE "+where(table,from,to)+" AND rowid>? AND rowid<="+highWater+" ORDER BY rowid LIMIT "+PAGE,new String[]{""+after})){
-            while(c.moveToNext()){cursor=c.getLong(0);JSONArray row=new JSONArray();for(int i=0;i<fields.length;i++){
+            while(c.moveToNext()){JSONArray row=new JSONArray();for(int i=0;i<fields.length;i++){
                 String type=fields[i].split(":")[1];if(c.isNull(i+1))row.put(JSONObject.NULL);else if(type.equals("s"))row.put(c.getString(i+1));else if(type.equals("l"))row.put(c.getLong(i+1));else row.put(c.getDouble(i+1));
-            }rows.put(row);}
+            }int size=budget==Integer.MAX_VALUE?0:row.toString().length()*3;if(rows.length()>0&&estimated+size>budget){limited=true;break;}cursor=c.getLong(0);rows.put(row);estimated+=size;}
         }
         // Mutable minute buckets use replacement rowids. New packets after this watermark
         // belong to the next delta, rather than repeatedly cancelling a long first transfer.
-        if(bounded&&rows.length()<PAGE)cursor=Math.max(cursor,highWater);
-        return new JSONObject().put("rows",rows).put("cursor",cursor).put("complete",rows.length()<PAGE).put("changed",!bounded&&!expected.equals(version(table,repo,plan,ledger,from,to)));
+        boolean complete=!limited&&rows.length()<PAGE;
+        if(bounded&&complete)cursor=Math.max(cursor,highWater);
+        return new JSONObject().put("rows",rows).put("cursor",cursor).put("complete",complete).put("changed",!bounded&&!expected.equals(version(table,repo,plan,ledger,from,to)));
     }
     static void install(String table,Repository repo,SolarPlanning plan,RollerLedger ledger,long from,long to,JSONArray rows)throws Exception{
         SQLiteDatabase db=database(table,repo,plan,ledger,true);String[] fields=schema(table).split(",");db.beginTransaction();try{

@@ -24,6 +24,7 @@ public final class MonitorService extends Service {
     private BluetoothLeScanner scanner;
     private boolean scanning;
     private final ScheduledExecutorService worker = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService archiveWorker = Executors.newSingleThreadScheduledExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
     private ScheduledFuture<?> archiveCheck;
     private long lastLiveRead,lastAdvertisementAt,lastScanAt;
@@ -121,7 +122,7 @@ public final class MonitorService extends Service {
     /** Reuses the existing missing-data planner even while no console is open. */
     private synchronized void scheduleArchive(long delay){
         if(archiveCheck!=null)archiveCheck.cancel(false);
-        if(!worker.isShutdown()&&repository.running&&repository.archiveIntervalMinutes()!=0)archiveCheck=worker.schedule(this::automaticArchive,delay,TimeUnit.MILLISECONDS);
+        if(!archiveWorker.isShutdown()&&repository.running&&repository.archiveIntervalMinutes()!=0)archiveCheck=archiveWorker.schedule(this::automaticArchive,delay,TimeUnit.MILLISECONDS);
     }
     private void automaticArchive(){
         if(!repository.running||repository.archiveIntervalMinutes()==0)return;
@@ -129,7 +130,7 @@ public final class MonitorService extends Service {
         try{
             if(repository.archiveBusy||repository.liveBusy||EnergyStore.holdsRegulator()){delay=60000;return;}
             if(!repository.prefs.getBoolean("cockpitNotice-v1",false))return;
-            if(repository.automaticArchiveDevices(false).length()>0)startForegroundService(new Intent(this,ArchiveService.class).putExtra("mac","AUTO"));
+            if(repository.automaticArchiveDevices(false).length()>0){if(repository.running&&!archiveWorker.isShutdown())startForegroundService(new Intent(this,ArchiveService.class).putExtra("mac","AUTO"));}
             else delay=repository.automaticArchiveCheckDelay(System.currentTimeMillis());
         }catch(Exception ignored){CentralLog.add(this,"Archiv","Automatischer Archivabruf wartet auf die nächste Gelegenheit");}
         finally{scheduleArchive(delay);}
@@ -189,7 +190,7 @@ public final class MonitorService extends Service {
         if (scanner != null && scanning && hasPermissions()) {
             try { scanner.stopScan(callback); } catch (SecurityException | IllegalStateException ignored) { }
         }
-        scanning = false; worker.shutdown();
+        scanning = false; archiveWorker.shutdownNow();worker.shutdown();
         repository.prefs.unregisterOnSharedPreferenceChangeListener(archivePreference);
         try { unregisterReceiver(bluetoothReceiver); } catch (IllegalArgumentException ignored) { }
         stopForeground(STOP_FOREGROUND_REMOVE); super.onDestroy();

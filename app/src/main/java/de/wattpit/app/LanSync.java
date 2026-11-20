@@ -244,6 +244,7 @@ final class LanSync {
         return queryInput(method,args);
     }
     boolean analysisBatch(){return remote.optInt("analysisBatch")==1;}
+    boolean analysisModelBatch(){return remote.optInt("analysisModelBatch")==1;}
     int analysisProtocol(){return remote.optInt("analysisProtocol");}
     private synchronized ViewerAnalysis analysis(){
         if(!viewer())throw new IllegalStateException();if(analysis==null||analysisIdentity!=config){if(analysis!=null)analysis.close();analysis=new ViewerAnalysis(context,this,config.optString("id"));analysisIdentity=config;}return analysis;
@@ -337,6 +338,7 @@ final class LanSync {
         if(method.equals("analysisPage"))return HistoryExchange.page(repository.db,args.getLong(0),args.getLong(1),args.getLong(2));
         if(method.equals("analysisMetadata")){long revision;synchronized(this){revision=currentControlRevision();}return AnalysisExchange.metadata(context,repository,planning,args.getLong(0),args.getLong(1),revision);}
         if(method.equals("analysisModelPage"))return AnalysisExchange.page(context,repository,planning,args.getString(0),args.getLong(1),args.getLong(2),args.getString(3),args.getLong(4));
+        if(method.equals("analysisModelBatch"))return AnalysisExchange.batch(context,repository,planning,args.getString(0),args.getLong(1),args.getLong(2),args.getString(3),args.getLong(4));
         if(method.equals("control"))return applyControl(args);
         if(method.equals("rollerSession")){
             if(args.length()!=3||!(args.get(0) instanceof Boolean))throw new IllegalArgumentException("Ungültige Ladeanfrage.");
@@ -345,7 +347,7 @@ final class LanSync {
         if(method.equals("bundle")){
             backgroundInputs();
             JSONObject snapshot=repository.archiveBusy?new JSONObject(repository.backgroundSnapshot()):repository.snapshot();snapshot.remove("archiveDiagnostics");snapshot.remove("event");snapshot.remove("eventId");
-            return new JSONObject().put("analysisProtocol",1).put("analysisBatch",1).put("analysisEpoch",HistoryExchange.epoch(repository.db)).put("snapshot",snapshot).put("setup",planning.setup()).put("planning",new JSONObject().put("source",RollerLedger.source(repository.prefs))).put("roller",RollerHandover.view(context))
+            return new JSONObject().put("analysisProtocol",1).put("analysisBatch",1).put("analysisModelBatch",1).put("analysisEpoch",HistoryExchange.epoch(repository.db)).put("snapshot",snapshot).put("setup",planning.setup()).put("planning",new JSONObject().put("source",RollerLedger.source(repository.prefs))).put("roller",RollerHandover.view(context))
                 .put("supplies",SuppliesStore.snapshot(repository)).put("specialUses",SpecialUses.snapshot(repository.prefs)).put("presence",PresenceStore.get(context).snapshot()).put("controlProtocol",1).put("controlRevision",currentControlRevision()).put("sync",new JSONObject(repository.syncState())).put("bonded",PlantCommands.bonded(context));
         }
         long from=args.getLong(0);if(method.equals("sunsetSoc")){
