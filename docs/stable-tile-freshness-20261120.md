@@ -43,5 +43,6 @@ Lernformeln, Steuerfreigaben, Layouts oder gespeicherten Farben.
   ausdrücklich keine APK. Die tatsächliche G5-/WLAN-Verbindung ist damit
   nicht vor Ort gemessen.
 
-Vorbereiteter Quellcode; noch kein neuer APK-Bau und kein neues Release.
-Die gesonderte Bau-Freigabe gemäß AGENTS.md steht aus.
+Tim hat am 20.11.2026 den konkret vorbereiteten Umfang zum Bau und zur
+Veröffentlichung als 3.0.15 ausdrücklich freigegeben. Die endgültigen APK- und
+Veröffentlichungsnachweise werden im Release und README ergänzt.

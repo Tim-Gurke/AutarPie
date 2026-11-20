@@ -51,7 +51,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: AutarPie-3.0.14-Schnellstart
+          name: AutarPie-3.0.15-Schnellstart
           path: app/build/reports/quick-start/
 
   period-storage-ui:
@@ -238,13 +238,13 @@ jobs:
             python3 -c "from pathlib import Path; s=Path('unified-emulator.log').read_text(); assert 'OK (8 tests)' in s and 'FAILURES' not in s"
             python3 tools/prove-backup-android.py --output app/build/reports/backup-uid
             mkdir -p docs/images
-            adb exec-out run-as de.wattpit.app cat files/autarpie-3.0.14-central.png > docs/images/autarpie-3.0.14-central.png
-            adb exec-out run-as de.wattpit.app cat files/autarpie-3.0.14-direct.png > docs/images/autarpie-3.0.14-direct.png
+            adb exec-out run-as de.wattpit.app cat files/autarpie-3.0.15-central.png > docs/images/autarpie-3.0.15-central.png
+            adb exec-out run-as de.wattpit.app cat files/autarpie-3.0.15-direct.png > docs/images/autarpie-3.0.15-direct.png
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: AutarPie-3.0.14-Emulator-${{ matrix.api }}
+          name: AutarPie-3.0.15-Emulator-${{ matrix.api }}
           path: |
             unified-emulator.log
             app/build/reports/backup-uid
-            docs/images/autarpie-3.0.14-*.png
+            docs/images/autarpie-3.0.15-*.png

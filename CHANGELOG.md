@@ -8,6 +8,12 @@ Das bestehende GitHub-Repository heißt jetzt [`Tim-Gurke/AutarPie`](https://git
 
 ## Aktuelles Update
 
+### 3.0.15 · Stabile Kachelfarben beim normalen Nachladen
+
+Am 20.11.2026 ausdrücklich zum Bau und zur Veröffentlichung freigegeben. Ein gerade erfolgreich geladener Diagrammstand derselben Ansicht bleibt während normaler Hintergrundaktualisierung farbig. Neue Live-Revisionen und die nächste Zeitgrenze machen ihn nicht sofort wieder grau. Die normale Aktualisierung läuft weiter, mit Hinweis „Aktualisierung im Hintergrund“.
+
+Erste fehlende Daten, ausdrücklich ungültige Grundlagen, Abruffehler und tatsächlich verspätete Folgeabrufe bleiben grau erkennbar. Die begrenzte Aktualitätsfrist zählt ab Abfragestart; langsame Antworten erhalten keine neue volle Frist beim Eintreffen. Anlagen-/Quellenwechsel und unabhängige Solarzeitgrenzen bleiben getrennt. Messwerte, Lernformeln, Steuerfreigaben, Kopplungen, Farben und Layouts bleiben erhalten. [Installation und Prüfgrenzen](docs/changes-3.0.15.md).
+
 ### 3.0.14 · Sofortiger Lernstand, begrenzte Modellpakete und graue Zwischenstände
 
 Am 20.11.2026 ausdrücklich zum Bau und zur Veröffentlichung freigegeben. Beim Öffnen den letzten gültigen Verbrauchslernstand je Anlage lokal lesen, während neue Historien- und Modellgrundlagen abgeglichen werden. Bisherigen Stand mit Zeitpunkt kennzeichnen; anfänglich wartende Lerndaten nicht als null ausgewertete Stunden darstellen. Akku-Prognosen benötigen weiterhin frische Shuntwerte.
