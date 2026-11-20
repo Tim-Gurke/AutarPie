@@ -2,7 +2,7 @@ name: Kachelaktualität ohne APK prüfen
 
 on:
   push:
-    branches: ['prepare/stable-tile-freshness-20261120']
+    branches: ['prepare/stable-tile-freshness-20261120', 'prepare/3.0.15-history-check']
 
 permissions:
   contents: read
@@ -25,6 +25,7 @@ jobs:
         run: |
           node tools/energy-refresh-smoke.cjs
           node tools/quick-start-smoke.cjs
+          node tools/history-retention-smoke.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
