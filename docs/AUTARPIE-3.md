@@ -118,3 +118,7 @@ Die portable Einstellungssicherung enthält auch Dashboards, Kurzwahlen und Ersc
 **Last schalten:** Ein Schaltwunsch darf einen Archivabruf unterbrechen und wartet erforderlichenfalls auf eine laufende Liveabfrage. Die Anzeige unterscheidet vorgemerkt, gesendet und bestätigt. Nach 45 Sekunden verfällt ein nicht ausgeführter wartender Auftrag; bei fehlender Bestätigung Verbindung prüfen und erneut bedienen. „Aus“ pausiert zugleich die Automatik. Firmware-Schutzbedingungen und ein gemeldeter Abschaltgrund bleiben vom tatsächlichen Schaltzustand getrennt.
 
 [Alle Änderungen und Prüfgrenzen von 3.0.1](changes-3.0.1.md)
+
+## Direkter Liveempfang auf Anzeigehandys ab 3.0.16
+
+Unter **Einstellungen → Anlagenverbund → Verbund öffnen → Victron-Livewerte direkt empfangen** freiwillig einschalten. Zuerst die Zentrale auf 3.0.16 aktualisieren, damit die Anzeige ihre Sofortanzeige-Schlüssel geschützt übernehmen kann. Die Anzeige hört nur bei geöffneter App und in Bluetooth-Reichweite mit; die Zentrale bleibt für GPS, dauerhafte Erfassung, Archive, Roller-BMS und Steuerung zuständig. Ohne Direktpaket innerhalb von 15 Sekunden greift die Anzeige auf die verfügbaren Zentralwerte zurück. Alte Zentralwerte werden dadurch nicht frisch. [Einrichtung, Diagnose und Sicherung vor einem ROM-Wechsel](changes-3.0.16.md).

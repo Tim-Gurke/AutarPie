@@ -113,7 +113,11 @@ final class ViewerAnalysis {
         long now=System.currentTimeMillis();
         // Ninety-day BMS learning is independent of a visible five-day chart's inputs.
         from=(learning?Math.min(from,now-90L*86400000):from)/86400000L*86400000L;to=Math.min((to+86399999)/86400000L*86400000L,(now/86400000L+1)*86400000L);
-        if(!learning&&modelAt>0&&now>=modelAt&&now-modelAt<5000&&metadata.optLong("controlRevision",-1)==lan.controlRevision()&&from>=modelFrom&&to<=modelThrough)return;
+        if(!learning&&modelAt>0&&now>=modelAt&&now-modelAt<5000&&from>=modelFrom&&to<=modelThrough){
+            JSONObject current=get("analysisInputState",new JSONArray());
+            if(current.optString("epoch").equals(epoch)&&current.getString("token").equals(metadata.optString("inputToken")))return;
+            modelAt=0;
+        }
         for(int retry=0;retry<3;retry++){
             JSONObject m=get("analysisMetadata",new JSONArray().put(from).put(to));
             if(m.optBoolean("changed"))continue;

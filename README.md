@@ -1,10 +1,10 @@
-# AutarPie 3.0.15
+# AutarPie 3.0.16
 
 ![AutarPie Ressourcen-Kreislauf](app/src/main/assets/brand.svg)
 
 **Das lokale Cockpit für autarkes Leben.** Solar und Stromverteilung, Wohnwagenakku, E-Scooter, Modellbau, Gas und Wasser in einer gemeinsamen App. AutarPie führt **Watt’n’Pit und WohnPit** weiter.
 
-**[AutarPie 3.0.15 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.0.15/AutarPie-v3.0.15.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.0.15.md) · [Vollständige Versionshistorie](CHANGELOG.md)
+**[AutarPie 3.0.16 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.0.16/AutarPie-v3.0.16.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.0.16.md) · [Vollständige Versionshistorie](CHANGELOG.md)
 
 Android 8 oder neuer; das Cockpit benötigt einen aktuellen Android-System-WebView. Kein Pflichtkonto, keine Werbung. Mess- und Lerndaten werden lokal gespeichert; eine freiwillige verschlüsselte Sicherung kann in einem selbst gewählten lokalen oder unterstützten Online-Ordner abgelegt werden. Der optionale Wetterabruf verwendet Open-Meteo. Der Anlagenverbund überträgt Daten verschlüsselt im lokalen WLAN.
 
@@ -50,6 +50,14 @@ Der SmartSolar-Lastausgang ist E-Scooter, Modellbau oder einem anderen Verbrauch
 Die **optionale Rollerautomatik ist zunächst aus**. Ladeziel, Wohnwagenreserve, Tagesziel, Überschussschwellen und Prognosereserve sind variabel. Ein aktives Anzeigehandy erstellt den zeitlich begrenzten Plan; die Zentrale kontrolliert direkte Abschaltbedingungen. Ein Schaltauftrag ist erst mit der tatsächlichen Geräteantwort bestätigt. Ohne gültigen Plan wird zum Ausschalten angefordert. BMS-Empfang allein beweist noch keinen eingesteckten Ladestecker.
 
 Bis zu drei 608PD erhalten getrennte Profile, private Kennungen und eigene Verbindungen. Suche und Einrichtung laufen am erfassenden Handy; Anzeigen bedienen den Ablauf. Die neue direkte Ersteinrichtung verlangt eine Bestätigung am Lader und muss am eigenen 608PD praktisch geprüft werden. Vorhandene Verbindungen aus der eigenen Bluetooth-Aufzeichnung bleiben erhalten. Unterstützt sind die nachgewiesenen Livefelder und das Beenden von Laden/Powerbank-Betrieb. App-Start ist zunächst auf das beobachtete **3S-LiPo-Profil 4,21 V/Zelle / 0,50 A** mit ausdrücklicher Profilbestätigung begrenzt. Powerbank und andere Profile am Gerät starten. Nicht belegte Temperatur-/USB-/CC-CV-Felder werden nicht erfunden.
+
+## Update 3.0.16
+
+**Victron-Livewerte direkt auf der Anzeige:** Optional unter **Anlagenverbund → Verbund öffnen → Victron-Livewerte direkt empfangen** einschalten. Die geöffnete Anzeige hört nur die Sofortanzeige mit; Zentrale, GPS, Archive und Roller-BMS behalten ihre Aufgaben. Bei fehlendem Empfang werden wieder Zentralwerte mit ihrem tatsächlichen Alter verwendet. Die Funktion belegt keinen aktiven Victron-Verbindungsplatz.
+
+**Kleinere Diagrammabgleiche und robuster Diagnoseexport:** Kurze Diagramme benötigen keinen pauschalen 90-Tage-Modellabgleich. Aktuelles Wetter erscheint unabhängig vom noch ladenden Verbrauchslernen; nicht aktuelle Batterieprognosen bleiben einzeln grau. Ein Analysefehler kann als lesbare Teildiagnose exportiert werden, einschließlich verfügbarer Laufzeiten und Messhistorie.
+
+**Zuerst die Zentrale, danach alle Anzeigen auf 3.0.16 aktualisieren.** Der Direkt-Liveempfang ist zunächst aus. Messwerte, Kopplungen und eigene Ansichten bleiben erhalten. Für einen ROM-Wechsel die neue vollständige Datensicherung mit übertragbaren Schlüsseln verwenden. [Bedienung und Prüfgrenzen](docs/changes-3.0.16.md).
 
 ## Update 3.0.15
 

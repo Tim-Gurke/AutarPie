@@ -48,10 +48,11 @@ jobs:
         run: |
           npm install --no-save --prefix "$RUNNER_TEMP/quick-start-ui" playwright@1.51.1 pngjs@7.0.0
           NODE_PATH="$RUNNER_TEMP/quick-start-ui/node_modules" node tools/quick-start-smoke.cjs
+          NODE_PATH="$RUNNER_TEMP/quick-start-ui/node_modules" node tools/viewer-readout-smoke.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: AutarPie-3.0.15-Schnellstart
+          name: AutarPie-3.0.16-Schnellstart
           path: app/build/reports/quick-start/
 
   period-storage-ui:
@@ -238,13 +239,13 @@ jobs:
             python3 -c "from pathlib import Path; s=Path('unified-emulator.log').read_text(); assert 'OK (8 tests)' in s and 'FAILURES' not in s"
             python3 tools/prove-backup-android.py --output app/build/reports/backup-uid
             mkdir -p docs/images
-            adb exec-out run-as de.wattpit.app cat files/autarpie-3.0.15-central.png > docs/images/autarpie-3.0.15-central.png
-            adb exec-out run-as de.wattpit.app cat files/autarpie-3.0.15-direct.png > docs/images/autarpie-3.0.15-direct.png
+            adb exec-out run-as de.wattpit.app cat files/autarpie-3.0.16-central.png > docs/images/autarpie-3.0.16-central.png
+            adb exec-out run-as de.wattpit.app cat files/autarpie-3.0.16-direct.png > docs/images/autarpie-3.0.16-direct.png
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: AutarPie-3.0.15-Emulator-${{ matrix.api }}
+          name: AutarPie-3.0.16-Emulator-${{ matrix.api }}
           path: |
             unified-emulator.log
             app/build/reports/backup-uid
-            docs/images/autarpie-3.0.15-*.png
+            docs/images/autarpie-3.0.16-*.png
