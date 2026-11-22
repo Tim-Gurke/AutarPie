@@ -260,7 +260,7 @@ final class LanSync {
     }
     JSONObject analysisDiagnostics()throws Exception{return analysis().diagnostics();}
     void rebuildLearningHistory()throws Exception{analysis().rebuildHistory();}
-    void exportAnalysisDiagnostics(java.io.OutputStream output)throws Exception{Object owner=identity();analysis().exportDiagnostics(output);if(owner!=identity())throw new IOException("Anlage wurde gewechselt. Bitte Diagnose erneut exportieren.");}
+    boolean exportAnalysisDiagnostics(java.io.OutputStream output)throws Exception{Object owner=identity();boolean complete=analysis().exportDiagnostics(output);if(owner!=identity())throw new IOException("Anlage wurde gewechselt. Bitte Diagnose erneut exportieren.");return complete;}
     JSONObject queryInput(String method,JSONArray args)throws Exception{
         if(!viewer())throw new IllegalStateException();JSONObject active=config;JSONObject result=rpc(active,method,args);if(active!=config)throw new IOException("Anlage wurde gewechselt.");return result;
     }

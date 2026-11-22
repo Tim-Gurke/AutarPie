@@ -257,20 +257,16 @@ public final class DisplayActivity extends Activity {
                 repository.db.exportTo(output); repository.message("Verlauf als CSV gespeichert.");
             } catch (Exception e) { error(e); }
         });
-        if(requestCode==EXPORT_DIAGNOSTICS)files.execute(()->{
+        if(requestCode==EXPORT_DIAGNOSTICS){repository.message("Diagnose wird gespeichert …");files.execute(()->{
             try(OutputStream output=getContentResolver().openOutputStream(uri,"wt")){
-                if(output==null)throw new IOException();
+                if(output==null)throw new IOException("Diagnoseziel ist nicht beschreibbar.");
                 if(diagnosticOwner!=lan.identity()||diagnosticViewer!=lan.viewer())throw new IOException("Betriebsart oder Anlage wurde gewechselt. Bitte Diagnose erneut exportieren.");
-                if(diagnosticViewer){lan.exportAnalysisDiagnostics(output);repository.message("Mess- und Lerndiagnose dieser Anzeige gespeichert.");return;}
-                JSONObject diagnostic=solarPlanning.diagnosticSnapshot().get(2,TimeUnit.MINUTES);
-                diagnostic.put("roller",RollerStore.get(DisplayActivity.this).snapshot());
-                try(ZipOutputStream zip=new ZipOutputStream(output)){
-                    zip.putNextEntry(new ZipEntry("diagnose.json"));zip.write(diagnostic.toString(2).getBytes(StandardCharsets.UTF_8));zip.closeEntry();
-                    zip.putNextEntry(new ZipEntry("verlauf.csv"));repository.db.exportTo(zip);zip.closeEntry();
-                }
-                repository.message("Mess- und Lerndiagnose gespeichert.");
+                boolean complete;
+                if(diagnosticViewer)complete=lan.exportAnalysisDiagnostics(output);
+                else complete=DiagnosticArchive.write(output,new JSONObject().put("appVersion",BuildConfig.VERSION_NAME),()->solarPlanning.diagnosticSnapshotNow().put("roller",RollerStore.get(DisplayActivity.this).snapshot()),repository.db::exportTo);
+                repository.message(complete?"Mess- und Lerndiagnose gespeichert.":"Teildiagnose gespeichert. Der Fehlerbericht in der ZIP erklärt die fehlenden Teile.");
             }catch(Exception e){error(e);}
-        });
+        });}
         if(requestCode==IMPORT_SETTINGS)files.execute(()->{
             try(InputStream input=getContentResolver().openInputStream(uri);ByteArrayOutputStream buffer=new ByteArrayOutputStream()){
                 if(input==null)throw new IOException();byte[] block=new byte[8192];int n;

@@ -49,11 +49,16 @@ SpecialUses.save(source.prefs,"{\"version\":1,\"profiles\":[{\"id\":\"oven\",\"n
         LanSync host=LanSyncProof.sync(central),one=null,two=null;
         boolean success=false;try{
             host.create("Replica proof");host.startHost();String code=invitation(host);
+            Field hostPlanning=LanSync.class.getDeclaredField("planning");hostPlanning.setAccessible(true);SolarPlanning modelSource=(SolarPlanning)hostPlanning.get(host);
+            for(long at:new long[]{from-30L*86400000,from}){ContentValues weatherRow=new ContentValues();weatherRow.put("place","fixture");weatherRow.put("geometry","fixture");weatherRow.put("end",at);weatherRow.put("value",250);weatherRow.put("slot",1);weatherRow.put("night",0);weatherRow.put("sunrise",0);weatherRow.put("sunset",0);modelSource.getWritableDatabase().insertWithOnConflict("model_weather",null,weatherRow,SQLiteDatabase.CONFLICT_REPLACE);}
+
             LanSyncProof.TestContext s20=new LanSyncProof.TestContext(root.resolve("s20"));Repository own1=LanSyncProof.repository(s20);own1.prefs.edit().putString("dashboard-v1","s20-layout").putString("equipment-v1","{\"version\":1,\"groups\":[]}").commit();
             Reading sentinel=new Reading();sentinel.kind="shunt";sentinel.device="private";sentinel.timestamp=to;sentinel.power=-999.0;own1.db.insert(sentinel);one=LanSyncProof.sync(s20);one.join(code);
             JSONArray query=new JSONArray().put(from).put(to).put("all").put(from).put(to);long started=System.nanoTime();
             JSONObject a=one.query("energyHistoryWindow",query);long cold=(System.nanoTime()-started)/1000000;
             ViewerAnalysis r1=replica(one);check(a.getJSONObject("analysis").getBoolean("local"),"the native response explicitly identifies viewer-side calculation");
+            check(scalar(r1.planning.getReadableDatabase(),"SELECT COUNT(*) FROM model_weather WHERE place='fixture' AND end="+(from-30L*86400000))==0&&scalar(r1.planning.getReadableDatabase(),"SELECT COUNT(*) FROM model_weather WHERE place='fixture' AND end="+from)==1,"a visible week imports its required weather inputs without downloading an unrelated month-old model row");
+
             SolarPlanning reference=new SolarPlanning(central,source,x->{});JSONObject direct=reference.energyFlow(from,to,from,to,"all");same(direct,a,"central direct and viewer local energy are identical");
             JSONObject diag=one.analysisDiagnostics();check(diag.getLong("downloadedRows")>75000,"the first viewer fills its own bounded raw-data cache");
             JSONObject b=one.query("energyHistoryWindow",query);same(a,b,"a warm replica reuses the same results");check(one.analysisDiagnostics().getLong("downloadedRows")==0,"an unchanged week transfers zero original rows on the next query");

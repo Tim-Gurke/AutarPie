@@ -28,3 +28,6 @@ body{background:var(--ap-app-background);background-attachment:fixed;letter-spac
 @media(max-width:355px){.topbar{gap:6px}.topbar>#liveStatus{font-size:9px;padding:4px 6px}}
 
 .tile-data-status{flex:none;white-space:nowrap;font-size:9px;line-height:1.2;font-weight:700;padding:2px 4px;border:1px solid var(--muted);border-radius:4px;color:var(--text);background:var(--panel2);margin-left:4px}.cached-reading .tile-head>.tile-label{flex:1;min-width:0}.roller-value.roller-value-stale strong{color:var(--muted)!important}.roller-value-stale>span{font-weight:600}.roller-data-notice{display:flex;flex-direction:column;gap:4px;margin:12px 0;padding:12px;border:1px solid var(--orange);border-radius:10px;background:var(--panel2)}.roller-data-notice strong{font-size:14px;color:var(--text)}.roller-data-notice span{font-size:12px;color:var(--muted)}.roller-data-notice[hidden]{display:none}#rollerState.bms-outdated{font-weight:600}
+
+/* Fresh weather remains visible while derived battery reserves are updated. */
+.solar-scale-row.data-outdated{filter:grayscale(1)}

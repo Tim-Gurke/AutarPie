@@ -454,7 +454,9 @@ final class SolarPlanning extends SQLiteOpenHelper {
         try(Cursor c=db.rawQuery("SELECT payload FROM observations WHERE source=? AND end>? AND start<?",new String[]{source,""+from,""+to})){while(c.moveToNext())rows.add(new JSONObject(c.getString(0)));}
         for(JSONObject row:rows){row.put("rebuildPending",true);ContentValues values=new ContentValues();values.put("payload",row.toString());db.update("observations",values,"source=? AND start=? AND end=?",new String[]{source,""+row.getLong("from"),""+row.getLong("to")});}
     }
-    Future<JSONObject> diagnosticSnapshot(){return worker.submit(()->{
+    Future<JSONObject> diagnosticSnapshot(){return worker.submit(this::diagnosticSnapshotNow);}
+    /** Read stored state on the export worker, independently of a pending calculation. */
+    JSONObject diagnosticSnapshotNow()throws Exception{
         long now=System.currentTimeMillis();String[] selected=devices();String currentSource=source(selected);SQLiteDatabase db=getReadableDatabase();
         JSONObject result=new JSONObject().put("format","Watt-n-Pit-Diagnose").put("version",2).put("appVersion",BuildConfig.VERSION_NAME).put("learningAlgorithm",ALGORITHM).put("at",now)
             .put("timezone",java.util.TimeZone.getDefault().getID()).put("source",currentSource).put("equipment",repository.equipment()).put("setup",setup())
@@ -469,6 +471,6 @@ final class SolarPlanning extends SQLiteOpenHelper {
         for(int i=0;i<selected.length;i++)if(!selected[i].isEmpty())devices.put(new JSONObject().put("kind",i==0?"solar":"shunt").put("device",selected[i]).put("profiles",repository.db.deviceSettingsHistory(selected[i],LearningWindow.since(now)-10L*86400000,now)).put("archiveTime",repository.archiveTimeDiagnostic(selected[i])));
         JSONArray confirmations=new JSONArray();try(Cursor c=db.rawQuery("SELECT id,start,end,key,solar_key,payload,weather FROM confirmed_setups WHERE source=? ORDER BY start",new String[]{currentSource})){while(c.moveToNext()){PlanningConfirmation.Entry e=new PlanningConfirmation.Entry(c);confirmations.put(e.notice().put("id",e.id).put("key",e.key).put("solarKey",e.solarKey).put("payload",e.payload).put("weather",e.weather));}}
         return result.put("mobileDisplay",display.diagnostic(currentSource)).put("rollerInputIntervals",rollerLedger.read(currentSource,LearningWindow.since(now),now)).put("rollerHandover",RollerHandover.get(context).snapshot()).put("observations",observations).put("forecasts",forecasts).put("contexts",contexts).put("confirmedSetups",confirmations).put("devices",devices);
-    });}
+    }
     void shutdown(){closed=true;worker.shutdown();/* Existing jobs finish before the process releases SQLite. */}
 }

@@ -16,12 +16,13 @@ final class ViewerAnalysis {
     private final Object identity;
     private final String plant;
     private Consumer<String> progress;
-    private JSONObject metadata=new JSONObject();
+    private volatile JSONObject metadata=new JSONObject();
     private volatile JSONObject rollerObservations=new JSONObject();
     private String usageRevision="";private long usageAt;
     JSONObject rollerObservations(){return rollerObservations;}
     private long progressAt;
-    private String epoch="";
+    private volatile String epoch="";
+    private long modelAt,modelFrom,modelThrough;
     private long rawRevision,downloadedRows,downloadedBlocks;
     private long networkNanos,storageNanos,operationNanos,computeNanos,connectNanos;private int requests;private String operation="";private boolean completed;
     private volatile JSONObject lastTiming=new JSONObject();
@@ -41,6 +42,7 @@ final class ViewerAnalysis {
     }
     private void note(String value){long now=System.currentTimeMillis();if(progress!=null&&now-progressAt>=300){progressAt=now;progress.accept(value);}}
     private void reset(String next)throws Exception{
+        modelAt=0;
         planning.clearPreview();
         HistoryExchange.reset(repo.db);rollerObservations=new JSONObject();usageRevision="";usageAt=0;
         for(String table:AnalysisExchange.ALL)AnalysisExchange.database(table,repo,planning,ledger,true).delete(table,"1=1",null);
@@ -105,9 +107,13 @@ final class ViewerAnalysis {
         }
     }
     private void beginTiming(String name){operation=name;completed=false;networkNanos=storageNanos=computeNanos=connectNanos=0;requests=0;operationNanos=System.nanoTime();}
-    private void endTiming(){try{long total=System.nanoTime()-operationNanos;lastTiming=new JSONObject().put("method",operation).put("at",System.currentTimeMillis()).put("completed",completed).put("totalMs",total/1000000).put("networkMs",networkNanos/1000000).put("connectionMs",connectNanos/1000000).put("storageMs",storageNanos/1000000).put("calculationMs",computeNanos/1000000).put("localMs",Math.max(0,total-networkNanos-storageNanos)/1000000).put("requests",requests).put("rows",downloadedRows).put("blocks",downloadedBlocks).put("batch",lan.analysisBatch()).put("modelBatch",lan.analysisModelBatch());repo.prefs.edit().putString("analysis.timing",lastTiming.toString()).apply();}catch(Exception ignored){}}
-    private void model(long from,long to)throws Exception{
-        from=Math.min(from,System.currentTimeMillis()-90L*86400000)/86400000L*86400000L;to=Math.min((to+86399999)/86400000L*86400000L,(System.currentTimeMillis()/86400000L+1)*86400000L);
+    private void endTiming(){try{long total=System.nanoTime()-operationNanos;lastTiming=new JSONObject().put("method",operation).put("modelFrom",modelFrom).put("modelThrough",modelThrough).put("at",System.currentTimeMillis()).put("completed",completed).put("totalMs",total/1000000).put("networkMs",networkNanos/1000000).put("connectionMs",connectNanos/1000000).put("storageMs",storageNanos/1000000).put("calculationMs",computeNanos/1000000).put("localMs",Math.max(0,total-networkNanos-storageNanos)/1000000).put("requests",requests).put("rows",downloadedRows).put("blocks",downloadedBlocks).put("batch",lan.analysisBatch()).put("modelBatch",lan.analysisModelBatch());repo.prefs.edit().putString("analysis.timing",lastTiming.toString()).apply();}catch(Exception ignored){}}
+    private void model(long from,long to)throws Exception{model(from,to,true);}
+    private void model(long from,long to,boolean learning)throws Exception{
+        long now=System.currentTimeMillis();
+        // Ninety-day BMS learning is independent of a visible five-day chart's inputs.
+        from=(learning?Math.min(from,now-90L*86400000):from)/86400000L*86400000L;to=Math.min((to+86399999)/86400000L*86400000L,(now/86400000L+1)*86400000L);
+        if(!learning&&modelAt>0&&now>=modelAt&&now-modelAt<5000&&metadata.optLong("controlRevision",-1)==lan.controlRevision()&&from>=modelFrom&&to<=modelThrough)return;
         for(int retry=0;retry<3;retry++){
             JSONObject m=get("analysisMetadata",new JSONArray().put(from).put(to));
             if(m.optBoolean("changed"))continue;
@@ -149,12 +155,12 @@ final class ViewerAnalysis {
             // At most 90 days; the central remains a raw-data collector.
             JSONObject roller=new JSONObject(lan.part("roller")),profile=roller.optJSONObject("profile");
             String usageKey="partial-energy-v2|"+(profile==null?"":profile.optString("mac"))+"|"+roller.optLong("sessionRevision")+"|"+versions.optString("roller_raw")+"|"+versions.optString("load_raw");long usageNow=System.currentTimeMillis();
-            if(profile!=null&&!profile.optString("mac").isEmpty()&&(!usageKey.equals(usageRevision)||usageNow-usageAt>300000||rollerObservations.length()==0)){
+            if(learning&&profile!=null&&!profile.optString("mac").isEmpty()&&(!usageKey.equals(usageRevision)||usageNow-usageAt>300000||rollerObservations.length()==0)){
                 rollerObservations=ledger.observedDays(RollerLedger.source(repo.prefs),profile.optString("mac"),Math.max(0,usageNow-90L*86400000),usageNow,m.getString("timezone"));
                 rollerObservations.put("learning",ledger.usageLearning(RollerLedger.source(repo.prefs),roller,usageNow,m.getString("timezone")));
                 repo.prefs.edit().putString("analysis.rollerUsage",rollerObservations.toString()).apply();usageRevision=usageKey;usageAt=usageNow;
             }
-            return;
+            modelAt=System.currentTimeMillis();modelFrom=from;modelThrough=to;return;
         }
         throw new IOException("Die Berechnungsgrundlagen ändern sich gerade. Bitte erneut versuchen.");
     }
@@ -167,7 +173,7 @@ final class ViewerAnalysis {
         // Establish the database identity before installing model inputs.
         JSONObject head=get("analysisManifest",new JSONArray().put(a).put(Math.min(b,a+86400000)));
         if(!head.getString("epoch").equals(repo.prefs.getString("analysis.epoch","")))reset(head.getString("epoch"));
-        model(a,b);raw(a,b);
+        model(a,b,false);raw(a,b);
     }
     private JSONObject stamp(JSONObject result)throws Exception{
         JSONObject current=get("analysisInputState",new JSONArray());
@@ -176,6 +182,7 @@ final class ViewerAnalysis {
         // A later weather/configuration update makes that complete snapshot older;
         // it must not erase the first usable result while recording continues.
         boolean changed=!current.getString("token").equals(metadata.optString("inputToken"));
+        if(changed)modelAt=0;
         JSONObject state=new JSONObject().put("plant",plant).put("at",metadata.optLong("at")).put("measurementAt",metadata.optLong("measurementAt")).put("revision",rawRevision).put("tables",metadata.getJSONObject("tables")).put("controlRevision",metadata.optLong("controlRevision")).put("algorithm",SolarPlanning.ALGORITHM).put("epoch",epoch).put("local",true).put("inputsChanged",changed);
         result.put("analysis",state);if(changed)result.put("stale",true);else result.remove("stale");
         for(String key:new String[]{"solar","consumption","balance","mobile"})if(result.optJSONObject(key)!=null){JSONObject part=result.getJSONObject(key).put("analysis",state);if(changed)part.put("stale",true);else part.remove("stale");}return result;
@@ -226,14 +233,12 @@ final class ViewerAnalysis {
     }
     synchronized JSONObject diagnostics()throws Exception{return new JSONObject().put("downloadedRows",downloadedRows).put("downloadedBlocks",downloadedBlocks).put("epoch",epoch).put("revision",rawRevision).put("timing",lastTiming);}
     synchronized void rebuildHistory()throws Exception{planning.rebuildHistory();}
-    synchronized void exportDiagnostics(java.io.OutputStream output)throws Exception{
-        JSONObject diagnostic=planning.diagnosticSnapshot().get(2,java.util.concurrent.TimeUnit.MINUTES);
-        diagnostic.put("viewerTiming",lastTiming);diagnostic.put("analysis",new JSONObject().put("plant",plant).put("epoch",epoch).put("revision",rawRevision).put("inputMetadata",metadata).put("cached",true));
-        JSONObject roller=new JSONObject(lan.part("roller"));diagnostic.remove("rollerHandover");diagnostic.put("roller",roller);
-        try(java.util.zip.ZipOutputStream zip=new java.util.zip.ZipOutputStream(output)){
-            zip.putNextEntry(new java.util.zip.ZipEntry("diagnose.json"));zip.write(diagnostic.toString(2).getBytes(java.nio.charset.StandardCharsets.UTF_8));zip.closeEntry();
-            zip.putNextEntry(new java.util.zip.ZipEntry("verlauf.csv"));repo.db.exportTo(zip);zip.closeEntry();
-        }
+    boolean exportDiagnostics(java.io.OutputStream output)throws Exception{
+        JSONObject base=new JSONObject().put("appVersion",BuildConfig.VERSION_NAME).put("viewerTiming",lastTiming).put("analysis",new JSONObject().put("plant",plant).put("epoch",epoch).put("revision",rawRevision).put("inputMetadata",metadata).put("cached",true));
+        return DiagnosticArchive.write(output,base,()->{
+            JSONObject diagnostic=planning.diagnosticSnapshotNow();diagnostic.put("viewerTiming",base.getJSONObject("viewerTiming")).put("analysis",base.getJSONObject("analysis"));
+            diagnostic.remove("rollerHandover");return diagnostic.put("roller",new JSONObject(lan.part("roller")));
+        },repo.db::exportTo);
     }
     void close(){planning.shutdown();}
 }
