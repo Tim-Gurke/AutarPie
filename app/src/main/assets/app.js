@@ -127,6 +127,7 @@ function reading(kind) {
   const config = snapshot.devices.find(d => d.kind === kind);
   if (!config) return null;
   const data = config.error?null:snapshot.readings.find(r => r.device === config.mac),fresh=data&&(snapshot.running||data.liveSource==='direct')&&Date.now()>=data.t&&Date.now()-data.t<45000;
+  if(!snapshot.running&&data?.liveSource!=='direct')return null;
   const output=snapshot.energy?.output,activeFresh=kind==='solar'&&output&&Date.now()>=output.at&&Date.now()-output.at<45000;
   if(activeFresh){const value=fresh?{...data}:{kind,t:output.at};if(typeof output.pvVoltage==='number')value.pvVoltage=output.pvVoltage;if(typeof output.current==='number')value.load=output.current;return value;}
   return fresh?data:null;

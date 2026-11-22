@@ -22,7 +22,11 @@ final class ViewerReadout {
     private final ExecutorService provisioning=Executors.newSingleThreadExecutor();
     private BluetoothLeScanner scanner;private volatile boolean scanning,foreground,closed;private boolean fetching;
     private volatile Object owner;private volatile String status="Direkter Liveempfang ausgeschaltet.";private long fetchedAt,attemptedAt;
-    ViewerReadout(Context c,Repository repo,LanSync lan){context=c.getApplicationContext();this.repo=repo;this.lan=lan;}
+    private final BroadcastReceiver radio=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent intent){handler.post(()->{stop();active(foreground);});}};
+    ViewerReadout(Context c,Repository repo,LanSync lan){
+        context=c.getApplicationContext();this.repo=repo;this.lan=lan;IntentFilter filter=new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
+        if(Build.VERSION.SDK_INT>=33)context.registerReceiver(radio,filter,Context.RECEIVER_NOT_EXPORTED);else context.registerReceiver(radio,filter);
+    }
     boolean enabled(){return repo.prefs.getBoolean(ENABLED,false);}
     void enabled(boolean enabled){repo.prefs.edit().putBoolean(ENABLED,enabled).apply();handler.post(()->active(foreground));}
     boolean permitted(){return Build.VERSION.SDK_INT>=31?context.checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN)==PackageManager.PERMISSION_GRANTED&&context.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)==PackageManager.PERMISSION_GRANTED:context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED;}
@@ -82,9 +86,9 @@ final class ViewerReadout {
         @Override public void onScanFailed(int error){scanning=false;status="Direkter Bluetooth-Empfang konnte nicht starten. Neuer Versuch folgt.";}
     };
     @SuppressLint("MissingPermission") private void receive(ScanResult result){
-        if(!foreground||!enabled()||!lan.viewer()||owner!=lan.identity()||result.getScanRecord()==null)return;
+        if(!foreground||!enabled()||!permitted()||!lan.viewer()||owner!=lan.identity()||result.getScanRecord()==null)return;
         long age=(SystemClock.elapsedRealtimeNanos()-result.getTimestampNanos())/1000000;if(age<0||age>10000)return;
-        long now=System.currentTimeMillis();values.receive(result.getDevice().getAddress(),result.getScanRecord().getManufacturerSpecificData(0x02e1),now-age,now);
+        try{long now=System.currentTimeMillis();values.receive(result.getDevice().getAddress(),result.getScanRecord().getManufacturerSpecificData(0x02e1),now-age,now);}catch(SecurityException ignored){status="Direkter Liveempfang wartet auf die Bluetooth-Freigabe.";}
     }
     @SuppressLint("MissingPermission") private void start(){
         if(scanning||!foreground||!permitted())return;
@@ -94,7 +98,7 @@ final class ViewerReadout {
             if(Build.VERSION.SDK_INT<=30){LocationManager location=context.getSystemService(LocationManager.class);if(location!=null&&!location.isProviderEnabled(LocationManager.GPS_PROVIDER)&&!location.isProviderEnabled(LocationManager.NETWORK_PROVIDER)){status="Für Bluetooth-Empfang den Android-Standortdienst einschalten. Der Anlagenstandort bleibt der Zentrale zugeordnet.";return;}}
             scanner=adapter.getBluetoothLeScanner();if(scanner==null)return;
             ScanFilter filter=new ScanFilter.Builder().setManufacturerData(0x02e1,new byte[]{0x10},new byte[]{(byte)0xff}).build();
-            scanner.startScan(Collections.singletonList(filter),new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).setReportDelay(0).build(),callback);scanning=true;status="Direkter Liveempfang aktiv · außerhalb der Reichweite Werte von der Zentrale.";
+            scanner.startScan(Collections.singletonList(filter),new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).setReportDelay(0).build(),callback);scanning=true;status="Sofortanzeige wird gesucht · ohne Direktpakete gelten die Zentralwerte.";
         }catch(SecurityException e){status="Direkter Liveempfang wartet auf die Bluetooth-Freigabe.";}
         catch(IllegalStateException e){status="Bluetooth ist noch nicht bereit.";}
     }
@@ -105,5 +109,5 @@ final class ViewerReadout {
             snapshot.put("viewerReadout",new JSONObject().put("enabled",enabled()).put("scanning",allowed&&scanning).put("direct",direct).put("status",enabled()?status:"Direkter Liveempfang ausgeschaltet."));
         }catch(Exception ignored){}return snapshot;
     }
-    void close(){closed=true;handler.removeCallbacks(tick);stop();values.clear();provisioning.shutdownNow();}
+    void close(){closed=true;handler.removeCallbacks(tick);try{context.unregisterReceiver(radio);}catch(Exception ignored){}stop();values.clear();provisioning.shutdownNow();}
 }

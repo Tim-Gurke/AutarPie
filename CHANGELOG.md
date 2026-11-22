@@ -8,11 +8,11 @@ Das bestehende GitHub-Repository heißt jetzt [`Tim-Gurke/AutarPie`](https://git
 
 ## Aktuelles Update
 
-### 3.0.16 · Passiver Direkt-Liveempfang, kleinere Diagrammabgleiche und Diagnoseexport
+### 3.1.0 · Passiver Direkt-Liveempfang, kleinere Diagrammabgleiche und Diagnoseexport
 
 Anzeigehandys können die Sofortanzeige ihrer Victron-Geräte optional direkt mithören, ohne aktive Verbindung oder zusätzliche Messhistorie. GPS, durchgehende Aufzeichnung, Archive, Roller-BMS und bestätigte Steuerung bleiben bei der Zentrale. Bei fehlendem Direktempfang gelten wieder die verfügbaren Zentralwerte und deren ursprüngliche Zeitstempel.
 
-Kurze Diagrammzeiträume erhalten begrenzte zeitabhängige Modellgrundlagen; langfristiges Lernen bleibt getrennt erhalten. Geprüfte Modellkennungen erlauben die Wiederverwendung kurz aufeinanderfolgender Abgleiche. Aktuelles Wetter wartet nicht auf einen vollständigen Lernstand; noch nicht aktuelle Batterieprognosen bleiben einzeln gekennzeichnet. Die Diagnose wird unabhängig von der Berechnungswarteschlange exportiert und bei Analysefehlern als lesbare Teildiagnose abgeschlossen. [Bedienung, Sicherung vor ROM-Wechsel und Prüfgrenzen](docs/changes-3.0.16.md).
+Kurze Diagrammzeiträume erhalten begrenzte zeitabhängige Modellgrundlagen; langfristiges Lernen bleibt getrennt erhalten. Geprüfte Modellkennungen erlauben die Wiederverwendung kurz aufeinanderfolgender Abgleiche. Aktuelles Wetter wartet nicht auf einen vollständigen Lernstand; noch nicht aktuelle Batterieprognosen bleiben einzeln gekennzeichnet. Die Diagnose wird unabhängig von der Berechnungswarteschlange exportiert und bei Analysefehlern als lesbare Teildiagnose abgeschlossen. [Bedienung, Sicherung vor ROM-Wechsel und Prüfgrenzen](docs/changes-3.1.0.md).
 
 ### 3.0.15 · Stabile Kachelfarben beim normalen Nachladen
 

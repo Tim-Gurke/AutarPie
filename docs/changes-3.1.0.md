@@ -1,4 +1,4 @@
-# AutarPie 3.0.16
+# AutarPie 3.1.0
 
 ## Direkter Liveempfang auf Anzeigehandys
 
@@ -26,7 +26,7 @@ Eine Mess- und Lerndiagnose ist keine vollständige Datensicherung.
 
 ## Aktualisieren und vor einem ROM-Wechsel sichern
 
-**Zuerst die G5-Zentrale, danach S20/S10 und weitere Anzeigen auf 3.0.16 aktualisieren.** Über die vorhandene Installation installieren; dieselbe App-Kennung und ursprüngliche Updatesignatur bleiben erhalten. Die Daten, Kopplungen, Rollerprofile, Farben und Layouts werden nicht zurückgesetzt. Der normale Verbund bleibt mit 3.0.15 kompatibel; für die erstmalige Bereitstellung der Empfangsschlüssel muss auch die Zentrale 3.0.16 verwenden.
+**Zuerst die G5-Zentrale, danach S20/S10 und weitere Anzeigen auf 3.1.0 aktualisieren.** Über die vorhandene Installation installieren; dieselbe App-Kennung und ursprüngliche Updatesignatur bleiben erhalten. Die Daten, Kopplungen, Rollerprofile, Farben und Layouts werden nicht zurückgesetzt. Der normale Verbund bleibt mit 3.0.15 kompatibel; für die erstmalige Bereitstellung der Empfangsschlüssel muss auch die Zentrale 3.1.0 verwenden.
 
 Für einen späteren Wechsel auf LineageOS vor dem Löschen des G5 unter **Datensicherung · automatisch / jetzt → Jetzt sichern** eine neue vollständige verschlüsselte Sicherung erstellen. Den geprüften Erfolg abwarten und die Datei außerhalb des G5 aufbewahren. Das Kennwort getrennt sichern. Dieser Sicherungsweg ab 3.0.13 verwendet übertragbare Schlüssel im Format 2; ältere Übernahmesicherungen können noch an die alte Android-Installation gebundene Schlüssel enthalten. Automate-Abläufe und andere persönliche Dateien separat exportieren. Android-Berechtigungen und System-Bluetooth-Kopplungen müssen nach einer Neuinstallation gegebenenfalls neu bestätigt werden.
 

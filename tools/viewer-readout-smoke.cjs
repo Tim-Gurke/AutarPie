@@ -6,7 +6,7 @@ const fixture=require('./autarpie-fixture.cjs'),wait=require('./browser-wait.cjs
  const page=await browser.newPage({viewport:{width:412,height:915},locale:'de-DE',timezoneId:'Europe/Berlin'}),errors=[],out=process.env.WATTPIT_SCREENSHOT_DIR||'app/build/reports/viewer-readout';fs.mkdirSync(out,{recursive:true});page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(fixture);await page.addInitScript(()=>{
   apFixture.direct=false;apFixture.radio=false;apFixture.central=false;apFixture.controls=[];const original=WattPit.snapshot,place={name:'Standort der Zentrale',latitude:52.52,longitude:13.41};
-  WattPit.appVersion=()=>'3.0.16';WattPit.appRole=()=>'viewer';WattPit.isLanViewer=()=>true;
+  WattPit.appVersion=()=>'3.1.0';WattPit.appRole=()=>'viewer';WattPit.isLanViewer=()=>true;
   WattPit.lanState=()=>JSON.stringify({role:'viewer',id:'abcdefghijklmnopqrstuv',name:'Beispielanlage',sourceEpoch:'fixture-epoch',connected:apFixture.central,receivedAt:Date.now()});
   WattPit.viewerReadoutState=()=>JSON.stringify({enabled:apFixture.direct,direct:apFixture.radio?2:0,status:apFixture.direct?'Direkter Liveempfang aktiv · außerhalb der Reichweite Werte von der Zentrale.':'Direkter Liveempfang ausgeschaltet.'});
   WattPit.setViewerReadout=value=>{apFixture.direct=value;return '';};
@@ -18,7 +18,7 @@ const fixture=require('./autarpie-fixture.cjs'),wait=require('./browser-wait.cjs
   assert.equal(await page.evaluate(()=>AutarPieApp.reading('solar')),null,'stale central data is not promoted to live');
   await page.evaluate(()=>document.getElementById('lanManage').click());await page.locator('#lanDirectReadout').check();
   assert.equal(await page.evaluate(()=>apFixture.direct),true);assert.equal(await page.evaluate(()=>WattPit.appRole()),'viewer');assert.deepEqual(await page.evaluate(()=>apFixture.controls),[],'enabling passive reception never starts or stops central recording');
-  await page.screenshot({path:path.join(out,'autarpie-3.0.16-settings.png'),animations:'disabled'});
+  await page.screenshot({path:path.join(out,'autarpie-3.1.0-settings.png'),animations:'disabled'});
   await page.evaluate(()=>{AutarPieApp.closeModal();apFixture.radio=true;AutarPieApp.poll();});
   assert.equal(await page.evaluate(()=>AutarPieApp.reading('solar').solar),148,'direct live data works while the central snapshot is offline');
   assert.equal(await page.evaluate(()=>AutarPieApp.snapshot.running),false,'local reception does not claim the central recorder is running');
