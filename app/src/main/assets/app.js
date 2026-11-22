@@ -125,8 +125,8 @@ function reading(kind) {
   if (demo) return kind === 'shunt' ? {kind, t:Date.now(),soc:76.4,voltage:12.94,current:-2.2,power:-28.468,ttg:480,consumed:-23.6,temperature:null,aux:null,alarm:0}
     : {kind,t:Date.now(),voltage:13.04,current:10.5,solar:138,yieldWh:760,state:3,error:0,load:0};
   const config = snapshot.devices.find(d => d.kind === kind);
-  if (!config || !snapshot.running) return null;
-  const data = config.error?null:snapshot.readings.find(r => r.device === config.mac),fresh=data&&Date.now()>=data.t&&Date.now()-data.t<45000;
+  if (!config) return null;
+  const data = config.error?null:snapshot.readings.find(r => r.device === config.mac),fresh=data&&(snapshot.running||data.liveSource==='direct')&&Date.now()>=data.t&&Date.now()-data.t<45000;
   const output=snapshot.energy?.output,activeFresh=kind==='solar'&&output&&Date.now()>=output.at&&Date.now()-output.at<45000;
   if(activeFresh){const value=fresh?{...data}:{kind,t:output.at};if(typeof output.pvVoltage==='number')value.pvVoltage=output.pvVoltage;if(typeof output.current==='number')value.load=output.current;return value;}
   return fresh?data:null;
@@ -136,12 +136,12 @@ function renderOverview() {
   $('todayLabel').textContent = new Date().toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'}).toUpperCase();
   $('welcome').hidden = snapshot.devices.length > 0 || demo;
   const expected=snapshot.devices.filter(d=>d.kind==='shunt'||d.kind==='solar'),now=Date.now();
-  const received=expected.filter(d=>{const p=snapshot.readings.find(r=>r.device===d.mac);return snapshot.running&&!d.error&&p&&now>=p.t&&now-p.t<45000&&(d.kind==='solar'?Number.isFinite(p.solar):Number.isFinite(p.power)&&Number.isFinite(p.soc));}).length;
+  const received=expected.filter(d=>{const p=snapshot.readings.find(r=>r.device===d.mac);return (snapshot.running||p?.liveSource==='direct')&&!d.error&&p&&now>=p.t&&now-p.t<45000&&(d.kind==='solar'?Number.isFinite(p.solar):Number.isFinite(p.power)&&Number.isFinite(p.soc));}).length;
   const status=$('liveStatus'),any=received>0,complete=expected.length>0&&received===expected.length;
   status.className='status-chip'+(demo?' warning':complete?' live':any||snapshot.running?' warning':'');
   const statusText=demo?'Demo':complete?'Victron · Live':any?'Victron · Teilweise live':snapshot.running?'Victron · Warten':'Pausiert';
   status.querySelector('span').textContent=statusText;
-  status.title=statusText+' · '+received+' von '+expected.length+' Solar-/SmartShunt-Geräten mit aktuellen Messwerten. Der 608PD hat einen eigenen Status im Modellbau-Bereich.';
+  status.title=statusText+(snapshot.viewerReadout?.direct?' · '+snapshot.viewerReadout.direct+' direkt per Bluetooth':'')+' · '+received+' von '+expected.length+' Solar-/SmartShunt-Geräten mit aktuellen Messwerten. Der 608PD hat einen eigenen Status im Modellbau-Bereich.';
   status.setAttribute('aria-label',status.title);
   status.onclick=()=>openModal('Aufzeichnung und Livewerte','<p>Diese Anzeige bezieht sich auf die eingerichteten <strong>Solarladeregler und SmartShunts</strong>.</p><p>'+received+' von '+expected.length+' Geräten liefern aktuelle Messwerte. Die Bluetooth-Verbindung zum 608PD und seine Messwerte stehen jeweils beim Lader unter Modellbau.</p>');
   const direction = shunt?.current == null ? 'Noch kein Livewert' : shunt.current > .03 ? 'Wohnwagenakku wird geladen' : shunt.current < -.03 ? 'Wohnwagenakku wird entladen' : 'Bilanz ausgeglichen';

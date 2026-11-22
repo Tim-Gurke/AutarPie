@@ -28,10 +28,12 @@ public final class DisplayActivity extends Activity {
     private WebView web;
     private Repository repository;
     private LanSync lan;
+    private ViewerReadout viewerReadout;
     private SolarPlanning solarPlanning;
     private SiteSensors siteSensors;
     private boolean pendingSiteLocation;
     private static final int SITE_PERMISSION=24;
+    private static final int READOUT_PERMISSION=28;
     private final ExecutorService files = Executors.newSingleThreadExecutor();
     private final ExecutorService historyReads = Executors.newSingleThreadExecutor();
     private CsvCodec.Table pendingImport;
@@ -55,6 +57,7 @@ public final class DisplayActivity extends Activity {
         repository = Repository.get(this);
         try{UiPreset.install(this,repository.prefs);if(!repository.prefs.contains("dashboard-v1"))DashboardPreset.install(repository.prefs,DashboardPreset.read(this));}catch(Exception e){repository.message(Repository.safeError(e));}
         lan=LanSync.get(this);
+        viewerReadout=new ViewerReadout(this,repository,lan);
         solarPlanning=new SolarPlanning(this,repository,value->call("onSolarPlanData",value));
         if(!lan.viewer())PresenceStore.get(this).tick();
         siteSensors=new SiteSensors(this,repository,this::call);
@@ -100,6 +103,7 @@ public final class DisplayActivity extends Activity {
     @Override protected void onStart(){
         super.onStart();
         foreground=true;
+        viewerReadout.active(true);
         if(!AppRole.viewerOnly(this)&&!lan.viewer())BackgroundBleAccess.offer(this);
         web.onResume();web.resumeTimers();solarPlanning.displayActive(true);
         try{call("onDisplayActive",new JSONObject().put("active",true));}catch(JSONException ignored){}
@@ -116,7 +120,7 @@ public final class DisplayActivity extends Activity {
             },800);
         }
     }
-    @Override protected void onStop(){pendingSiteLocation=false;siteSensors.stop();solarPlanning.displayActive(false);web.evaluateJavascript("window.onDisplayActive && window.onDisplayActive({active:false})",null);foreground=false;lan.background();web.removeCallbacks(retryIncompleteArchive);web.onPause();web.pauseTimers();stoppedAt=SystemClock.elapsedRealtime();super.onStop();}
+    @Override protected void onStop(){pendingSiteLocation=false;siteSensors.stop();viewerReadout.active(false);solarPlanning.displayActive(false);web.evaluateJavascript("window.onDisplayActive && window.onDisplayActive({active:false})",null);foreground=false;lan.background();web.removeCallbacks(retryIncompleteArchive);web.onPause();web.pauseTimers();stoppedAt=SystemClock.elapsedRealtime();super.onStop();}
     private final Runnable retryIncompleteArchive=new Runnable(){@Override public void run(){startAutomaticImport(true);web.postDelayed(this,15000);}};
     private void startAutomaticImport(){
         startAutomaticImport(false);
@@ -200,6 +204,7 @@ public final class DisplayActivity extends Activity {
         super.onRequestPermissionsResult(requestCode,permissions,results);
         if (requestCode == PERMISSIONS && pendingStart) startAfterPermissions();
         if(requestCode==SITE_PERMISSION&&pendingSiteLocation){pendingSiteLocation=false;siteSensors.locate();}
+        if(requestCode==READOUT_PERMISSION)viewerReadout.active(foreground);
         if(requestCode==27&&Build.VERSION.SDK_INT>=33&&lan.viewer()&&lan.backgroundPresenceEnabled()&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED){
             try{lan.backgroundPresence(false);LanService.reconcile(this,lan);repository.message("Hintergrundhinweise brauchen erlaubte App-Benachrichtigungen.");}catch(Exception ignored){}
         }
@@ -342,6 +347,13 @@ public final class DisplayActivity extends Activity {
         @JavascriptInterface public String lanQrCode(){try{return new JSONObject().put("image",LanQr.image(lan.pairingCode())).toString();}catch(Exception e){try{return new JSONObject().put("error",e instanceof IllegalArgumentException?e.getMessage():"QR-Code konnte gerade nicht erstellt werden. Bitte erneut versuchen.").toString();}catch(Exception ignored){return "{}";}}}
         @JavascriptInterface public void scanLanCode(){runOnUiThread(()->{try{LanQr.scan(DisplayActivity.this);}catch(Exception e){try{call("onLanScanned",new JSONObject().put("error","Kamera konnte nicht geöffnet werden. Du kannst den Textcode einfügen."));}catch(JSONException ignored){}}});}
         @JavascriptInterface public void refreshLan(){lan.refreshNow();}
+        @JavascriptInterface public String viewerReadoutState(){try{return viewerReadout.overlay(new JSONObject()).getJSONObject("viewerReadout").toString();}catch(Exception e){return "{}";}}
+        @JavascriptInterface public String setViewerReadout(boolean enabled){
+            if(!lan.viewer())return "Direkter Liveempfang ist für gekoppelte Anzeigehandys verfügbar.";
+            viewerReadout.enabled(enabled);
+            if(enabled)runOnUiThread(()->{if(!viewerReadout.permitted())requestPermissions(Build.VERSION.SDK_INT>=31?new String[]{Manifest.permission.BLUETOOTH_SCAN,Manifest.permission.BLUETOOTH_CONNECT}:new String[]{Manifest.permission.ACCESS_FINE_LOCATION},READOUT_PERMISSION);});
+            return "";
+        }
         @JavascriptInterface public String rollerSnapshot(){if(lan.viewer())return lan.part("roller");try{return RollerHandover.view(DisplayActivity.this).toString();}catch(Exception e){return "{}";}}
         @JavascriptInterface public String specialUses(){if(lan.viewer())return lan.part("specialUses");try{JSONObject value=SpecialUses.snapshot(repository.prefs),learning=solarPlanning.knowledge().optJSONObject("rollerLearning");if(learning==null)learning=new JSONObject(repository.prefs.getString("roller-usage-cache-v1","{}"));return value.put("rollerLearning",learning).toString();}catch(Exception e){return "{}";}}
         @JavascriptInterface public String saveSpecialUses(String json){return localControl("saveSpecialUses",new JSONArray().put(json));}
@@ -423,7 +435,7 @@ public final class DisplayActivity extends Activity {
             if(!repository.prefs.edit().putBoolean("cockpitNotice-v1",true).commit())return "Der Hinweis konnte nicht bestätigt werden. Bitte erneut versuchen.";
             runOnUiThread(()->web.postDelayed(DisplayActivity.this::startAutomaticImport,250));return "";
         }
-        @JavascriptInterface public String snapshot() { if(lan.viewer())return lan.snapshot();if(repository.archiveBusy)return repository.backgroundSnapshot();try { JSONObject value=repository.snapshot();if(AppRole.viewerOnly(DisplayActivity.this))value.put("lan",new JSONObject(lanState())).put("running",false).put("status","Bitte zuerst eine Zentrale koppeln.").put("devices",new JSONArray()).put("readings",new JSONArray()).put("found",new JSONArray());return value.toString(); } catch (Exception e) { return "{}"; } }
+        @JavascriptInterface public String snapshot() { if(lan.viewer())try{return viewerReadout.overlay(new JSONObject(lan.snapshot())).toString();}catch(Exception e){return lan.snapshot();}if(repository.archiveBusy)return repository.backgroundSnapshot();try { JSONObject value=repository.snapshot();if(AppRole.viewerOnly(DisplayActivity.this))value.put("lan",new JSONObject(lanState())).put("running",false).put("status","Bitte zuerst eine Zentrale koppeln.").put("devices",new JSONArray()).put("readings",new JSONArray()).put("found",new JSONArray());return value.toString(); } catch (Exception e) { return "{}"; } }
         @JavascriptInterface public String history(long from, long to, String metric, String source) {
             if(lan.viewer())return "{\"pending\":true}";
             if(repository.archiveBusy)return "{\"syncing\":true}";
@@ -621,5 +633,5 @@ public final class DisplayActivity extends Activity {
     @Override public void onBackPressed() {
         web.evaluateJavascript("window.handleBack ? window.handleBack() : false",value -> { if (!"true".equals(value)) finish(); });
     }
-    @Override protected void onDestroy() { if(siteSensors!=null)siteSensors.stop();if(solarPlanning!=null)solarPlanning.shutdown();historyReads.shutdownNow();files.shutdown(); if (web != null) { web.removeJavascriptInterface("WattPit"); web.destroy(); web = null; } super.onDestroy(); }
+    @Override protected void onDestroy() { if(siteSensors!=null)siteSensors.stop();if(viewerReadout!=null)viewerReadout.close();if(solarPlanning!=null)solarPlanning.shutdown();historyReads.shutdownNow();files.shutdown(); if (web != null) { web.removeJavascriptInterface("WattPit"); web.destroy(); web = null; } super.onDestroy(); }
 }

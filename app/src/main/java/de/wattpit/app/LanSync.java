@@ -331,6 +331,17 @@ final class LanSync {
         }catch(Exception ignored){/* Authentication errors never reveal data or key material. */}
     }
     private JSONObject read(String method,JSONArray args)throws Exception{
+        if(method.equals("readoutCredentials")){
+            JSONArray devices=new JSONArray(),configured=repository.configs();
+            for(int i=0;i<configured.length();i++){
+                JSONObject d=configured.getJSONObject(i);String kind=d.optString("kind");
+                if((!kind.equals("solar")&&!kind.equals("shunt"))||!d.has("secret"))continue;
+                byte[] key=KeyVault.decrypt(d.getString("secret"));
+                try{devices.put(new JSONObject().put("mac",d.getString("mac")).put("kind",kind).put("readoutKey",java.util.Base64.getEncoder().encodeToString(key)));}
+                finally{java.util.Arrays.fill(key,(byte)0);}
+            }
+            return new JSONObject().put("plant",config.getString("id")).put("devices",devices);
+        }
         if(method.equals("analysisBatch"))return HistoryExchange.batch(repository.db,args.getJSONArray(0));
         if(method.equals("analysisManifest"))return HistoryExchange.manifest(repository.db,args.getLong(0),args.getLong(1));
         if(method.equals("analysisChanges"))return HistoryExchange.changes(repository.db,args.getLong(0));
@@ -347,7 +358,7 @@ final class LanSync {
         if(method.equals("bundle")){
             backgroundInputs();
             JSONObject snapshot=repository.archiveBusy?new JSONObject(repository.backgroundSnapshot()):repository.snapshot();snapshot.remove("archiveDiagnostics");snapshot.remove("event");snapshot.remove("eventId");
-            return new JSONObject().put("analysisProtocol",1).put("analysisBatch",1).put("analysisModelBatch",1).put("analysisEpoch",HistoryExchange.epoch(repository.db)).put("snapshot",snapshot).put("setup",planning.setup()).put("planning",new JSONObject().put("source",RollerLedger.source(repository.prefs))).put("roller",RollerHandover.view(context))
+            return new JSONObject().put("readoutProtocol",1).put("analysisProtocol",1).put("analysisBatch",1).put("analysisModelBatch",1).put("analysisEpoch",HistoryExchange.epoch(repository.db)).put("snapshot",snapshot).put("setup",planning.setup()).put("planning",new JSONObject().put("source",RollerLedger.source(repository.prefs))).put("roller",RollerHandover.view(context))
                 .put("supplies",SuppliesStore.snapshot(repository)).put("specialUses",SpecialUses.snapshot(repository.prefs)).put("presence",PresenceStore.get(context).snapshot()).put("controlProtocol",1).put("controlRevision",currentControlRevision()).put("sync",new JSONObject(repository.syncState())).put("bonded",PlantCommands.bonded(context));
         }
         long from=args.getLong(0);if(method.equals("sunsetSoc")){

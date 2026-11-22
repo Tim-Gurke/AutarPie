@@ -34,6 +34,7 @@ sources.append(root/'tools/RollerUsageLearningProof.java')
 sources.append(root/'tools/RollerSamplingProof.java')
 sources.append(root/'tools/BackupProof.java')
 sources.append(root/'tools/QuickStartProof.java')
+sources.append(root/'tools/PassiveReadoutProof.java')
 subprocess.run(['java','com.sun.tools.javac.Main','-cp',native_cp,'-d',str(classes),*map(str,sources)],check=True)
 classpath=os.pathsep.join(map(str,[classes,a.android_jar.resolve(),a.sqlite_jar.resolve(),a.slf4j_jar.resolve(),*a.android_jar.resolve().parent.glob('zxing-*.jar')]))
 r=subprocess.run(['java','-cp',classpath,'de.wattpit.app.LanSyncProof',str(out/'devices')],capture_output=True,text=True,timeout=90)
@@ -81,3 +82,6 @@ print(bkp.stdout+bkp.stderr,end='');(out/'backup-results.log').write_text(bkp.st
 
 quick=subprocess.run(['java','-Xmx512m','-cp',classpath,'de.wattpit.app.QuickStartProof',str(out/'quick-start')],capture_output=True,text=True,timeout=30)
 print(quick.stdout+quick.stderr,end='');(out/'quick-start-results.log').write_text(quick.stdout+quick.stderr);quick.check_returncode()
+
+passive=subprocess.run(['java','-cp',classpath,'de.wattpit.app.PassiveReadoutProof'],capture_output=True,text=True,timeout=30)
+print(passive.stdout+passive.stderr,end='');(out/'passive-readout-results.log').write_text(passive.stdout+passive.stderr);passive.check_returncode()
