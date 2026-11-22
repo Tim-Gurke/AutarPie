@@ -10,13 +10,15 @@ Android 8 oder neuer; das Cockpit benötigt einen aktuellen Android-System-WebVi
 
 ## Ansichten
 
-| Aktueller Diagrammstand | Noch nicht aktuell · einschließlich Hintergrund grau |
+| Aktuelles Wetter neben unabhängigen Messkacheln | Noch nicht aktueller Diagrammstand |
 | --- | --- |
-| ![AutarPie 3.0.15: unabhängige aktuelle Kacheln](docs/images/autarpie-3.0.15-dark.svg) | ![AutarPie 3.0.15: grauer Zwischenstand neben aktueller Kachel](docs/images/autarpie-3.0.15-light.svg) |
+| ![AutarPie 3.1.0: Cockpit mit aktuellem Wetter](docs/images/autarpie-3.1.0-dark.svg) | ![AutarPie 3.1.0: grauer Zwischenstand neben aktueller Kachel](docs/images/autarpie-3.1.0-light.svg) |
 
-![AutarPie 3.0.15: native Zentrale auf Android 11](docs/images/autarpie-3.0.15-central.svg)
+| Optionaler Direkt-Liveempfang auf der Anzeige | Native Zentrale auf Android 11 |
+| --- | --- |
+| ![AutarPie 3.1.0: direkter Victron-Empfang](docs/images/autarpie-3.1.0-settings.svg) | ![AutarPie 3.1.0: native Zentrale](docs/images/autarpie-3.1.0-central.svg) |
 
-Aufnahmen aus den erfolgreichen Android- und Browser-Oberflächenprüfungen für 3.0.15: native Zentrale auf Android 11 sowie Cockpit im Browser mit neutralen Geräte- und Versionsattrappen. Die Aufnahmen sind kein Funk- oder Hardwaretest. Eigene Farben und Layouts bleiben beim Update erhalten.
+Aufnahmen aus den Android- und Browser-Oberflächenprüfungen für 3.1.0 mit neutralen Geräte- und Versionsattrappen. Die Aufnahmen sind kein Funk- oder Hardwaretest. Eigene Farben und Layouts bleiben beim Update erhalten.
 
 ## Ein Cockpit, mehrere Anwendungen
 
@@ -56,6 +58,8 @@ Bis zu drei 608PD erhalten getrennte Profile, private Kennungen und eigene Verbi
 **Victron-Livewerte direkt auf der Anzeige:** Optional unter **Anlagenverbund → Verbund öffnen → Victron-Livewerte direkt empfangen** einschalten. Die geöffnete Anzeige hört nur die Sofortanzeige mit; Zentrale, GPS, Archive und Roller-BMS behalten ihre Aufgaben. Bei fehlendem Empfang werden wieder Zentralwerte mit ihrem tatsächlichen Alter verwendet. Die Funktion belegt keinen aktiven Victron-Verbindungsplatz.
 
 **Kleinere Diagrammabgleiche und robuster Diagnoseexport:** Kurze Diagramme benötigen keinen pauschalen 90-Tage-Modellabgleich. Aktuelles Wetter erscheint unabhängig vom noch ladenden Verbrauchslernen; nicht aktuelle Batterieprognosen bleiben einzeln grau. Ein Analysefehler kann als lesbare Teildiagnose exportiert werden, einschließlich verfügbarer Laufzeiten und Messhistorie.
+
+Der [vollständige Freigabelauf 44990747989](https://github.com/Tim-Gurke/AutarPie/actions/runs/44990747989) ist erfolgreich: APK-Bau/Lint, 629 Unit-Prüfungen (347 JavaScript, 275 JVM, sieben Veröffentlichungstests), 1108 native Integrationsprüfungen, 16 Android-Oberflächenprüfungen, acht Sicherungs-/UID-Wiederherstellungsausführungen auf Android 8/11 und 38 verschiedene Browser-Prüfskripte. Darunter sind zwölf Prüfungen verschlüsselter Sofortanzeige-Pakete und neun Diagnoseexport-Prüfungen mit absichtlich gestörten Eingaben. Die ursprüngliche Updatesignatur ist geprüft. Tatsächliche Funkreichweite und Ladezeiten am G5/S20/S10 sind nicht vor Ort gemessen.
 
 **Zuerst die Zentrale, danach alle Anzeigen auf 3.1.0 aktualisieren.** Der Direkt-Liveempfang ist zunächst aus. Messwerte, Kopplungen und eigene Ansichten bleiben erhalten. Für einen ROM-Wechsel die neue vollständige Datensicherung mit übertragbaren Schlüsseln verwenden. [Bedienung und Prüfgrenzen](docs/changes-3.1.0.md).
 
