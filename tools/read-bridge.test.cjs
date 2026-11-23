@@ -1,5 +1,23 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const Bridge=require('../app/src/main/assets/read-bridge.js');
+test('targeted retries retain the affected curve and leave another current tile unchanged',()=>{
+ const requests=[],bridge=new Bridge({requestHistory:json=>requests.push(JSON.parse(json))},()=>{}),args=[0,100000,'power','all'];
+ const first={method:'history',args,scope:'first'},second={method:'history',args:[0,100000,'voltage','all'],scope:'second'};
+ for(const [query,value] of [[first,12],[second,13.2]]){bridge.read(query.method,query.args,query.scope);bridge.result({id:requests.at(-1).id,data:{points:[{v:value}]}});}
+ bridge.retry([first,first]);assert.equal(requests.length,3);
+ const old=JSON.parse(bridge.read(first.method,args,first.scope));assert.equal(old.points[0].v,12);assert.equal(old.stale,true);assert.equal(old.pending,true);
+ const healthy=JSON.parse(bridge.read(second.method,second.args,second.scope));assert.equal(healthy.points[0].v,13.2);assert.equal(healthy.stale,undefined);assert.equal(requests.length,3);
+ bridge.result({id:requests.at(-1).id,data:{points:[{v:14}]}});assert.equal(JSON.parse(bridge.read(first.method,args,first.scope)).points[0].v,14);
+});
+test('repeated stale-field retries cannot duplicate a transfer that is already running',()=>{
+ const requests=[],bridge=new Bridge({requestHistory:json=>requests.push(JSON.parse(json))},()=>{}),query={method:'history',args:[0,100000,'power','all'],scope:'first'};
+ bridge.read(query.method,query.args,query.scope);for(let i=0;i<20;i++)bridge.retry([query]);assert.equal(requests.length,1);assert.equal(bridge.queue.size,0);
+ bridge.result({id:requests[0].id,data:{points:[{v:0}]}});assert.equal(JSON.parse(bridge.read(query.method,query.args,query.scope)).points[0].v,0);
+});
+test('a paused display does not submit targeted retries',()=>{
+ const requests=[],bridge=new Bridge({requestHistory:json=>requests.push(JSON.parse(json))},()=>{});
+ bridge.setActive(false);bridge.retry([{method:'history',args:[0,100000,'power','all'],scope:'first'}]);assert.equal(requests.length,0);
+});
 test('LAN viewers read asynchronously, refresh on revision changes and reject stale in-flight results',()=>{
  const requests=[];const b=new Bridge({isLanViewer:()=>true,history:()=>{throw Error('Blocking LAN query');},requestHistory:json=>requests.push(JSON.parse(json))},()=>{});
  assert.equal(JSON.parse(b.bridge.history(0,100000,'power','all')).pending,true);const first=requests[0];

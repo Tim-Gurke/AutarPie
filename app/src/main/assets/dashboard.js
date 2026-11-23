@@ -163,7 +163,7 @@
       // window; a sunrise query does not. Keep those response families
       // separate, including comparisons with an explicit detail scope.
       const scope=m.flow?JSON.stringify([baseScope,window.from<solarFrom||window.to>solarTo?'solar-support':'selected-range']):baseScope;
-      const read=(method,args)=>this.a.read?this.a.read(method,args,scope):this.a.native[method](...args);
+      const read=(method,args)=>{(this.readScopes??=new Map()).set(t.id,{method,args,scope});return this.a.read?this.a.read(method,args,scope):this.a.native[method](...args);};
       const key=JSON.stringify([scope,m.flow?'energy-flow':backend,Math.floor(window.from/30000),Math.floor(window.to/30000),m.flow?Math.floor(solarFrom/30000):'',m.flow?Math.floor(solarTo/30000):'',this.a.isDemo()]);
       if(this.cache.has(key))return m.flow?this.cache.get(key)[m.flow]:this.cache.get(key);
       let data={points:[],summary:{}};

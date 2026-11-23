@@ -26,7 +26,7 @@ const reads=deviceNative&&window.WattReadBridge?new window.WattReadBridge(device
 const native=reads?.bridge||deviceNative;
 window.onHistoryResult=result=>reads?.result(result);
 window.onHistoryProgress=result=>reads?.progress(result);
-window.onDisplayActive=result=>{const active=!!result.active;window.wattDisplayActive=active;reads?.setActive(active);if(!active){clearTimeout(readRepaint);solar?.stopSensors();return;}lastMiniLoad=0;solar&&(solar.renderKey='');roller?.expireReadings();poll();repaintReads();};
+window.onDisplayActive=result=>{const active=!!result.active;window.wattDisplayActive=active;reads?.setActive(active);if(!active){freshness?.reset();clearTimeout(readRepaint);solar?.stopSensors();return;}lastMiniLoad=0;solar&&(solar.renderKey='');roller?.expireReadings();poll();repaintReads();};
 document.addEventListener('visibilitychange',()=>window.onDisplayActive({active:!document.hidden}));
 window.addEventListener('pageshow',()=>window.onDisplayActive({active:!document.hidden}));
 const historyRead=(method,args,scope)=>reads?reads.read(method,args,scope):deviceNative?.[method](...args);
@@ -64,7 +64,7 @@ let toastTimer, previousToast = '', previousToastTime = 0, deviceRenderKey = '';
 let metric = 'power', source = 'all', range = 'today', baseFrom, baseTo, viewFrom, viewTo, points = [], manualY = null, scale = null, loadTimer, selectedPoint = null;
 let settingsRevision=-1;
 let currentImport = null, lastHistoryRevision=-1, historyPending=false, archiveRequestedUntil=0, lastLanConnection, lastLanSource,lastAnalysisRefresh=0;
-let dashboard = null, extras = null, equipment = null, configuration = null, lifecycle = null, solar = null, roller = null, lanUi = null, presence = null, supplies = null;
+let dashboard = null, extras = null, equipment = null, configuration = null, lifecycle = null, solar = null, roller = null, lanUi = null, presence = null, supplies = null, freshness = null;
 const overviewLandscape = window.matchMedia('(orientation: landscape)');
 
 function syncOverviewHeader() {
@@ -179,7 +179,7 @@ function renderSettings() {
 }
 function poll() {
   if(!window.wattDisplayActive)return;
-  if(lifecycle?.poll())return;
+  if(lifecycle?.poll()){freshness?.reset();return;}
   if (native) {
     try {
       const result = JSON.parse(native.snapshot());
@@ -207,6 +207,10 @@ function poll() {
   }
   repaintReads();
   lanUi?.render();
+  if(freshness){
+    if(demo||!native||lifecycle?.busy)freshness.reset();
+    else freshness.check([...document.querySelectorAll('.cockpit-tile[data-tile]')].filter(el=>el.getClientRects().length&&(el.classList.contains('data-outdated')||el.querySelector('.solar-scale-row.data-outdated'))).map(el=>el.dataset.tile),JSON.stringify([snapshot.lan?.id||'local',snapshot.lan?.sourceEpoch||'']));
+  }
 }
 async function toggleRecord() {
   if (!native) { toast('Bluetooth-Empfang ist in der Android-App verfügbar.'); return; }
@@ -545,6 +549,15 @@ lanUi=new window.WattLan({native:deviceNative,toast,openModal,closeModal});
 presence=new window.WattPresence({native:deviceNative,toast,openModal,closeModal,poll,refresh:()=>{if(solar){solar.renderKey='';solar.render();}}});
 const valueColors=new window.WattValueColors({native:deviceNative,dashboard,openModal,closeModal,toast,repaint:()=>{if(supplies){supplies.renderKey='';supplies.render();}dashboard.update();}});
 supplies=new window.WattSupplies({native:deviceNative,icon,getSupplyUnits:()=>dashboard.config.supplyUnits||{},setSupplyUnit:(kind,unit)=>{dashboard.config.supplyUnits={...dashboard.config.supplyUnits,[kind]:unit};return dashboard.commit();},getSnapshot:()=>snapshot,getValueColor:metric=>window.WattDashboardCore.metricColor(dashboard.config,metric),getValueTextColor:metric=>dashboard.paint(window.WattDashboardCore.metricColor(dashboard.config,metric),window.WattDashboardCore.tile(metric),true),openModal,closeModal,toast,poll,repaint:()=>dashboard?.update()});
+freshness=window.WattFreshnessWatchdog?new window.WattFreshnessWatchdog(ids=>{
+  deviceNative?.refreshLan?.();
+  reads?.retry(ids.map(id=>dashboard.readScopes?.get(id)).filter(Boolean));
+  if(ids.some(id=>dashboard.config.tiles.find(tile=>tile.id===id)?.metric==='weather')){
+    solar?.retryKnowledge();
+    if(!deviceNative?.isLanViewer?.()&&document.getElementById('weatherStrip')?.dataset.outdated==='true')deviceNative?.refreshWeather?.();
+  }
+  dashboard?.cache.clear();readsDirty=true;
+}):null;
 selectRange('today');poll();renderSettings();
 if(new URLSearchParams(location.search).get('demo')==='1')setDemo(true);
 window.pullReload=new window.WattPullReload({element:$('overview'),canStart:()=>page==='overview'&&!demo&&!dashboard.editing&&!lifecycle.blocked&&!lifecycle.busy&&!snapshot.archiveBusy&&snapshot.devices.length>0&&Date.now()>=archiveRequestedUntil&&$('modal').hidden,reload:reloadMissingData});

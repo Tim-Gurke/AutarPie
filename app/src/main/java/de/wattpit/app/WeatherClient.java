@@ -54,6 +54,10 @@ final class WeatherClient {
         if(!Double.isFinite(lat)||!Double.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180||name.isEmpty()||name.length()>180)throw new IllegalArgumentException("Ungültiger Wetterort.");
         return new JSONObject().put("latitude",lat).put("longitude",lon).put("name",name);
     }
+    static boolean current(JSONObject cached,String signature,int pastDays,String error,long now){
+        long age=now-cached.optLong("updated");
+        return error.isEmpty()&&cached.optInt("version")==5&&cached.optInt("forecastDays")>=16&&cached.optInt("pastDays",7)>=pastDays&&signature.equals(cached.optString("signature"))&&age>=0&&age<6*3600000L;
+    }
     static void refresh(Repository repository,boolean force){
         String place=repository.prefs.getString("weatherPlace","");if(place.isEmpty()||!BUSY.compareAndSet(false,true))return;
         String equipment=repository.prefs.getString("equipment-v1","{\"version\":1,\"groups\":[]}"),setup=repository.prefs.getString("solar-setup-v1","{}");
@@ -62,7 +66,7 @@ final class WeatherClient {
             try {
                 JSONObject cached=new JSONObject(repository.prefs.getString("weatherCache","{}"));
                 int pastDays=pastDays(repository.prefs.getLong("planningWeatherSince",0),System.currentTimeMillis(),cached.optString("timezone","Europe/Berlin"));
-                if(!force&&cached.optInt("version")==5&&cached.optInt("forecastDays")>=16&&cached.optInt("pastDays",7)>=pastDays&&signature.equals(cached.optString("signature"))&&System.currentTimeMillis()-cached.optLong("updated")<6*3600000L)return;
+                if(!force&&current(cached,signature,pastDays,repository.prefs.getString("weatherError",""),System.currentTimeMillis()))return;
                 JSONObject p=new JSONObject(place);long updated=System.currentTimeMillis();
                 String base="https://api.open-meteo.com/v1/forecast?latitude="+p.getDouble("latitude")+"&longitude="+p.getDouble("longitude")+"&forecast_days=16&past_days="+pastDays+"&timeformat=unixtime&timezone=auto";
                 JSONObject result=get(base+"&daily=weather_code,sunshine_duration,sunrise,sunset,shortwave_radiation_sum&hourly=shortwave_radiation,sunshine_duration");

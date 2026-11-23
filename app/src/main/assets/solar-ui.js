@@ -66,6 +66,10 @@
       if(this.knowledgeState==='cached')return 'Bisheriger Lernstand'+(this.knowledge.updated?' vom '+new Date(this.knowledge.updated).toLocaleString('de-DE'):'')+' · wird aktualisiert.';
       return this.knowledgeState==='loading'?'Lernstand wird geladen.':'';
     }
+    retryKnowledge(){
+      if(this.knowledgeState==='ready'&&!this.knowledge.stale&&!this.knowledge.error)return;
+      this.lastRequest=0;this.renderKey='';
+    }
     render(){
       if(window.wattDisplayActive===false)return;
       this.requestCachedKnowledge(this.a.getSnapshot());

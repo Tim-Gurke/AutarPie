@@ -45,6 +45,7 @@ final class LanSync {
     private NsdManager.RegistrationListener registration;
     private NsdManager.DiscoveryListener discovery;
     private final AtomicBoolean resolving=new AtomicBoolean();
+    private long discoveryAttemptElapsed;
     private SolarPlanning planning;
     private ViewerAnalysis analysis;
     private Object analysisIdentity;
@@ -216,7 +217,7 @@ final class LanSync {
         synchronized(this){if(!viewer()||epoch>=0&&(epoch!=refreshEpoch||!refreshAllowed())||!refreshing.compareAndSet(false,true))return;}
         JSONObject active=config;
         try{JSONObject bundle=rpc(active,"bundle",new JSONArray());validateBundle(bundle);synchronized(this){if(epoch<0||epoch==refreshEpoch&&refreshAllowed())accept(bundle,active);}}
-        catch(Exception e){synchronized(this){if(active==config&&(epoch<0||epoch==refreshEpoch&&refreshAllowed()))error="Hauptgerät nicht erreichbar. WLAN und Zentrale prüfen.";}}
+        catch(Exception e){synchronized(this){if(active==config&&(epoch<0||epoch==refreshEpoch&&refreshAllowed())){error="Hauptgerät nicht erreichbar. WLAN und Zentrale prüfen.";recoverDiscovery();}}}
         finally{refreshing.set(false);}
     }
     private static void validateBundle(JSONObject bundle)throws JSONException{
@@ -398,15 +399,25 @@ final class LanSync {
     @SuppressWarnings("deprecation")
     private synchronized void discover(){
         if(nsd==null||discovery!=null||!viewer()||!visible&&!backgroundViewer&&SystemClock.elapsedRealtime()>rollerDiscoveryUntil)return;
+        discoveryAttemptElapsed=SystemClock.elapsedRealtime();
         discovery=new NsdManager.DiscoveryListener(){
-            public void onDiscoveryStarted(String type){}public void onDiscoveryStopped(String type){}public void onStartDiscoveryFailed(String type,int code){stopDiscovery();}public void onStopDiscoveryFailed(String type,int code){}public void onServiceLost(NsdServiceInfo info){}
-            public void onServiceFound(NsdServiceInfo info){if(!viewer()||!info.getServiceName().startsWith("WattPit-"+config.optString("id").substring(0,8))||!resolving.compareAndSet(false,true))return;
-                try{nsd.resolveService(info,new NsdManager.ResolveListener(){public void onResolveFailed(NsdServiceInfo value,int code){resolving.set(false);}public void onServiceResolved(NsdServiceInfo value){
+            public void onDiscoveryStarted(String type){}public void onDiscoveryStopped(String type){}public void onStartDiscoveryFailed(String type,int code){synchronized(LanSync.this){if(discovery==this)stopDiscovery();}}public void onStopDiscoveryFailed(String type,int code){}public void onServiceLost(NsdServiceInfo info){}
+            public void onServiceFound(NsdServiceInfo info){synchronized(LanSync.this){
+                if(discovery!=this||!viewer()||!info.getServiceName().startsWith("WattPit-"+config.optString("id").substring(0,8))||!resolving.compareAndSet(false,true))return;
+                NsdManager.DiscoveryListener search=this;JSONObject owner=config;
+                try{nsd.resolveService(info,new NsdManager.ResolveListener(){public void onResolveFailed(NsdServiceInfo value,int code){synchronized(LanSync.this){if(discovery==search&&owner==config)resolving.set(false);}}public void onServiceResolved(NsdServiceInfo value){synchronized(LanSync.this){
+                    if(discovery!=search||owner!=config)return;
                     resolving.set(false);byte[] group=value.getAttributes().get("group");String host=value.getHost()==null?"":value.getHost().getHostAddress();
                     if(viewer()&&group!=null&&config.optString("id").equals(new String(group,StandardCharsets.UTF_8))&&LanWire.localAddress(host)){resolvedHost=host;resolvedPort=value.getPort();refreshNow();}
-                }});}catch(Exception e){resolving.set(false);}}
+                }}});}catch(Exception e){resolving.set(false);}
+            }}
         };
         try{nsd.discoverServices(TYPE,NsdManager.PROTOCOL_DNS_SD,discovery);}catch(Exception e){discovery=null;}
     }
-    private synchronized void stopDiscovery(){if(discovery!=null&&nsd!=null)try{nsd.stopServiceDiscovery(discovery);}catch(Exception ignored){}discovery=null;}
+    /** Retry a failed or silent first search while the display remains open. */
+    private synchronized void recoverDiscovery(){
+        if(nsd==null||!refreshAllowed()||SystemClock.elapsedRealtime()-discoveryAttemptElapsed<30000)return;
+        stopDiscovery();discover();
+    }
+    private synchronized void stopDiscovery(){NsdManager.DiscoveryListener old=discovery;discovery=null;resolving.set(false);if(old!=null&&nsd!=null)try{nsd.stopServiceDiscovery(old);}catch(Exception ignored){}}
 }

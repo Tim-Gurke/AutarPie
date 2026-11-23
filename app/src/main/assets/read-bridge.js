@@ -50,7 +50,7 @@
       });
     }
     recent(entry,query){
-      if(!entry||!query||query.scope==null||entry.error||entry.epoch!==this.epoch||entry.generation<(this.forcedGeneration||0))return false;
+      if(!entry||!query||query.scope==null||entry.error||entry.recheck||entry.epoch!==this.epoch||entry.generation<(this.forcedGeneration||0))return false;
       const age=Date.now()-(entry.startedAt??entry.at);
       if(age<0||age>=45000||[0,1].some(i=>Math.abs(entry.args[i]-query.args[i])>=45000))return false;
       const parts=[entry.data];
@@ -79,6 +79,19 @@
       this.remember(query.key,{...query,data:error?old?.data:data,at:error?old?.at:Date.now(),error,generation:query.generation-(!error&&data.stale?1:0),retryAt:error?Date.now()+5000:0});
     }
     initialPending(){return [this.inflight,...this.queue.values()].some(query=>query&&!this.previous(query.method,query.args,query.scope)?.data);}
+    retry(queries){
+      if(!this.active)return;this.source();
+      const seen=new Set();
+      for(const query of queries){
+        const {method,args,scope}=query,key=this.key(method,args,scope);if(seen.has(key))continue;seen.add(key);
+        const same=entry=>entry&&entry.method===method&&entry.scope===scope&&(scope!=null||entry.key===key);
+        // A transfer that is already progressing keeps its place. Never add
+        // duplicate native work merely because several tiles share its result.
+        if(same(this.inflight)&&this.inflight.epoch===this.epoch)continue;
+        for(const entry of this.cache.values())if(same(entry)){entry.recheck=true;entry.generation=Math.min(entry.generation,this.generation-1);entry.retryAt=0;}
+        this.read(method,args,scope);
+      }
+    }
     read(method,args,scope){
       this.source();const key=this.key(method,args,scope),query={key,method,args,scope,generation:this.generation,epoch:this.epoch};
       // Local model/history reads can be just as expensive as LAN queries. Keep
@@ -90,7 +103,7 @@
       }
       const cached=this.cache.get(key);
       if(cached?.generation===this.generation&&(!cached.error||cached.retryAt>Date.now()))return this.value(cached,method);
-      if(cached?.data&&!cached.error&&cached.generation>=(this.forcedGeneration||0)&&cached.generation!==this.generation&&this.throttled&&Date.now()-cached.at<30000){
+      if(cached?.data&&!cached.error&&!cached.recheck&&cached.generation>=(this.forcedGeneration||0)&&cached.generation!==this.generation&&this.throttled&&Date.now()-cached.at<30000){
         if(!this.deferTimer){this.deferTimer=setTimeout(()=>{this.deferTimer=null;if(this.active)this.ready('refresh');},Math.max(1,30000-(Date.now()-cached.at)));this.deferTimer?.unref?.();}
         return this.value(cached,method,false,query);
       }
