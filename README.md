@@ -10,15 +10,13 @@ Android 8 oder neuer; das Cockpit benötigt einen aktuellen Android-System-WebVi
 
 ## Ansichten
 
-| Aktuelles Wetter neben unabhängigen Messkacheln | Noch nicht aktueller Diagrammstand |
+| Bevorzugter Solar-Tagesverlauf | Einstellbare BMS-Anzeigegrenze |
 | --- | --- |
-| ![AutarPie 3.1.2: Cockpit mit aktuellem Wetter](docs/images/autarpie-3.1.2-dark.svg) | ![AutarPie 3.1.2: grauer Zwischenstand neben aktueller Kachel](docs/images/autarpie-3.1.2-light.svg) |
+| ![AutarPie 3.1.2: Großansicht des Solarverlaufs](docs/images/autarpie-3.1.2-dark.svg) | ![AutarPie 3.1.2: BMS-Anzeigegrenze im Rollerprofil](docs/images/autarpie-3.1.2-settings.svg) |
 
-| Optionaler Direkt-Liveempfang auf der Anzeige | Native Zentrale auf Android 11 |
-| --- | --- |
-| ![AutarPie 3.1.2: direkter Victron-Empfang](docs/images/autarpie-3.1.2-settings.svg) | ![AutarPie 3.1.2: native Zentrale](docs/images/autarpie-3.1.2-central.svg) |
+![AutarPie 3.1.2: native Rollenauswahl auf Android 11](docs/images/autarpie-3.1.2-central.svg)
 
-Aufnahmen aus den Android- und Browser-Oberflächenprüfungen für 3.1.2 mit neutralen Geräte- und Versionsattrappen. Die Aufnahmen sind kein Funk- oder Hardwaretest. Eigene Farben und Layouts bleiben beim Update erhalten.
+Die Browseransichten verwenden neutrale Beispielmesswerte; die native Ersteinrichtung wurde im Android-Emulator aufgenommen.
 
 ## Ein Cockpit, mehrere Anwendungen
 
@@ -55,13 +53,25 @@ Bis zu drei 608PD erhalten getrennte Profile, private Kennungen und eigene Verbi
 
 ## Update 3.1.2
 
+**Die geöffnete Ansicht zuerst:** Eine Kachel-Großansicht erhält Vorrang vor dem aktiven Dashboard und dem Hintergrundlernen. Beim Wechsel werden überholte Abrufe zurückgestellt; größere laufende Abgleiche geben an Datenpaketgrenzen nach. Diagramme benötigen keine vollständigen Beobachtungs- und Vorhersagetabellen des Verbrauchslernens.
+
+**Ergebnisse behalten und betroffene Tage ergänzen:** Gespeicherte Kurven erscheinen nach erneutem Öffnen sofort mit Datenstand und Grau-Kennzeichnung. Stimmen ihre Grundlagen überein, wird das fertige Berechnungsergebnis wiederverwendet. Tageswerte bleiben je Kalendertag erhalten und werden bei betroffenen Änderungen gezielt nachberechnet. Ein passender Verbrauchslernstand wird bis zu sechs Stunden weiterverwendet; notwendige historische Korrekturen und Konfigurationsänderungen werden gesondert erkannt. Neue originale Prognosevergleiche können ohne erneutes Verbrauchslernen nachgeladen werden. Die Akku-Prognose verwendet weiter aktuelle Shunt- und Wettergrundlagen.
+
+**Einstellbare BMS-Anzeigegrenze:** Unter **Roller → Rollerprofil** sind 1 bis 300 Sekunden einstellbar, Vorgabe 15 Sekunden. Innerhalb dieser Zeit bleiben die letzten BMS-Werte normal sichtbar; danach bleiben sie grau mit Zeitangabe erhalten. Aufzeichnung, Planung und Schaltentscheidungen behalten ihre bisherigen Frischeprüfungen.
+
+Der [vollständige Freigabelauf 45237079588](https://github.com/Tim-Gurke/AutarPie/actions/runs/45237079588) ist erfolgreich: APK-Bau und Lint, 646 Unit-Prüfungen (364 JavaScript, 275 JVM und sieben Veröffentlichungstests), 1133 native Integrationsprüfungen, 16 Android-Oberflächenprüfungen, acht Sicherungs-/UID-Wiederherstellungsausführungen auf Android 8/11 und 40 verschiedene Browser-Prüfskripte. Zwei bestehende Neuladefälle für Dashboardfarben beziehungsweise GPS bestanden nach gezielter Wiederholung der betroffenen Jobs am unveränderten Quellstand; ihre Prüfbedingungen wurden nicht gelockert. Die ursprüngliche Updatesignatur ist geprüft. Laufzeiten und Funkverhalten am echten G5/S20/S10 sind nicht vor Ort gemessen.
+
+**Zuerst G5/Zentrale beziehungsweise das direkt erfassende Handy, danach alle Anzeigen auf 3.1.2 aktualisieren.** Über die vorhandene Installation installieren. Verbund und Direkt-Liveempfang bleiben mit 3.1.1 kompatibel; neue Speicherung und Priorisierung benötigen das Update auf der jeweiligen Anzeige. Messdaten, Kopplungen, Farben und Layouts bleiben erhalten. [Installation, Bedienung und Prüfgrenzen](docs/changes-3.1.2.md).
+
+## Update 3.1.1
+
 **Die Anzeige fragt selbst erneut nach:** Bleibt eine sichtbare Kachel 45 Sekunden durchgehend grau, werden ihre Daten gezielt erneut angefordert. Weitere Versuche erfolgen frühestens nach 60 Sekunden. Bereits laufende Übertragungen werden nicht verdoppelt; aktuelle andere Kacheln bleiben erhalten. Farbig wird ein Feld erst bei bestätigtem aktuellem Datenstand.
 
 **Zentralensuche und Wetterabruf:** Fehlgeschlagene oder stumme Gerätesuchen werden nach erfolglosen Verbundabfragen begrenzt wiederholt. Alte Rückmeldungen dürfen die neue Suche nicht beeinflussen. Ein vorheriger Wetterfehler kann weitere Abrufe nicht mehr bis zum Ende des Cachefensters unterdrücken.
 
 Der [vollständige Freigabelauf 45122974261](https://github.com/Tim-Gurke/AutarPie/actions/runs/45122974261) ist erfolgreich: APK-Bau/Lint, 641 Unit-Prüfungen (359 JavaScript, 275 JVM, sieben Veröffentlichungstests), 1123 native Integrationsprüfungen, 16 Android-Oberflächenprüfungen, acht Sicherungs-/UID-Wiederherstellungsausführungen auf Android 8/11 und 39 verschiedene Browser-Prüfskripte. Dazu gehören der nachgestellte fehlgeschlagene Suchstart, 200 gebündelte Aktualisierungsanforderungen und die echte Browserprüfung länger grauer Kacheln. Die ursprüngliche Updatesignatur und die Übereinstimmung aller 59 App-Dateien mit dem geprüften Quellstand sind kontrolliert. Funk und Startdauer an den echten Handys sind nicht vor Ort gemessen.
 
-**Zuerst die Zentrale, danach alle Anzeigen auf 3.1.2 aktualisieren.** Der Verbund und der passive Direkt-Liveempfang bleiben mit 3.1.0 kompatibel; für den vollständigen Umfang beide Seiten aktualisieren. Messwerte, Kopplungen und Layouts bleiben erhalten. Der nachgestellte Suchfehler ist belegt; ein vollständig behobener morgendlicher Hänger am echten G5/S20/S10 ist damit noch nicht zugesagt. [Bedienung und Prüfgrenzen](docs/changes-3.1.2.md).
+**Zuerst die Zentrale, danach alle Anzeigen auf 3.1.1 aktualisieren.** Der Verbund und der passive Direkt-Liveempfang bleiben mit 3.1.0 kompatibel; für den vollständigen Umfang beide Seiten aktualisieren. Messwerte, Kopplungen und Layouts bleiben erhalten. Der nachgestellte Suchfehler ist belegt; ein vollständig behobener morgendlicher Hänger am echten G5/S20/S10 ist damit noch nicht zugesagt. [Bedienung und Prüfgrenzen](docs/changes-3.1.1.md).
 
 ## Update 3.1.0
 
