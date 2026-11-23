@@ -46,10 +46,23 @@ vorgegeben; echte Handys, Funk, Hotspot und Startdauer werden damit nicht gemess
 Der Verbindungstest kann auch die veröffentlichte `LanSync`-Implementierung als
 Negativvergleich ausführen. Noch kein APK-Bau und keine Veröffentlichung.
 
-Die bislang ausgeführten 127 JavaScript-Prüfungen bestehen. Der erste native
-Vergleich bestätigt den Fehler für `LanSync` aus Veröffentlichung 3.1.0
-(`8eef541`): Nach dem fehlgeschlagenen Suchstart verbindet sie die unverändert
-geöffnete Anzeige nicht neu. Die Korrektur besteht denselben Fall sowie die
-Prüfungen verspäteter Rückmeldungen, unveränderter Kopplung und Anzeigeanordnung.
-Die zusätzliche Begrenzung gleichzeitig wartender Zentralenabfragen wird
-anschließend mit einer gesperrten Warteschlange und 200 Anfragen geprüft.
+Abgeschlossen am 23.11.2026:
+
+- 127 JavaScript-Prüfungen für Aktualitätsanzeige, Abfragen, Wiederholung und
+  Prognoseaktualisierung bestanden.
+- 15 native Prüfungen mit echten verschlüsselten TCP-Anfragen und SQLite
+  bestanden. Enthalten sind der fehlgeschlagene erste Suchstart, stumme Suche,
+  verspätete Rückmeldungen, unveränderte Kopplung und Anzeigeanordnung sowie
+  200 gleichzeitige Anforderungen bei gesperrter Warteschlange: Es folgt nur
+  eine zusätzliche Zentralenabfrage.
+- Alle produktiven Java-Quellen gegen die echte Android-API 35 kompiliert,
+  ohne die NSD-Testadapter. Syntaxprüfung aller geänderten JavaScript-Dateien
+  und Ausschluss privater Dateien bestanden.
+- Negativvergleich mit der veröffentlichten `LanSync` aus 3.1.0 (`8eef541`):
+  Nach dem fehlgeschlagenen Suchstart verbindet sie die unverändert geöffnete
+  Anzeige nicht neu. Die Korrektur besteht denselben Verbindungsfall.
+
+Die Tests belegen diese nachgestellten Fehler und Korrekturen. Sie rekonstruieren
+nicht die komplette frühere Stunde Wartezeit und bestätigen noch keinen
+fehlerfreien Start auf Tims echten Handys. Der Quellstand ist vorbereitet;
+ein APK-Bau und die Veröffentlichung benötigen noch die Freigabe dieses Umfangs.
