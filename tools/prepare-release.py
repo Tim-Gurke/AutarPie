@@ -91,6 +91,7 @@ def prepare(manifest, repository, target, api, output):
     body = base64.b64decode(notes["content"]).decode("utf-8")
     body = body.replace("](GAS-WASSER.md)", "](https://github.com/" + repository + "/blob/main/docs/GAS-WASSER.md)")
     body = body.replace("](../CHANGELOG.md)", "](https://github.com/" + repository + "/blob/main/CHANGELOG.md)")
+    body = body.replace("](changes-3.1.2.md)", "](https://github.com/" + repository + "/blob/main/docs/changes-3.1.2.md)")
     body = body.replace("](AUTARPIE-3.md)", "](https://github.com/" + repository + "/blob/main/docs/AUTARPIE-3.md)")
     body = body.replace("](archive-bounded-reads.md)", "](https://github.com/" + repository + "/blob/main/docs/archive-bounded-reads.md)")
     body = body.replace("](quick-start-20261120.md)", "](https://github.com/" + repository + "/blob/main/docs/quick-start-20261120.md)")

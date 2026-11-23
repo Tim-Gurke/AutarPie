@@ -55,6 +55,8 @@ Bis zu drei 608PD erhalten getrennte Profile, private Kennungen und eigene Verbi
 
 **Verbrauchslernstand bei normalen Live-Updates erhalten:** Empfangszeit, RSSI und Verbindungsstatus gelten jetzt als laufende Messinformationen. Sie lösen kein erneutes Verbrauchslernen aus. Auch ein neu aufgelöster Name desselben GPS-Orts ändert die Lerngrundlagen nicht. Ausgewählte Geräte, tatsächliche Standortkoordinaten und relevante Einstellungen bleiben für die Gültigkeit maßgeblich. Ein passender Lernstand kann so bis zu sechs Stunden weiterverwendet werden, während aktuelle Shunt- und Wetterdaten die Akku-Prognose aktualisieren. Die Funktionen aus 3.1.2 bleiben enthalten.
 
+Der [vollständige Freigabelauf 45241880733](https://github.com/Tim-Gurke/AutarPie/actions/runs/45241880733) ist im ersten Durchlauf erfolgreich, alle sieben Jobs grün: APK-Bau/Lint, 646 Unit-Prüfungen, 1144 native Prüfaussagen, 16 Android-Oberflächenprüfungen und acht Sicherungs-/UID-Wiederherstellungsausführungen auf Android 8/11 sowie 40 verschiedene Browser-Prüfskripte. Die neue native Regression scheitert im Gegenversuch mit der tatsächlich veröffentlichten 3.1.2-Implementierung; die korrigierte Fassung erhält den Lernstand trotz neuer Live-Zeitstempel und RSSI. Die ursprüngliche Updatesignatur ist geprüft. Die tatsächlichen G5-/WLAN-/Victron-Wartezeiten wurden hier nicht vor Ort gemessen.
+
 **Zuerst G5/Zentrale, danach alle Anzeigen auf 3.1.3 aktualisieren.** Über die bestehende Installation installieren. Daten, Kopplungen und Layouts bleiben erhalten. Der Verbund bleibt mit 3.1.2 kompatibel. [Updateweg und Prüfgrenzen](docs/changes-3.1.3.md).
 
 ## Update 3.1.2
