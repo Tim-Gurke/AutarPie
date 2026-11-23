@@ -59,6 +59,8 @@ Bis zu drei 608PD erhalten getrennte Profile, private Kennungen und eigene Verbi
 
 **Zentralensuche und Wetterabruf:** Fehlgeschlagene oder stumme Gerätesuchen werden nach erfolglosen Verbundabfragen begrenzt wiederholt. Alte Rückmeldungen dürfen die neue Suche nicht beeinflussen. Ein vorheriger Wetterfehler kann weitere Abrufe nicht mehr bis zum Ende des Cachefensters unterdrücken.
 
+Der [vollständige Freigabelauf 45122974261](https://github.com/Tim-Gurke/AutarPie/actions/runs/45122974261) ist erfolgreich: APK-Bau/Lint, 641 Unit-Prüfungen (359 JavaScript, 275 JVM, sieben Veröffentlichungstests), 1123 native Integrationsprüfungen, 16 Android-Oberflächenprüfungen, acht Sicherungs-/UID-Wiederherstellungsausführungen auf Android 8/11 und 39 verschiedene Browser-Prüfskripte. Dazu gehören der nachgestellte fehlgeschlagene Suchstart, 200 gebündelte Aktualisierungsanforderungen und die echte Browserprüfung länger grauer Kacheln. Die ursprüngliche Updatesignatur und die Übereinstimmung aller 59 App-Dateien mit dem geprüften Quellstand sind kontrolliert. Funk und Startdauer an den echten Handys sind nicht vor Ort gemessen.
+
 **Zuerst die Zentrale, danach alle Anzeigen auf 3.1.1 aktualisieren.** Der Verbund und der passive Direkt-Liveempfang bleiben mit 3.1.0 kompatibel; für den vollständigen Umfang beide Seiten aktualisieren. Messwerte, Kopplungen und Layouts bleiben erhalten. Der nachgestellte Suchfehler ist belegt; ein vollständig behobener morgendlicher Hänger am echten G5/S20/S10 ist damit noch nicht zugesagt. [Bedienung und Prüfgrenzen](docs/changes-3.1.1.md).
 
 ## Update 3.1.0
