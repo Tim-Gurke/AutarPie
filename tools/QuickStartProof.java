@@ -16,6 +16,9 @@ public final class QuickStartProof {
         LanSyncProof.TestContext context=new LanSyncProof.TestContext(root);Repository repo=LanSyncProof.repository(context);
         JSONArray devices=new JSONArray("[{\"kind\":\"solar\",\"mac\":\"fixture-solar\"},{\"kind\":\"shunt\",\"mac\":\"fixture-shunt\"}]");repo.prefs.edit().putString("devices",devices.toString()).commit();
         String source=SolarPlanning.selectedSource(devices),epoch=HistoryExchange.epoch(repo.db),name="fixture-planning.db";JSONObject original=data(source,now);
+        check(RollerStore.checked(new JSONObject()).getDouble("displayFreshSeconds")==15,"existing roller profiles receive a fifteen-second display tolerance");
+        boolean badTolerance=false;try{RollerStore.checked(new JSONObject().put("displayFreshSeconds",301));}catch(IllegalArgumentException expected){badTolerance=true;}
+        check(badTolerance,"invalid display tolerances are rejected without changing BMS control freshness");
         AnalysisResultCache derived=new AnalysisResultCache(context,"fixture-plant");JSONObject curve=new JSONObject().put("points",new JSONArray().put(new JSONObject().put("v",42)));
         derived.save("solar-today","source-one",curve);
         check(new AnalysisResultCache(new LanSyncProof.TestContext(root),"fixture-plant").read("solar-today","source-one").getJSONArray("points").getJSONObject(0).getInt("v")==42,"calculated curves survive a new Context without recalculation");

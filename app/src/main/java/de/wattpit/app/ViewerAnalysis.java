@@ -46,7 +46,7 @@ final class ViewerAnalysis {
         long started=System.nanoTime();JSONObject value;try{value=lan.queryInput(method,args);}finally{networkNanos+=System.nanoTime()-started;connectNanos+=lan.lastConnectNanos();requests++;}
         if(identity!=lan.identity()||!lan.viewer())throw new IOException("Anlage wurde gewechselt.");return value;
     }
-    private void note(String value){long now=System.currentTimeMillis();if(progress!=null&&now-progressAt>=300){progressAt=now;progress.accept(value);}}
+    private void note(String value){long now=System.currentTimeMillis();if(progress!=null&&(now-progressAt>=300||value.equals("Auswertung auf diesem Handy …"))){progressAt=now;progress.accept(value);}}
     private void reset(String next)throws Exception{
         modelAt=0;
         planning.clearPreview();
@@ -280,7 +280,7 @@ final class ViewerAnalysis {
         return AnalysisResultCache.hash(new JSONArray().put(SolarPlanning.ALGORITHM).put(snapshot.optJSONArray("devices")).put(snapshot.opt("equipment")).put(settings.opt("solarSetup")).put(settings.opt("weatherPlace")).put(settings.opt("capacity")).put(settings.opt("specialUses")).put(new JSONObject(lan.part("presence")).optString("state")).toString());
     }
     synchronized JSONObject diagnostics()throws Exception{return new JSONObject().put("downloadedRows",downloadedRows).put("downloadedBlocks",downloadedBlocks).put("epoch",epoch).put("revision",rawRevision).put("timing",lastTiming);}
-    synchronized void rebuildHistory()throws Exception{planning.rebuildHistory();}
+    synchronized void rebuildHistory()throws Exception{planning.rebuildHistory();repo.prefs.edit().remove("analysis.learnedAt").commit();}
     boolean exportDiagnostics(java.io.OutputStream output)throws Exception{
         JSONObject base=new JSONObject().put("appVersion",BuildConfig.VERSION_NAME).put("viewerTiming",lastTiming).put("analysis",new JSONObject().put("plant",plant).put("epoch",epoch).put("revision",rawRevision).put("inputMetadata",metadata).put("cached",true));
         return DiagnosticArchive.write(output,base,()->{

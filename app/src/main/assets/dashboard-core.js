@@ -461,7 +461,7 @@
         at=(snapshot.readings||[]).find(r=>r.device===device)?.t||reading?.t||at;
         missing=!reading;
       }else if(m.kind==='roller'||m.resourceCategory==='scooter'){
-        missing=!snapshot.roller?.fresh;at=(missing?snapshot.roller?.lastKnown:snapshot.roller?.live)?.at||at;
+        const shown=R.displayState(snapshot.roller||{},now);missing=!shown.fresh;at=(missing?shown.lastKnown:shown.live)?.at||at;
       }else if(m.kind==='isdt'||m.kind==='output'){
         const reading=m.kind==='isdt'?snapshot.energy?.charger:M.output(snapshot,t,now);
         at=reading?.at||at;missing=!at||now<at||now-at>(m.kind==='isdt'?10000:45000);

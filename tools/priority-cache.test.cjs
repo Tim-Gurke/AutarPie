@@ -26,3 +26,7 @@ test('display tolerance preserves BMS values without extending control or planni
  assert.equal(R.displayState(state,106000).fresh,false);assert.equal(R.displayState({...state,lastKnown:{at:110000}},now).fresh,false);
  assert.equal(R.displayState({...state,lastKnown:{at:99000,soc:30}},now).live.soc,30);
 });
+
+test('the default display tolerance is fifteen seconds while missing and future times stay unknown',()=>{
+ const state={fresh:false,lastKnown:{at:100000,soc:40},profile:{}};assert.equal(R.displayState(state,114999).fresh,true);assert.equal(R.displayState(state,115001).fresh,false);assert.equal(R.displayState({profile:{}},100000).fresh,false);
+});

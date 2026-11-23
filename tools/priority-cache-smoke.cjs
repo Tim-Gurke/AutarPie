@@ -20,7 +20,7 @@ const fixture=require('./autarpie-fixture.cjs');
  try{
   await page.goto('file://'+path.resolve('app/src/main/assets/index.html'));await page.waitForFunction(()=>apFixture.requests.length>0);
   await answer();await page.waitForTimeout(200);await answer();await page.waitForTimeout(200);
-  await page.locator('[data-tile="sample-1"] .tile-menu').click();await page.locator('#tileActionDetail').click();
+  await page.locator('[data-tile="sample-1"]').click();await page.locator('#tileActionDetail').click();
   await page.waitForFunction(()=>apFixture.focus.some(f=>f.detail));
   const before=await page.evaluate(()=>apFixture.requests.length);await answer();await page.waitForTimeout(250);
   await page.evaluate(()=>{AutarPieApp.poll();AutarPieApp.poll();AutarPieApp.poll();});await page.waitForTimeout(250);
