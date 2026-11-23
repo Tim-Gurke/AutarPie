@@ -11,7 +11,7 @@ const fixture=require('./autarpie-fixture.cjs'),C=require('../app/src/main/asset
   const equipment={version:1,groups:[{id:'roof',label:'Beispielanlage',count:2,watts:100,tilt:30,placement:'fixed',measurement:'solar',controller:'MPPT',defaultActive:true}]};
   const setup={groups:{roof:{active:true,azimuth:180,shade:[0,0,0]}}},place={name:'Beispielort',latitude:52.52,longitude:13.41},days=[],hours=[],values=[],windows=[];
   for(let i=0;i<3;i++){const from=start+i*24*H,day=new Date(from+12*H).toLocaleDateString('sv-SE');days.push({day,code:2,hours:4,sunrise:from+7*H,sunset:from+17*H});for(let h=1;h<=24;h++){const t=from+h*H,v=h>7&&h<=17?250:0;hours.push({t,ghi:v});values.push({t,v});}for(let slot=0;slot<3;slot++)windows.push({day,slot,from:from+[0,11,16][slot]*H,to:from+[11,16,24][slot]*H});}
-  WattPit.appVersion=()=>'3.1.0';WattPit.solarSetup=()=>JSON.stringify(setup);WattPit.snapshot=()=>{const value=JSON.parse(original());Object.assign(value,{equipment,weather:{version:4,updated:now,timezone:'Europe/Berlin',place,days,hours,windows,solar:[{geometry:'30:0',values}]}});value.settings.weatherPlace=place;return JSON.stringify(value);};
+  WattPit.appVersion=()=>'3.1.1';WattPit.solarSetup=()=>JSON.stringify(setup);WattPit.snapshot=()=>{const value=JSON.parse(original());Object.assign(value,{equipment,weather:{version:4,updated:now,timezone:'Europe/Berlin',place,days,hours,windows,solar:[{geometry:'30:0',values}]}});value.settings.weatherPlace=place;return JSON.stringify(value);};
   WattPit.dashboardHistory=()=>JSON.stringify({points:[{t:now-60000,last:now-60000,v:10,min:10,max:10,n:1},{t:now,last:now,v:148,min:148,max:148,n:1}],summary:{last:148,avg:79,min:10,max:148},stale:apFixture.chartStale,pending:false,dataAt:now-120000});
   WattPit.requestCachedSolarData=id=>apFixture.cachedRequests.push(id);WattPit.requestSolarData=()=>apFixture.freshRequests++;
  },{version:1,lanTileVersion:1,energyFlowVersion:1,dischargeSignVersion:1,tiles:[soc,chart,weather],blockOrder:['tiles','history','record']});
@@ -27,10 +27,10 @@ const fixture=require('./autarpie-fixture.cjs'),C=require('../app/src/main/asset
   await page.evaluate(()=>{apFixture.chartStale=false;onSolarPlanData({source:'synthetic-source',observations:[],forecasts:[],updated:Date.now()});});await repaint();
   check.equal(await filter(card),'none');check.equal(await card.locator('.tile-data-status').count(),0);check.equal(await filter(page.locator('[data-tile="fixture-weather"]')),'none');
   await page.evaluate(()=>onSolarCachedData({id:apFixture.cachedRequests.at(-1),data:{source:'synthetic-source',observations:[{old:true}],forecasts:[],updated:Date.now()-86400000}}));check.equal(await page.evaluate(()=>AutarPieApp.solar.knowledge.observations.length),0,'a delayed prior cannot replace a successful empty refresh');
-  await page.screenshot({path:path.join(out,'autarpie-3.1.0-dark.png'),animations:'disabled'});
+  await page.screenshot({path:path.join(out,'autarpie-3.1.1-dark.png'),animations:'disabled'});
   await page.evaluate(()=>{apFixture.chartStale=true;AutarPieUI.appearance.theme='light';AutarPieUI.applyAppearance();});await repaint();
   check.match(await filter(card),/grayscale\(1\)/);check.equal(await filter(battery),'none');
-  await page.screenshot({path:path.join(out,'autarpie-3.1.0-light.png'),animations:'disabled'});
+  await page.screenshot({path:path.join(out,'autarpie-3.1.1-light.png'),animations:'disabled'});
   // Validate actual screenshot pixels, including the colored tile background.
   const {PNG}=require('pngjs');
   const png=PNG.sync.read(await card.screenshot({animations:'disabled'}));let opaque=0,gray=0;

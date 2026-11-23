@@ -8,6 +8,12 @@ Das bestehende GitHub-Repository heißt jetzt [`Tim-Gurke/AutarPie`](https://git
 
 ## Aktuelles Update
 
+### 3.1.1 · Automatische Nachfrage bei grauen Feldern und erneute Zentralensuche
+
+Am 23.11.2026 für den vorbereiteten Umfang ausdrücklich zum Bau und zur Veröffentlichung freigegeben. Sichtbare Kacheln fragen nach 45 Sekunden durchgehend grauer Anzeige gezielt erneut nach, weitere Versuche erfolgen frühestens nach 60 Sekunden. Bereits laufende gleiche Übertragungen werden nicht verdoppelt, gleichzeitige Zentralenabfragen gebündelt. Vorhandene Kurven und die Grau-Kennzeichnung bleiben bis zum bestätigten aktuellen Ergebnis erhalten.
+
+Fehlgeschlagene oder stumme Zentralensuchen werden nach erfolglosen Verbundabfragen begrenzt wiederholt; verspätete alte Rückmeldungen dürfen neue Suchen nicht beeinflussen. Ein vorheriger Wetterfehler blockiert keinen weiteren Wetterabruf innerhalb des Cachefensters mehr. Messwerte, Aufzeichnung, Steuerung, Kopplungen und Layouts bleiben erhalten. Der nachgestellte Suchfehler ist belegt; die Ursache der konkreten früheren morgendlichen Wartezeit ist am echten Aufbau weiterhin zu bestätigen. [Aktualisieren und Prüfgrenzen](docs/changes-3.1.1.md).
+
 ### 3.1.0 · Passiver Direkt-Liveempfang, kleinere Diagrammabgleiche und Diagnoseexport
 
 Anzeigehandys können die Sofortanzeige ihrer Victron-Geräte optional direkt mithören, ohne aktive Verbindung oder zusätzliche Messhistorie. GPS, durchgehende Aufzeichnung, Archive, Roller-BMS und bestätigte Steuerung bleiben bei der Zentrale. Bei fehlendem Direktempfang gelten wieder die verfügbaren Zentralwerte und deren ursprüngliche Zeitstempel.

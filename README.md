@@ -1,10 +1,10 @@
-# AutarPie 3.1.0
+# AutarPie 3.1.1
 
 ![AutarPie Ressourcen-Kreislauf](app/src/main/assets/brand.svg)
 
 **Das lokale Cockpit für autarkes Leben.** Solar und Stromverteilung, Wohnwagenakku, E-Scooter, Modellbau, Gas und Wasser in einer gemeinsamen App. AutarPie führt **Watt’n’Pit und WohnPit** weiter.
 
-**[AutarPie 3.1.0 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.1.0/AutarPie-v3.1.0.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.1.0.md) · [Vollständige Versionshistorie](CHANGELOG.md)
+**[AutarPie 3.1.1 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.1.1/AutarPie-v3.1.1.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.1.1.md) · [Vollständige Versionshistorie](CHANGELOG.md)
 
 Android 8 oder neuer; das Cockpit benötigt einen aktuellen Android-System-WebView. Kein Pflichtkonto, keine Werbung. Mess- und Lerndaten werden lokal gespeichert; eine freiwillige verschlüsselte Sicherung kann in einem selbst gewählten lokalen oder unterstützten Online-Ordner abgelegt werden. Der optionale Wetterabruf verwendet Open-Meteo. Der Anlagenverbund überträgt Daten verschlüsselt im lokalen WLAN.
 
@@ -12,13 +12,13 @@ Android 8 oder neuer; das Cockpit benötigt einen aktuellen Android-System-WebVi
 
 | Aktuelles Wetter neben unabhängigen Messkacheln | Noch nicht aktueller Diagrammstand |
 | --- | --- |
-| ![AutarPie 3.1.0: Cockpit mit aktuellem Wetter](docs/images/autarpie-3.1.0-dark.svg) | ![AutarPie 3.1.0: grauer Zwischenstand neben aktueller Kachel](docs/images/autarpie-3.1.0-light.svg) |
+| ![AutarPie 3.1.1: Cockpit mit aktuellem Wetter](docs/images/autarpie-3.1.1-dark.svg) | ![AutarPie 3.1.1: grauer Zwischenstand neben aktueller Kachel](docs/images/autarpie-3.1.1-light.svg) |
 
 | Optionaler Direkt-Liveempfang auf der Anzeige | Native Zentrale auf Android 11 |
 | --- | --- |
-| ![AutarPie 3.1.0: direkter Victron-Empfang](docs/images/autarpie-3.1.0-settings.svg) | ![AutarPie 3.1.0: native Zentrale](docs/images/autarpie-3.1.0-central.svg) |
+| ![AutarPie 3.1.1: direkter Victron-Empfang](docs/images/autarpie-3.1.1-settings.svg) | ![AutarPie 3.1.1: native Zentrale](docs/images/autarpie-3.1.1-central.svg) |
 
-Aufnahmen aus den Android- und Browser-Oberflächenprüfungen für 3.1.0 mit neutralen Geräte- und Versionsattrappen. Die Aufnahmen sind kein Funk- oder Hardwaretest. Eigene Farben und Layouts bleiben beim Update erhalten.
+Aufnahmen aus den Android- und Browser-Oberflächenprüfungen für 3.1.1 mit neutralen Geräte- und Versionsattrappen. Die Aufnahmen sind kein Funk- oder Hardwaretest. Eigene Farben und Layouts bleiben beim Update erhalten.
 
 ## Ein Cockpit, mehrere Anwendungen
 
@@ -52,6 +52,14 @@ Der SmartSolar-Lastausgang ist E-Scooter, Modellbau oder einem anderen Verbrauch
 Die **optionale Rollerautomatik ist zunächst aus**. Ladeziel, Wohnwagenreserve, Tagesziel, Überschussschwellen und Prognosereserve sind variabel. Ein aktives Anzeigehandy erstellt den zeitlich begrenzten Plan; die Zentrale kontrolliert direkte Abschaltbedingungen. Ein Schaltauftrag ist erst mit der tatsächlichen Geräteantwort bestätigt. Ohne gültigen Plan wird zum Ausschalten angefordert. BMS-Empfang allein beweist noch keinen eingesteckten Ladestecker.
 
 Bis zu drei 608PD erhalten getrennte Profile, private Kennungen und eigene Verbindungen. Suche und Einrichtung laufen am erfassenden Handy; Anzeigen bedienen den Ablauf. Die neue direkte Ersteinrichtung verlangt eine Bestätigung am Lader und muss am eigenen 608PD praktisch geprüft werden. Vorhandene Verbindungen aus der eigenen Bluetooth-Aufzeichnung bleiben erhalten. Unterstützt sind die nachgewiesenen Livefelder und das Beenden von Laden/Powerbank-Betrieb. App-Start ist zunächst auf das beobachtete **3S-LiPo-Profil 4,21 V/Zelle / 0,50 A** mit ausdrücklicher Profilbestätigung begrenzt. Powerbank und andere Profile am Gerät starten. Nicht belegte Temperatur-/USB-/CC-CV-Felder werden nicht erfunden.
+
+## Update 3.1.1
+
+**Die Anzeige fragt selbst erneut nach:** Bleibt eine sichtbare Kachel 45 Sekunden durchgehend grau, werden ihre Daten gezielt erneut angefordert. Weitere Versuche erfolgen frühestens nach 60 Sekunden. Bereits laufende Übertragungen werden nicht verdoppelt; aktuelle andere Kacheln bleiben erhalten. Farbig wird ein Feld erst bei bestätigtem aktuellem Datenstand.
+
+**Zentralensuche und Wetterabruf:** Fehlgeschlagene oder stumme Gerätesuchen werden nach erfolglosen Verbundabfragen begrenzt wiederholt. Alte Rückmeldungen dürfen die neue Suche nicht beeinflussen. Ein vorheriger Wetterfehler kann weitere Abrufe nicht mehr bis zum Ende des Cachefensters unterdrücken.
+
+**Zuerst die Zentrale, danach alle Anzeigen auf 3.1.1 aktualisieren.** Der Verbund und der passive Direkt-Liveempfang bleiben mit 3.1.0 kompatibel; für den vollständigen Umfang beide Seiten aktualisieren. Messwerte, Kopplungen und Layouts bleiben erhalten. Der nachgestellte Suchfehler ist belegt; ein vollständig behobener morgendlicher Hänger am echten G5/S20/S10 ist damit noch nicht zugesagt. [Bedienung und Prüfgrenzen](docs/changes-3.1.1.md).
 
 ## Update 3.1.0
 

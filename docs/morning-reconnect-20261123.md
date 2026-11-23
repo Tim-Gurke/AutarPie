@@ -1,4 +1,4 @@
-# Vorbereitet: Anzeige fragt bei dauerhaft grauen Feldern erneut nach
+# AutarPie 3.1.1: Anzeige fragt bei dauerhaft grauen Feldern erneut nach
 
 Ausgangspunkt ist ein frischer morgendlicher Start der Anzeige-App: Felder
 bleiben grau, ein erneuter Archivabruf hilft nicht zuverlässig. Erst ein weiteres
@@ -44,7 +44,7 @@ sowie eine native Nachstellung mit echten verschlüsselten TCP-Verbindungen und
 SQLite. Nur Androids NSD-Rückmeldungen werden im Verbindungstest gezielt
 vorgegeben; echte Handys, Funk, Hotspot und Startdauer werden damit nicht gemessen.
 Der Verbindungstest kann auch die veröffentlichte `LanSync`-Implementierung als
-Negativvergleich ausführen. Noch kein APK-Bau und keine Veröffentlichung.
+Negativvergleich ausführen. Der vorbereitete Umfang wurde am 23.11.2026 zum Bau und zur Veröffentlichung freigegeben.
 
 Abgeschlossen am 23.11.2026:
 
@@ -64,5 +64,4 @@ Abgeschlossen am 23.11.2026:
 
 Die Tests belegen diese nachgestellten Fehler und Korrekturen. Sie rekonstruieren
 nicht die komplette frühere Stunde Wartezeit und bestätigen noch keinen
-fehlerfreien Start auf Tims echten Handys. Der Quellstand ist vorbereitet;
-ein APK-Bau und die Veröffentlichung benötigen noch die Freigabe dieses Umfangs.
+fehlerfreien Start auf Tims echten Handys. Der Umfang für Version 3.1.1 ist am 23.11.2026 zum Bau und zur Veröffentlichung freigegeben.
