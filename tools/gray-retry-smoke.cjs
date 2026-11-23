@@ -14,6 +14,7 @@ const fixture=require('./autarpie-fixture.cjs'),C=require('../app/src/main/asset
   WattPit.lanState=()=>JSON.stringify({role:'viewer',id:'abcdefghijklmnopqrstuv',sourceEpoch:'retry-fixture',connected:true});
   WattPit.snapshot=()=>{const value=JSON.parse(original());value.historyRevision=1;value.lan=JSON.parse(WattPit.lanState());return JSON.stringify(value);};
   WattPit.refreshLan=()=>apFixture.refreshes++;
+  WattPit.dashboardHistory=()=>{throw Error('This scenario must use the asynchronous history bridge.');};
   apFixture.reply=(request,pending)=>{const [from,to]=request.args;window.onHistoryResult({id:request.id,data:{points:[{t:from,v:20},{t:to,v:148}],summary:{last:148,min:20,max:148},...(pending?{pending:true}:{})}});};
   WattPit.requestHistory=json=>{const request=JSON.parse(json);apFixture.requests.push(request);if(apFixture.hold&&request.method==='dashboardHistory'){apFixture.waiting=request;return;}setTimeout(()=>apFixture.reply(request,request.method==='dashboardHistory'),10);};
  },{version:1,lanTileVersion:1,energyFlowVersion:1,dischargeSignVersion:1,showMiniHistory:false,tiles:[live,chart],blockOrder:['tiles','history','record']});
