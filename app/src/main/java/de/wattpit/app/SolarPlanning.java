@@ -361,10 +361,12 @@ final class SolarPlanning extends SQLiteOpenHelper {
             .put("usageByPresence",presenceUsage).put("presenceRejections",true).put("learningVersion",2).put("yieldParts",yieldParts).put("solarEligible",solarEligible&&row.getLong("to")<=now)
             .put("usage",new JSONObject().put("wh",wh).put("duration",duration).put("excludedRollerMillis",excluded).put("estimatedDuration",estimated).put("estimatedWh",estimatedWh).put("measuredWh",wh-estimatedWh).put("rollerAdjustedDuration",rollerAdjustedMillis).put("rollerInputWh",rollerInputWh).put("reconstructedDuration",reconstructed).put("reconstructedWh",reconstructedWh).put("confirmedDuration",confirmedMillis).put("rejected",rejected).put("latest",latest));return true;
     }
+    volatile java.util.concurrent.Callable<Void> analysisCheckpoint;
+    private void checkpoint()throws Exception{if(analysis&&analysisCheckpoint!=null)analysisCheckpoint.call();}
     void request(){
         if(closed||AppRole.get(context).equals("central")||!analysis&&!displayActive)return;if(!busy.compareAndSet(false,true)){requestedAgain.set(true);return;}
         worker.execute(()->{JSONObject result=new JSONObject();try{
-            if(repository.archiveBusy)return;long now=analysis&&analysisUntil>0?analysisUntil:System.currentTimeMillis();String[] devices=devices();String source=source(devices());
+            checkpoint();if(repository.archiveBusy)return;long now=analysis&&analysisUntil>0?analysisUntil:System.currentTimeMillis();String[] devices=devices();String source=source(devices());
             JSONObject weather=new JSONObject(repository.prefs.getString("weatherCache","{}"));SQLiteDatabase db=getWritableDatabase();long since=now-7L*86400000;
             boolean confirmed=PlanningConfirmation.installApproved(db,source);PlanningConfirmation.Result confirmations=PlanningConfirmation.read(db,source,weather);
             repository.prefs.edit().putLong("planningWeatherSince",confirmations.weatherSince).apply();
@@ -408,14 +410,14 @@ final class SolarPlanning extends SQLiteOpenHelper {
             JSONArray archivedDays=historicalWeather.days(weather.optJSONObject("place"),weather.optString("timezone",TimeZone.getDefault().getID()));
             for(int i=0;i<archivedDays.length();i++){JSONObject day=archivedDays.getJSONObject(i);if(dated.add(day.getString("day")))days.put(day);}
             boolean weatherPending=weather.optInt("version")>=4&&!signature.equals(weather.optString("signature"));
-            JSONArray observations=weatherPending?new JSONArray():repository.db.planningObservations(since,now,observationWeather,devices[0],devices[1],changes);
+            checkpoint();JSONArray observations=weatherPending?new JSONArray():repository.db.planningObservations(since,now,observationWeather,devices[0],devices[1],changes);
             db.beginTransaction();try{
                 // Keep the last evidence until a complete replacement exists. Changed inputs
                 // suspend its use in forecasts instead of deleting irreplaceable knowledge.
                 if(analysis&&invalidationRanges!=null){for(int k=0;k<invalidationRanges.length();k++){JSONArray range=invalidationRanges.getJSONArray(k);retainForRebuild(db,source,range.getLong(0),range.getLong(1));}}
                 else if(analysis&&invalidateSince!=Long.MAX_VALUE)retainForRebuild(db,source,invalidateSince,now);
                 for(int i=0;i<observations.length();i++){
-                JSONObject row=observations.getJSONObject(i);long from=row.getLong("from"),to=row.getLong("to");
+                checkpoint();JSONObject row=observations.getJSONObject(i);long from=row.getLong("from"),to=row.getLong("to");
                 // A shorter rolling weather cache cannot erase an older valid
                 // observation before its missing historical weather is restored.
                 if(!dated.contains(row.getString("day"))&&!rollerCharging(specialUses,from,to))try(Cursor c=db.rawQuery("SELECT payload FROM observations WHERE source=? AND start=? AND end=?",new String[]{source,""+from,""+to})){if(c.moveToFirst()&&!new JSONObject(c.getString(0)).optBoolean("rebuildPending"))continue;}

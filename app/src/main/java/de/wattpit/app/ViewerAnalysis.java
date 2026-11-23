@@ -229,10 +229,12 @@ final class ViewerAnalysis {
             requireProtocol();long now=System.currentTimeMillis(),since=now-7L*86400000,previous=repo.prefs.getLong("analysis.learningRevision",0);
             JSONObject changes=get("analysisChanges",new JSONArray().put(previous));
             if(!changes.getString("epoch").equals(repo.prefs.getString("analysis.epoch","")))reset(changes.getString("epoch"));
+            JSONObject head=get("analysisMetadata",new JSONArray().put(Math.max(0,now-86400000)).put(now));
+            String modelVersions=learningVersions(head.getJSONObject("tables"));
             String signature=learningSignature();long learnedAt=repo.prefs.getLong("analysis.learnedAt",0);
             long today=java.time.Instant.ofEpochMilli(now).atZone(java.time.ZoneId.systemDefault()).toLocalDate().atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
             boolean corrected=changes.optLong("changedFrom")>0&&changes.optLong("changedFrom")<Math.min(today,learnedAt-86400000L);
-            if(learnedAt>0&&now>=learnedAt&&now-learnedAt<6L*3600000&&!corrected&&signature.equals(repo.prefs.getString("analysis.learningSignature",""))){
+            if(learnedAt>0&&now>=learnedAt&&now-learnedAt<6L*3600000&&!corrected&&signature.equals(repo.prefs.getString("analysis.learningSignature",""))&&modelVersions.equals(repo.prefs.getString("analysis.learningModelVersions",""))){
                 JSONObject saved=lan.cachedKnowledge();if(saved!=null){saved.put("stale",false).put("learningReused",true);completed=true;return saved;}
             }
             model(support(since),now);if(metadata.optLong("measurementAt")>0)now=metadata.getLong("measurementAt");since=planning.learningSince(now);
@@ -249,11 +251,11 @@ final class ViewerAnalysis {
             else model(support(since),now);
             raw(support(since),now);
             planning.analysisPresence(presence==null?metadata.getJSONArray("presenceHistory"):presence,metadata.getJSONObject("presence"),since,now);if(previous>0){if(changes.has("ranges"))planning.invalidateLearning(changes.getJSONArray("ranges"));else planning.invalidateLearning(correction);}
-            note("Verbrauch und Solarvorschau werden auf diesem Handy berechnet …");priority();long calculating=System.nanoTime();JSONObject result=planning.calculateKnowledge();priority();computeNanos+=System.nanoTime()-calculating;
+            note("Verbrauch und Solarvorschau werden auf diesem Handy berechnet …");priority();long calculating=System.nanoTime();planning.analysisCheckpoint=()->{priority();return null;};JSONObject result=planning.calculateKnowledge();priority();computeNanos+=System.nanoTime()-calculating;
             if(result.has("error"))throw new IOException(result.getString("error"));
             stamp(result);if(recovering&&!result.optBoolean("historyRecoveryPending"))planning.completeHistoricalRecovery(since,now);
-            repo.prefs.edit().putLong("analysis.learningRevision",changes.getLong("revision")).putLong("analysis.learnedAt",System.currentTimeMillis()).putString("analysis.learningSignature",signature).commit();completed=true;return result;
-        }finally{endTiming();this.progress=null;}
+            repo.prefs.edit().putLong("analysis.learningRevision",changes.getLong("revision")).putLong("analysis.learnedAt",System.currentTimeMillis()).putString("analysis.learningSignature",signature).putString("analysis.learningModelVersions",learningVersions(metadata.getJSONObject("tables"))).commit();completed=true;return result;
+        }finally{planning.analysisCheckpoint=null;endTiming();this.progress=null;}
     }
     private JSONObject dailyResults(long from,long to)throws Exception{
         JSONObject weather=new JSONObject(repo.prefs.getString("weatherCache","{}")).put("analysisTimezone",repo.prefs.getString("analysisTimezone",TimeZone.getDefault().getID()));
@@ -266,6 +268,7 @@ final class ViewerAnalysis {
         }
         return new JSONObject().put("days",days).put("accountingVersion",2).put("reusedDays",reused).put("calculatedDays",calculated);
     }
+    private static String learningVersions(JSONObject tables){return tables.optString("observations")+"|"+tables.optString("confirmed_setups")+"|"+tables.optString("archive_clock_state");}
     private String learningSignature()throws Exception{
         JSONObject snapshot=new JSONObject(lan.part("snapshot")),settings=snapshot.optJSONObject("settings");if(settings==null)settings=new JSONObject();
         return AnalysisResultCache.hash(new JSONArray().put(SolarPlanning.ALGORITHM).put(snapshot.optJSONArray("devices")).put(snapshot.opt("equipment")).put(settings.opt("solarSetup")).put(settings.opt("weatherPlace")).put(settings.opt("capacity")).put(settings.opt("specialUses")).put(new JSONObject(lan.part("presence")).optString("state")).toString());

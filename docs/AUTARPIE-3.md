@@ -122,3 +122,14 @@ Die portable Einstellungssicherung enthält auch Dashboards, Kurzwahlen und Ersc
 ## Direkter Liveempfang auf Anzeigehandys ab 3.1.0
 
 Unter **Einstellungen → Anlagenverbund → Verbund öffnen → Victron-Livewerte direkt empfangen** freiwillig einschalten. Zuerst die Zentrale auf 3.1.0 aktualisieren, damit die Anzeige ihre Sofortanzeige-Schlüssel geschützt übernehmen kann. Die Anzeige hört nur bei geöffneter App und in Bluetooth-Reichweite mit; die Zentrale bleibt für GPS, dauerhafte Erfassung, Archive, Roller-BMS und Steuerung zuständig. Ohne Direktpaket innerhalb von 15 Sekunden greift die Anzeige auf die verfügbaren Zentralwerte zurück. Alte Zentralwerte werden dadurch nicht frisch. [Einrichtung, Diagnose und Sicherung vor einem ROM-Wechsel](changes-3.1.0.md).
+
+
+## Ab 3.1.2: geöffnete Ansicht und gespeicherte Ergebnisse
+
+Eine geöffnete Kachel-Großansicht erhält Vorrang. Die Anzeige lädt ihre ausgewählten Verläufe und notwendigen Grundlagen; andere Diagramme und das Hintergrundlernen warten. Nach dem Schließen sind wieder die Kacheln des aktiven Dashboards an der Reihe. Hintergrundabgleiche geben an Datenpaketgrenzen nach.
+
+Berechnete Kurven bleiben im privaten Speicher des jeweiligen Handys erhalten und erscheinen nach erneutem Öffnen mit ihrem Datenstand. Solange der Abgleich aussteht, bleiben sie einschließlich Hintergrund grau. Identische Grundlagen verwenden das fertige Berechnungsergebnis erneut; die Tagesübersicht kann bereits berechnete Kalendertage einzeln übernehmen. Die letzten 48 Kurvenansichten werden bis zur Größenobergrenze zwischengespeichert; Rohdaten und Lernjournal bleiben davon unabhängig.
+
+Ein weiterhin passender Verbrauchslernstand wird bis zu sechs Stunden weiterverwendet. Neue aktuelle Shuntwerte und Wetterdaten aktualisieren die Prognose, ohne das Verbrauchslernen bei jeder Anzeige vollständig neu auszuführen. Ergänzte historische Lerndaten, ältere Messkorrekturen und geänderte Konfiguration können früheres Nachlernen erfordern.
+
+Unter **Roller → Rollerprofil** bestimmt „Als nicht aktuell markieren nach“ die reine Anzeigetoleranz in Sekunden, zwischen 1 und 300, Vorgabe 15. Innerhalb der Frist bleiben die letzten empfangenen Werte normal stehen; anschließend bleiben sie grau mit Datenstand erhalten. Neue BMS-Messungen ersetzen sie unmittelbar. Aufzeichnung, Ladeplanung und Schaltentscheidungen behalten ihre bisherigen Frischeprüfungen.

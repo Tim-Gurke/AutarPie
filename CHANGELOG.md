@@ -8,6 +8,12 @@ Das bestehende GitHub-Repository heißt jetzt [`Tim-Gurke/AutarPie`](https://git
 
 ## Aktuelles Update
 
+### 3.1.2 · Geöffnete Ansichten bevorzugen und berechnete Ergebnisse erhalten
+
+Großansichten erhalten Vorrang vor dem aktiven Dashboard und Hintergrundlernen. Ausstehende andere Abfragen werden beim Wechsel verworfen; laufende größere Abgleiche geben an einer Paketgrenze nach. Der private Kurvenspeicher zeigt vorhandene Werte nach Neustarts sofort mit Datenstand. Ein zusätzlicher nativer Ergebnisspeicher erkennt unveränderte Grundlagen und vermeidet deren erneute Berechnung. Die Tagesübersicht führt betroffene Kalendertage einzeln nach.
+
+Der Verbrauchslernstand wird bei passenden Grundlagen bis zu sechs Stunden wiederverwendet; Konfigurationsänderungen, ältere Messkorrekturen und ergänzte historische Lernstände lösen nötige Aktualisierungen früher aus. Diagramme laden keine vollständigen Beobachtungs- und Vorhersagetabellen für das Lernen. Im Rollerprofil ist die reine Anzeige-Toleranz zwischen 1 und 300 Sekunden einstellbar, Vorgabe 15 Sekunden; die bisherigen Frischegrenzen der Steuerung und Aufzeichnung bleiben erhalten. [Installation, Bedienung und Prüfgrenzen](docs/changes-3.1.2.md).
+
 ### 3.1.1 · Automatische Nachfrage bei grauen Feldern und erneute Zentralensuche
 
 Am 23.11.2026 für den vorbereiteten Umfang ausdrücklich zum Bau und zur Veröffentlichung freigegeben. Sichtbare Kacheln fragen nach 45 Sekunden durchgehend grauer Anzeige gezielt erneut nach, weitere Versuche erfolgen frühestens nach 60 Sekunden. Bereits laufende gleiche Übertragungen werden nicht verdoppelt, gleichzeitige Zentralenabfragen gebündelt. Vorhandene Kurven und die Grau-Kennzeichnung bleiben bis zum bestätigten aktuellen Ergebnis erhalten.

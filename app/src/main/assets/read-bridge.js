@@ -24,7 +24,7 @@
       }catch(_){}
     }
     persist(){
-      try{let entries=[...this.cache.values()].filter(e=>e.data&&!e.error).slice(-48).map(e=>({key:e.key,method:e.method,args:e.args,scope:e.scope,at:e.at,startedAt:e.startedAt,data:e.data})),value;
+      try{let entries=[...this.cache.values()].filter(e=>e.data).slice(-48).map(e=>({key:e.key,method:e.method,args:e.args,scope:e.scope,at:e.at,startedAt:e.startedAt,data:e.data})),value;
         do{value=JSON.stringify({version:1,owner:this.owner,entries});if(value.length<=1800000)break;entries.shift();}while(entries.length);
         this.storage?.setItem('autarpie-derived-history-v1',value);
       }catch(_){}
