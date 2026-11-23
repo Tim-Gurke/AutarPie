@@ -84,6 +84,15 @@ public final class LearningMigrationProof {
             nextPlan.remember(new JSONArray().put(new JSONObject().put("key",solar).put("systemKey",system).put("from",predictionFrom).put("to",predictionFrom+HOUR).put("issued",now).put("wh",100)).toString());nextPlan.flushInputs();
             Set<String> imported=forecastIds(diagnostic.getJSONArray("forecasts"));
             for(LanSync display:new LanSync[]{one,two}){JSONArray current=display.analysisKnowledge(v->{}).getJSONArray("forecasts");check(current.length()==67&&forecastIds(current).containsAll(imported),"a fresh forecast reaches the viewer without displacing any of the 66 imported original comparisons");}
+            JSONObject checkpoint=one.analysisKnowledge(v->{});long checkpointAt=checkpoint.getLong("updated");
+            Field readingsField=Repository.class.getDeclaredField("latest");readingsField.setAccessible(true);
+            @SuppressWarnings("unchecked") Map<String,de.wattpit.app.core.Reading> readings=(Map<String,de.wattpit.app.core.Reading>)readingsField.get(next);
+            de.wattpit.app.core.Reading current=new de.wattpit.app.core.Reading();current.device="AA:11:22:33:44:55";current.kind="solar";current.timestamp=now;current.solar=123.0;readings.put(current.device,current);
+            Field foundField=Repository.class.getDeclaredField("found");foundField.setAccessible(true);@SuppressWarnings("unchecked") Map<String,JSONObject> found=(Map<String,JSONObject>)foundField.get(next);found.put(current.device,new JSONObject().put("seen",now).put("rssi",-41));
+            java.lang.reflect.Method refresh=LanSync.class.getDeclaredMethod("refresh");refresh.setAccessible(true);refresh.invoke(one);
+            JSONObject refreshedSnapshot=new JSONObject(one.part("snapshot"));check(refreshedSnapshot.getJSONArray("devices").getJSONObject(0).getLong("seen")==now,"fresh device timestamps really reach the paired viewer over encrypted TCP");
+            JSONObject reused=one.analysisKnowledge(v->{});
+            check(reused.optBoolean("learningReused")&&reused.getLong("updated")==checkpointAt&&reused.getJSONArray("observations").length()==66,"fresh live values and RSSI reuse the saved consumption checkpoint without learning again");
             long revision=nextPlan.modelRevision(),observed=count(nextDb,"observations");HistoryMigration.Result repeated=HistoryMigration.restore(next,nextPlan,nextLedger,diagnostic);
             check(repeated.inserted==0&&repeated.updated==0&&nextPlan.modelRevision()==revision,"repeating the complete learning import is idempotent, including confirmation-weather completion");
             JSONObject legacy=new JSONObject(diagnostic.toString()).put("learningAlgorithm",1690);legacy.remove("mobileDisplay");

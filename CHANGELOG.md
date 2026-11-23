@@ -8,6 +8,10 @@ Das bestehende GitHub-Repository heißt jetzt [`Tim-Gurke/AutarPie`](https://git
 
 ## Aktuelles Update
 
+### 3.1.3 · Live-Empfang löst kein unnötiges Verbrauchslernen aus
+
+Die Gültigkeitsprüfung des gespeicherten Verbrauchslernstands berücksichtigt nur ausgewählte Geräte und relevante Anlagen-/Standort-/Planungsgrundlagen. Empfangszeit, RSSI, Gerätename, Verbindungsstatus und neu aufgelöste Ortsnamen ändern den Prüfwert nicht mehr. Damit kann eine laufende Liveaufzeichnung den passenden sechs Stunden gültigen Lernstand weiterverwenden. Ein nativer Regressionstest über tatsächliches verschlüsseltes TCP bestätigt neue sichtbare Gerätezeitstempel bei unverändertem Lernstand und Berechnungszeitpunkt. Die übrigen Funktionen aus 3.1.2 bleiben enthalten. [Updateweg und Prüfgrenzen](docs/changes-3.1.3.md).
+
 ### 3.1.2 · Geöffnete Ansichten bevorzugen und berechnete Ergebnisse erhalten
 
 Großansichten erhalten Vorrang vor dem aktiven Dashboard und Hintergrundlernen. Ausstehende andere Abfragen werden beim Wechsel verworfen; laufende größere Abgleiche geben an einer Paketgrenze nach. Der private Kurvenspeicher zeigt vorhandene Werte nach Neustarts sofort mit Datenstand. Ein zusätzlicher nativer Ergebnisspeicher erkennt unveränderte Grundlagen und vermeidet deren erneute Berechnung. Die Tagesübersicht führt betroffene Kalendertage einzeln nach.

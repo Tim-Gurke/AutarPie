@@ -1,10 +1,10 @@
-# AutarPie 3.1.2
+# AutarPie 3.1.3
 
 ![AutarPie Ressourcen-Kreislauf](app/src/main/assets/brand.svg)
 
 **Das lokale Cockpit für autarkes Leben.** Solar und Stromverteilung, Wohnwagenakku, E-Scooter, Modellbau, Gas und Wasser in einer gemeinsamen App. AutarPie führt **Watt’n’Pit und WohnPit** weiter.
 
-**[AutarPie 3.1.2 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.1.2/AutarPie-v3.1.2.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.1.2.md) · [Vollständige Versionshistorie](CHANGELOG.md)
+**[AutarPie 3.1.3 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.1.3/AutarPie-v3.1.3.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.1.3.md) · [Vollständige Versionshistorie](CHANGELOG.md)
 
 Android 8 oder neuer; das Cockpit benötigt einen aktuellen Android-System-WebView. Kein Pflichtkonto, keine Werbung. Mess- und Lerndaten werden lokal gespeichert; eine freiwillige verschlüsselte Sicherung kann in einem selbst gewählten lokalen oder unterstützten Online-Ordner abgelegt werden. Der optionale Wetterabruf verwendet Open-Meteo. Der Anlagenverbund überträgt Daten verschlüsselt im lokalen WLAN.
 
@@ -12,9 +12,9 @@ Android 8 oder neuer; das Cockpit benötigt einen aktuellen Android-System-WebVi
 
 | Bevorzugter Solar-Tagesverlauf | Einstellbare BMS-Anzeigegrenze |
 | --- | --- |
-| ![AutarPie 3.1.2: Großansicht des Solarverlaufs](docs/images/autarpie-3.1.2-dark.svg) | ![AutarPie 3.1.2: BMS-Anzeigegrenze im Rollerprofil](docs/images/autarpie-3.1.2-settings.svg) |
+| ![AutarPie 3.1.3: Großansicht des Solarverlaufs](docs/images/autarpie-3.1.3-dark.svg) | ![AutarPie 3.1.3: BMS-Anzeigegrenze im Rollerprofil](docs/images/autarpie-3.1.3-settings.svg) |
 
-![AutarPie 3.1.2: native Rollenauswahl auf Android 11](docs/images/autarpie-3.1.2-central.svg)
+![AutarPie 3.1.3: native Rollenauswahl auf Android 11](docs/images/autarpie-3.1.3-central.svg)
 
 Die Browseransichten verwenden neutrale Beispielmesswerte; die native Ersteinrichtung wurde im Android-Emulator aufgenommen.
 
@@ -50,6 +50,12 @@ Der SmartSolar-Lastausgang ist E-Scooter, Modellbau oder einem anderen Verbrauch
 Die **optionale Rollerautomatik ist zunächst aus**. Ladeziel, Wohnwagenreserve, Tagesziel, Überschussschwellen und Prognosereserve sind variabel. Ein aktives Anzeigehandy erstellt den zeitlich begrenzten Plan; die Zentrale kontrolliert direkte Abschaltbedingungen. Ein Schaltauftrag ist erst mit der tatsächlichen Geräteantwort bestätigt. Ohne gültigen Plan wird zum Ausschalten angefordert. BMS-Empfang allein beweist noch keinen eingesteckten Ladestecker.
 
 Bis zu drei 608PD erhalten getrennte Profile, private Kennungen und eigene Verbindungen. Suche und Einrichtung laufen am erfassenden Handy; Anzeigen bedienen den Ablauf. Die neue direkte Ersteinrichtung verlangt eine Bestätigung am Lader und muss am eigenen 608PD praktisch geprüft werden. Vorhandene Verbindungen aus der eigenen Bluetooth-Aufzeichnung bleiben erhalten. Unterstützt sind die nachgewiesenen Livefelder und das Beenden von Laden/Powerbank-Betrieb. App-Start ist zunächst auf das beobachtete **3S-LiPo-Profil 4,21 V/Zelle / 0,50 A** mit ausdrücklicher Profilbestätigung begrenzt. Powerbank und andere Profile am Gerät starten. Nicht belegte Temperatur-/USB-/CC-CV-Felder werden nicht erfunden.
+
+## Update 3.1.3
+
+**Verbrauchslernstand bei normalen Live-Updates erhalten:** Empfangszeit, RSSI und Verbindungsstatus gelten jetzt als laufende Messinformationen. Sie lösen kein erneutes Verbrauchslernen aus. Auch ein neu aufgelöster Name desselben GPS-Orts ändert die Lerngrundlagen nicht. Ausgewählte Geräte, tatsächliche Standortkoordinaten und relevante Einstellungen bleiben für die Gültigkeit maßgeblich. Ein passender Lernstand kann so bis zu sechs Stunden weiterverwendet werden, während aktuelle Shunt- und Wetterdaten die Akku-Prognose aktualisieren. Die Funktionen aus 3.1.2 bleiben enthalten.
+
+**Zuerst G5/Zentrale, danach alle Anzeigen auf 3.1.3 aktualisieren.** Über die bestehende Installation installieren. Daten, Kopplungen und Layouts bleiben erhalten. Der Verbund bleibt mit 3.1.2 kompatibel. [Updateweg und Prüfgrenzen](docs/changes-3.1.3.md).
 
 ## Update 3.1.2
 

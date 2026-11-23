@@ -16,6 +16,18 @@ public final class QuickStartProof {
         LanSyncProof.TestContext context=new LanSyncProof.TestContext(root);Repository repo=LanSyncProof.repository(context);
         JSONArray devices=new JSONArray("[{\"kind\":\"solar\",\"mac\":\"fixture-solar\"},{\"kind\":\"shunt\",\"mac\":\"fixture-shunt\"}]");repo.prefs.edit().putString("devices",devices.toString()).commit();
         String source=SolarPlanning.selectedSource(devices),epoch=HistoryExchange.epoch(repo.db),name="fixture-planning.db";JSONObject original=data(source,now);
+        JSONObject signatureSnapshot=new JSONObject().put("devices",new JSONArray(devices.toString())).put("equipment",new JSONObject().put("groups",new JSONArray())).put("settings",new JSONObject().put("capacity",100).put("solarSetup",new JSONObject().put("usageMode","auto")).put("weatherPlace",new JSONObject().put("latitude",50).put("longitude",10).put("name","First label")));
+        JSONObject home=new JSONObject().put("state","home");String stable=ViewerAnalysis.learningSignature(signatureSnapshot,home);
+        signatureSnapshot.getJSONArray("devices").getJSONObject(0).put("seen",now).put("rssi",-30).put("error","temporary gap").put("bondState",12).put("name","Renamed");
+        check(stable.equals(ViewerAnalysis.learningSignature(signatureSnapshot,home)),"live device timestamps, RSSI and status cannot invalidate the saved consumption model");
+        signatureSnapshot.getJSONObject("settings").getJSONObject("weatherPlace").put("name","Resolved label").put("accuracy",5).put("updated",now);
+        check(stable.equals(ViewerAnalysis.learningSignature(signatureSnapshot,home)),"resolving the same GPS place name does not restart consumption learning");
+        JSONObject changedSignature=new JSONObject(signatureSnapshot.toString());changedSignature.getJSONArray("devices").getJSONObject(0).put("mac","replacement-solar");
+        check(!stable.equals(ViewerAnalysis.learningSignature(changedSignature,home)),"changing the actual selected device source invalidates the saved learning checkpoint");
+        changedSignature=new JSONObject(signatureSnapshot.toString());changedSignature.getJSONObject("settings").getJSONObject("weatherPlace").put("latitude",51);
+        check(!stable.equals(ViewerAnalysis.learningSignature(changedSignature,home)),"an actual site change remains relevant to consumption learning");
+        changedSignature=new JSONObject(signatureSnapshot.toString());changedSignature.getJSONObject("settings").getJSONObject("solarSetup").put("usageMode","manual");
+        check(!stable.equals(ViewerAnalysis.learningSignature(changedSignature,home))&&!stable.equals(ViewerAnalysis.learningSignature(signatureSnapshot,new JSONObject().put("state","away"))),"real planning and presence changes still invalidate the checkpoint");
         check(RollerStore.checked(new JSONObject()).getDouble("displayFreshSeconds")==15,"existing roller profiles receive a fifteen-second display tolerance");
         boolean badTolerance=false;try{RollerStore.checked(new JSONObject().put("displayFreshSeconds",301));}catch(IllegalArgumentException expected){badTolerance=true;}
         check(badTolerance,"invalid display tolerances are rejected without changing BMS control freshness");

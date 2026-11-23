@@ -9,7 +9,7 @@ const fixture=require('./autarpie-fixture.cjs'),wait=require('./browser-wait.cjs
  await page.addInitScript(()=>{
   apFixture.board.showMiniHistory=false;apFixture.board.tiles=apFixture.board.tiles.slice(0,3).filter(t=>t.metric!=='soc');
   for(const tile of apFixture.board.tiles){tile.type='chart';tile.period={mode:'today',aggregate:'last'};}
-  apFixture.requests=[];apFixture.focus=[];WattPit.appVersion=()=>'3.1.2';WattPit.isLanViewer=()=>true;
+  apFixture.requests=[];apFixture.focus=[];WattPit.appVersion=()=>'3.1.3';WattPit.isLanViewer=()=>true;
   WattPit.lanState=()=>JSON.stringify({id:'fixture-priority-plant',sourceEpoch:'fixture-epoch',connected:true});
   WattPit.requestHistory=json=>apFixture.requests.push(JSON.parse(json));WattPit.setReadFocus=(focus,detail)=>apFixture.focus.push({focus,detail});
   WattPit.saveRoller=json=>{apFixture.roller=JSON.parse(json);return '';};
@@ -27,17 +27,17 @@ const fixture=require('./autarpie-fixture.cjs'),wait=require('./browser-wait.cjs
   await page.evaluate(()=>{AutarPieApp.poll();AutarPieApp.poll();AutarPieApp.poll();});await page.waitForTimeout(250);
   assert.equal(await page.evaluate(()=>apFixture.requests.length),before,'a detail must not start other dashboard or learning reads');
   assert.equal(await page.locator('#detailReading .detail-number').textContent(),'42');
-  await page.screenshot({path:path.join(out,'autarpie-3.1.2-dark.png'),animations:'disabled'});
+  await page.screenshot({path:path.join(out,'autarpie-3.1.3-dark.png'),animations:'disabled'});
   await page.locator('#detailClose').click();await page.waitForTimeout(200);
   await page.reload();await wait(page,()=>apFixture.requests.length>0);
   const solar=page.locator('[data-tile="sample-1"]');await wait(page,()=>document.querySelector('[data-tile="sample-1"] .tile-number')?.textContent.includes('42'));
   assert.ok((await solar.getAttribute('class')).includes('data-outdated'),'restored values keep the pending-data marker');
   await page.evaluate(()=>{AutarPieUI.appearance.theme='light';AutarPieUI.applyAppearance();});
-  await page.screenshot({path:path.join(out,'autarpie-3.1.2-light.png'),animations:'disabled'});
+  await page.screenshot({path:path.join(out,'autarpie-3.1.3-light.png'),animations:'disabled'});
   await page.evaluate(()=>AutarPieApp.roller.configure());await page.locator('#roller-displayFreshSeconds').fill('25');await page.locator('#rollerSave').click();
   await wait(page,()=>apFixture.roller?.displayFreshSeconds===25);
   await page.evaluate(()=>AutarPieApp.roller.configure());assert.equal(await page.locator('#roller-displayFreshSeconds').inputValue(),'25');
-  await page.locator('#roller-displayFreshSeconds').scrollIntoViewIfNeeded();await page.evaluate(()=>{document.getElementById('toast').hidden=true;const status=document.getElementById('plantActionStatus');if(status)status.hidden=true;});await page.screenshot({path:path.join(out,'autarpie-3.1.2-settings.png'),animations:'disabled'});
+  await page.locator('#roller-displayFreshSeconds').scrollIntoViewIfNeeded();await page.evaluate(()=>{document.getElementById('toast').hidden=true;const status=document.getElementById('plantActionStatus');if(status)status.hidden=true;});await page.screenshot({path:path.join(out,'autarpie-3.1.3-settings.png'),animations:'disabled'});
   assert.deepEqual(errors,[]);console.log('PASS actual detail priority, persisted curve after reload, gray data status, and saved BMS display tolerance.');
  }catch(error){await page.screenshot({path:path.join(out,'priority-failure.png'),fullPage:true}).catch(()=>{});console.error(errors);throw error;}finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

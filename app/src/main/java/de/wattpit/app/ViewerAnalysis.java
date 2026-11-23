@@ -275,9 +275,15 @@ final class ViewerAnalysis {
         return new JSONObject().put("days",days).put("accountingVersion",2).put("reusedDays",reused).put("calculatedDays",calculated);
     }
     private static String learningVersions(JSONObject tables){return tables.optString("observations")+"|"+tables.optString("confirmed_setups")+"|"+tables.optString("archive_clock_state");}
-    private String learningSignature()throws Exception{
-        JSONObject snapshot=new JSONObject(lan.part("snapshot")),settings=snapshot.optJSONObject("settings");if(settings==null)settings=new JSONObject();
-        return AnalysisResultCache.hash(new JSONArray().put(SolarPlanning.ALGORITHM).put(snapshot.optJSONArray("devices")).put(snapshot.opt("equipment")).put(settings.opt("solarSetup")).put(settings.opt("weatherPlace")).put(settings.opt("capacity")).put(settings.opt("specialUses")).put(new JSONObject(lan.part("presence")).optString("state")).toString());
+    private String learningSignature()throws Exception{return learningSignature(new JSONObject(lan.part("snapshot")),new JSONObject(lan.part("presence")));}
+    static String learningSignature(JSONObject snapshot,JSONObject presence)throws Exception{
+        JSONObject settings=snapshot.optJSONObject("settings");if(settings==null)settings=new JSONObject();
+        JSONArray devices=snapshot.optJSONArray("devices");if(devices==null)devices=new JSONArray();
+        JSONObject place=settings.optJSONObject("weatherPlace"),site=new JSONObject();
+        if(place!=null)for(String key:new String[]{"latitude","longitude"})if(place.has(key))site.put(key,place.get(key));
+        // Live timestamps, RSSI, connection errors and labels are observations,
+        // not changes to the learning configuration. Keep only the selected source.
+        return AnalysisResultCache.hash(new JSONArray().put(SolarPlanning.ALGORITHM).put(SolarPlanning.selectedSource(devices)).put(snapshot.opt("equipment")).put(settings.opt("solarSetup")).put(site).put(settings.opt("capacity")).put(settings.opt("specialUses")).put(presence.optString("state")).toString());
     }
     synchronized JSONObject diagnostics()throws Exception{return new JSONObject().put("downloadedRows",downloadedRows).put("downloadedBlocks",downloadedBlocks).put("epoch",epoch).put("revision",rawRevision).put("timing",lastTiming);}
     synchronized void rebuildHistory()throws Exception{planning.rebuildHistory();repo.prefs.edit().remove("analysis.learnedAt").commit();}
