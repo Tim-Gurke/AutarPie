@@ -13,6 +13,7 @@ const fixture=require('./autarpie-fixture.cjs'),wait=require('./browser-wait.cjs
   WattPit.lanState=()=>JSON.stringify({id:'fixture-priority-plant',sourceEpoch:'fixture-epoch',connected:true});
   WattPit.requestHistory=json=>apFixture.requests.push(JSON.parse(json));WattPit.setReadFocus=(focus,detail)=>apFixture.focus.push({focus,detail});
   WattPit.saveRoller=json=>{apFixture.roller=JSON.parse(json);return '';};
+  WattPit.requestPlantCommand=json=>{const q=JSON.parse(json);if(q.action==='saveRoller')WattPit.saveRoller(q.args[0]);setTimeout(()=>onPlantResult({id:q.id,ok:true,revision:1}),1);};
   const roller=WattPit.rollerSnapshot;WattPit.rollerSnapshot=()=>{const value=JSON.parse(roller());if(apFixture.roller)value.profile=apFixture.roller;return JSON.stringify(value);};
  });
  const out=process.env.WATTPIT_SCREENSHOT_DIR||'app/build/reports/priority-cache';fs.mkdirSync(out,{recursive:true});
