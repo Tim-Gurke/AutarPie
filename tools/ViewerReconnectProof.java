@@ -38,7 +38,11 @@ public final class ViewerReconnectProof {
             LanSyncProof.TestContext display=new LanSyncProof.TestContext(root.resolve("display"));Repository local=LanSyncProof.repository(display);
             local.prefs.edit().putString("dashboard-v1","local-layout-must-stay").commit();
             paired=LanSyncProof.sync(display);paired.join(code);LanSyncProof.close(paired);paired=null;
-            host.stopHost();host.startHost();int nextPort=((ServerSocket)field("server").get(host)).getLocalPort();
+            host.stopHost();
+            // A competing local listener makes the real host use its existing
+            // ephemeral-port fallback. Release the old port before reconnecting.
+            try(ServerSocket occupied=new ServerSocket()){occupied.setReuseAddress(true);occupied.bind(new InetSocketAddress(oldPort));host.startHost();}
+            int nextPort=((ServerSocket)field("server").get(host)).getLocalPort();
             check(nextPort!=oldPort,"central restart changes its TCP port while the saved pairing remains unchanged");
             viewer=LanSyncProof.sync(display);Object identity=viewer.identity();
             NsdManager nsd=new NsdManager();nsd.answer=service(config,nextPort);nsd.failures=1;field("nsd").set(viewer,nsd);

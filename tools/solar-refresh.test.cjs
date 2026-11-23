@@ -49,6 +49,14 @@ function knowledgeFixture(){
  const data=(wh=250)=>({source:'test-source',updated:Date.now()-86400000,observations:[{wh}],forecasts:[],analysis:{plant:snapshot.lan.id,epoch:snapshot.lan.sourceEpoch}});
  return {plan,snapshot,requests,data,elements,cached:(value,id=requests.at(-1))=>context.window.onSolarCachedData({id,data:value}),fresh:value=>context.window.onSolarPlanData(value)};
 }
+test('a gray-weather retry requests provisional knowledge again without altering its freshness',()=>{
+ const f=knowledgeFixture();f.cached(f.data());f.plan.lastRequest=Date.now();f.plan.retryKnowledge();
+ assert.equal(f.plan.lastRequest,0);assert.equal(f.plan.knowledgeState,'cached');assert.equal(f.plan.knowledge.stale,true);assert.equal(f.plan.knowledge.observations[0].wh,250);
+});
+test('a gray-weather retry does not invalidate already current knowledge',()=>{
+ const f=knowledgeFixture();f.fresh(f.data());const at=Date.now();f.plan.lastRequest=at;f.plan.retryKnowledge();
+ assert.equal(f.plan.lastRequest,at);assert.equal(f.plan.knowledgeState,'ready');assert.equal(f.plan.knowledge.stale,undefined);
+});
 test('local knowledge is requested while archive and initial network histories are still pending',()=>{
  const f=knowledgeFixture();assert.equal(f.requests.length,1);assert.equal(f.plan.knowledgeState,'loading');const panel=f.plan.learningPanel({slotStats:[]});assert.match(panel,/Lernstand wird geladen/);assert.doesNotMatch(panel,/0 ausgewertete|Noch keine eigene/);
  f.cached(f.data());assert.equal(f.plan.knowledge.observations[0].wh,250);assert.equal(f.plan.knowledgeState,'cached');assert.match(f.plan.knowledgeStatus(),/Bisheriger Lernstand.*wird aktualisiert/);f.plan.render();assert.equal(f.requests.length,1);
