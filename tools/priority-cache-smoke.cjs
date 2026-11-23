@@ -17,7 +17,7 @@ const fixture=require('./autarpie-fixture.cjs'),wait=require('./browser-wait.cjs
   const roller=WattPit.rollerSnapshot;WattPit.rollerSnapshot=()=>{const value=JSON.parse(roller());if(apFixture.roller)value.profile=apFixture.roller;return JSON.stringify(value);};
  });
  const out=process.env.WATTPIT_SCREENSHOT_DIR||'app/build/reports/priority-cache';fs.mkdirSync(out,{recursive:true});
- async function answer(){await page.evaluate(()=>{const q=apFixture.requests.at(-1),now=Date.now();onHistoryResult({id:q.id,data:{points:[{t:now-1000,v:42,min:42,max:42,n:1}],summary:{last:42,avg:42,min:42,max:42,coverage:1,from:q.args[0],to:q.args[1]}}});});}
+ async function answer(){await page.evaluate(()=>{const q=apFixture.requests.at(-1),now=Date.now(),voltage=q.args[2]==='voltage',last=voltage?13.1:42,points=Array.from({length:13},(_,i)=>{const v=voltage?13.1:42*i/12;return {t:q.args[0]+(now-1000-q.args[0])*i/12,v,min:v,max:v,n:1};});onHistoryResult({id:q.id,data:{points,summary:{last,avg:voltage?13.1:21,min:voltage?13.1:0,max:last,coverage:1,from:q.args[0],to:q.args[1]}}});});}
  try{
   await page.goto('file://'+path.resolve('app/src/main/assets/index.html'));await wait(page,()=>apFixture.requests.length>0);
   await answer();await page.waitForTimeout(200);await answer();await page.waitForTimeout(200);
@@ -37,7 +37,7 @@ const fixture=require('./autarpie-fixture.cjs'),wait=require('./browser-wait.cjs
   await page.evaluate(()=>AutarPieApp.roller.configure());await page.locator('#roller-displayFreshSeconds').fill('25');await page.locator('#rollerSave').click();
   await wait(page,()=>apFixture.roller?.displayFreshSeconds===25);
   await page.evaluate(()=>AutarPieApp.roller.configure());assert.equal(await page.locator('#roller-displayFreshSeconds').inputValue(),'25');
-  await page.screenshot({path:path.join(out,'autarpie-3.1.2-settings.png'),animations:'disabled'});
+  await page.locator('#roller-displayFreshSeconds').scrollIntoViewIfNeeded();await page.evaluate(()=>{document.getElementById('toast').hidden=true;const status=document.getElementById('plantActionStatus');if(status)status.hidden=true;});await page.screenshot({path:path.join(out,'autarpie-3.1.2-settings.png'),animations:'disabled'});
   assert.deepEqual(errors,[]);console.log('PASS actual detail priority, persisted curve after reload, gray data status, and saved BMS display tolerance.');
  }catch(error){await page.screenshot({path:path.join(out,'priority-failure.png'),fullPage:true}).catch(()=>{});console.error(errors);throw error;}finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});
