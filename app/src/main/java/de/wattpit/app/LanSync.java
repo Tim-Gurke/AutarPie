@@ -26,6 +26,7 @@ final class LanSync {
     private final NsdManager nsd;
     private final ScheduledExecutorService client=Executors.newSingleThreadScheduledExecutor();
     private final AtomicBoolean refreshing=new AtomicBoolean();
+    private final AtomicBoolean refreshQueued=new AtomicBoolean();
     private final Map<String,JSONObject> peers=new ConcurrentHashMap<>();
     private final LinkedHashMap<String,Boolean> requests=new LinkedHashMap<>();
     private volatile JSONObject config,remote=new JSONObject();
@@ -210,7 +211,7 @@ final class LanSync {
         if(!prefs.edit().putString("controlReceipts",kept.toString()).commit())throw new IOException();
         return read("bundle",new JSONArray());
     }
-    synchronized void refreshNow(){if(refreshAllowed()){long epoch=refreshEpoch;client.execute(()->refresh(epoch));}}
+    synchronized void refreshNow(){if(refreshAllowed()&&refreshQueued.compareAndSet(false,true)){long epoch=refreshEpoch;client.execute(()->{refreshQueued.set(false);refresh(epoch);});}}
     /** Explicit snapshots are independent of the automatic display refresh loop. */
     private void refresh(){refresh(-1);}
     private void refresh(long epoch){

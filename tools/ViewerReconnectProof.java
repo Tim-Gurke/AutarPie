@@ -51,6 +51,13 @@ public final class ViewerReconnectProof {
             due(viewer);viewer.refreshNow();drain(viewer);drain(viewer);
             check(nsd.searches.size()==2&&viewer.state().optBoolean("connected"),"an open viewer retries the failed first search and reconnects without an app restart");
             check(viewer.identity()==identity&&new JSONObject(viewer.snapshot()).getJSONObject("weather").getString("proof").equals("new central data"),"the same authenticated pairing receives the current weather snapshot");
+            ((ScheduledFuture<?>)field("refreshTask").get(viewer)).cancel(false);
+            ScheduledExecutorService client=(ScheduledExecutorService)field("client").get(viewer);CountDownLatch entered=new CountDownLatch(1),release=new CountDownLatch(1);
+            client.execute(()->{entered.countDown();try{release.await();}catch(InterruptedException interrupted){Thread.currentThread().interrupt();}});
+            if(!entered.await(8,TimeUnit.SECONDS))throw new AssertionError("client barrier");
+            java.util.Map<?,?> hostRequests=(java.util.Map<?,?>)field("requests").get(host);int before; synchronized(hostRequests){before=hostRequests.size();}
+            try{for(int i=0;i<200;i++)viewer.refreshNow();}finally{release.countDown();}drain(viewer);
+            synchronized(hostRequests){check(hostRequests.size()==before+1,"many simultaneous gray-field refresh requests coalesce into one queued central snapshot");}
             NsdManager.DiscoveryListener old=nsd.searches.get(0),current=(NsdManager.DiscoveryListener)field("discovery").get(viewer);
             old.onStartDiscoveryFailed("_wattpit._tcp.",0);
             check(field("discovery").get(viewer)==current,"a delayed failure from the first search cannot stop the replacement search");
