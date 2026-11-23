@@ -30,8 +30,11 @@ public final class ViewerReconnectProof {
         check(!WeatherClient.current(cached,"same",7,"",now+6*3600000L)&&!WeatherClient.current(cached,"changed",7,"",now),"old weather and a changed solar setup cannot suppress a new weather request");
         LanSyncProof.TestContext central=new LanSyncProof.TestContext(root.resolve("central"));Repository repo=LanSyncProof.repository(central);repo.running=true;
         repo.prefs.edit().putString("weatherCache",new JSONObject().put("version",5).put("updated",System.currentTimeMillis()).put("proof","new central data").toString()).commit();
-        LanSync host=LanSyncProof.sync(central),paired=null,viewer=null;boolean passed=false;
+        LanSync host=LanSyncProof.sync(central),paired=null,viewer=null;boolean passed=false;ServerSocket occupied=new ServerSocket();
         try{
+            // Reserve the preferred port before startup, rather than rebinding
+            // a just-closed endpoint that can still have accepted sockets.
+            occupied.setReuseAddress(true);try{occupied.bind(new InetSocketAddress(28760));}catch(BindException alreadyUsed){occupied.close();}
             host.create("Morning reconnect fixture");host.startHost();JSONObject config=(JSONObject)field("config").get(host);
             int oldPort=((ServerSocket)field("server").get(host)).getLocalPort();
             String code=LanWire.encodeInvitation(new JSONObject(config.toString()).put("port",oldPort).put("addresses",new JSONArray().put("127.0.0.1")).toString());
@@ -39,9 +42,7 @@ public final class ViewerReconnectProof {
             local.prefs.edit().putString("dashboard-v1","local-layout-must-stay").commit();
             paired=LanSyncProof.sync(display);paired.join(code);LanSyncProof.close(paired);paired=null;
             host.stopHost();
-            // A competing local listener makes the real host use its existing
-            // ephemeral-port fallback. Release the old port before reconnecting.
-            try(ServerSocket occupied=new ServerSocket()){occupied.setReuseAddress(true);occupied.bind(new InetSocketAddress(oldPort));host.startHost();}
+            occupied.close();host.startHost();
             int nextPort=((ServerSocket)field("server").get(host)).getLocalPort();
             check(nextPort!=oldPort,"central restart changes its TCP port while the saved pairing remains unchanged");
             viewer=LanSyncProof.sync(display);Object identity=viewer.identity();
@@ -77,6 +78,6 @@ public final class ViewerReconnectProof {
             check(nsd.searches.size()==searches,"a closed display does not keep restarting discovery");
             check(repo.running&&local.prefs.getString("dashboard-v1","").equals("local-layout-must-stay"),"recovery preserves central recording, the saved pairing and the display layout");
             passed=true;
-        }catch(Throwable failure){failure.printStackTrace();}finally{if(paired!=null)LanSyncProof.close(paired);if(viewer!=null)LanSyncProof.close(viewer);LanSyncProof.close(host);System.exit(passed?0:1);}
+        }catch(Throwable failure){failure.printStackTrace();}finally{occupied.close();if(paired!=null)LanSyncProof.close(paired);if(viewer!=null)LanSyncProof.close(viewer);LanSyncProof.close(host);System.exit(passed?0:1);}
     }
 }
