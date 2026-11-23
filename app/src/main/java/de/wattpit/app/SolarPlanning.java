@@ -104,6 +104,14 @@ final class SolarPlanning extends SQLiteOpenHelper {
         saved=new JSONObject().put("source",own).put("updated",updated).put("observations",samples).put("forecasts",forecasts).put("confirmedSetups",new JSONArray()).put("cached",true).put("stale",true);
         try{SolarPreviewCache.save(context,previewName,epoch,saved);}catch(Exception ignored){}return saved;
     }
+    JSONObject refreshComparisons(JSONObject saved)throws Exception{
+        Set<String> keys=new HashSet<>();JSONArray observations=saved.optJSONArray("observations"),previous=saved.optJSONArray("forecasts");
+        for(JSONArray rows:new JSONArray[]{observations,previous})if(rows!=null)for(int i=0;i<rows.length();i++){JSONObject row=rows.getJSONObject(i);keys.add(row.optString("key"));keys.add(row.optString("solarKey"));}
+        JSONArray forecasts=new JSONArray();try(Cursor cursor=getReadableDatabase().rawQuery("SELECT payload,MIN(issued) FROM forecasts WHERE issued<=start-43200000 AND issued>=start-259200000 GROUP BY key,start,end ORDER BY start DESC LIMIT 15000",null)){
+            while(cursor.moveToNext()&&forecasts.length()<3500){JSONObject row=new JSONObject(cursor.getString(0));if(keys.contains(row.optString("key")))forecasts.put(row);}
+        }
+        saved.put("forecasts",forecasts);SolarPreviewCache.save(context,previewName,repository.prefs.getString("analysis.epoch",""),saved);return saved;
+    }
     void clearPreview(){SolarPreviewCache.clear(context,previewName);}
     JSONObject calculateKnowledge()throws Exception{request();JSONObject value=worker.submit(()->lastKnowledge).get(120,TimeUnit.SECONDS);if(value.length()==0||!lastFailure.isEmpty())throw new java.io.IOException(lastFailure.isEmpty()?"Lerndaten konnten nicht berechnet werden.":lastFailure);return value;}
     void flushInputs()throws Exception{worker.submit(()->{}).get(10,TimeUnit.SECONDS);}

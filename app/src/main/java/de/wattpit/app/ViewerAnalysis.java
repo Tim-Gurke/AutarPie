@@ -11,7 +11,7 @@ import de.wattpit.app.core.EnergyIntegral;
 final class ViewerAnalysis {
     private final LanSync lan;
     private final AnalysisResultCache results;
-    private JSONArray operationArgs;private String operationFocus;private long operationDemand;private boolean learningOperation;
+    private JSONArray operationArgs;private String operationFocus;private long operationDemand;private boolean learningOperation,comparisonsOnly;
     final Repository repo;
     final SolarPlanning planning;
     private final RollerLedger ledger;
@@ -130,7 +130,8 @@ final class ViewerAnalysis {
             if(m.getInt("algorithm")!=SolarPlanning.ALGORITHM)throw new IOException("Bitte Hauptgerät und Anzeige auf dieselbe AutarPie-Version aktualisieren.");
             JSONObject versions=m.getJSONObject("tables");boolean changed=false;long dirtyRollerFrom=Long.MAX_VALUE,dirtyRollerTo=0;
             for(String table:AnalysisExchange.ALL){
-                if(!learning&&(table.equals("observations")||table.equals("forecasts")||table.equals("confirmed_setups")))continue;
+                if(comparisonsOnly&&!table.equals("forecasts"))continue;
+                if(!learning&&!comparisonsOnly&&(table.equals("observations")||table.equals("forecasts")||table.equals("confirmed_setups")))continue;
                 if(!learning&&table.equals("roller_raw")&&!operation.equals("rollerEnergy"))continue;
                 if(!learning&&table.equals("load_raw")&&!operation.equals("loadHistory"))continue;
                 if(!learning&&table.equals("charger_raw")&&!operation.equals("chargerJournal"))continue;
@@ -235,7 +236,12 @@ final class ViewerAnalysis {
             long today=java.time.Instant.ofEpochMilli(now).atZone(java.time.ZoneId.systemDefault()).toLocalDate().atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
             boolean corrected=changes.optLong("changedFrom")>0&&changes.optLong("changedFrom")<Math.min(today,learnedAt-86400000L);
             if(learnedAt>0&&now>=learnedAt&&now-learnedAt<6L*3600000&&!corrected&&signature.equals(repo.prefs.getString("analysis.learningSignature",""))&&modelVersions.equals(repo.prefs.getString("analysis.learningModelVersions",""))){
-                JSONObject saved=lan.cachedKnowledge();if(saved!=null){saved.put("stale",false).put("learningReused",true);completed=true;return saved;}
+                JSONObject saved=lan.cachedKnowledge();if(saved!=null){
+                    if(!head.getJSONObject("tables").optString("forecasts").equals(repo.prefs.getString("analysis.table.forecasts",""))){
+                        comparisonsOnly=true;try{model(Math.max(0,now-86400000),now,false);}finally{comparisonsOnly=false;}
+                        saved=planning.refreshComparisons(saved);
+                    }
+                    saved.put("stale",false).put("learningReused",true);completed=true;return saved;}
             }
             model(support(since),now);if(metadata.optLong("measurementAt")>0)now=metadata.getLong("measurementAt");since=planning.learningSince(now);
             long correction=changes.optLong("changedFrom");if(previous>0&&correction>0)since=Math.min(since,correction);

@@ -42,6 +42,13 @@ public final class QuickStartProof {
         set(lan,"remote",new JSONObject().put("analysisEpoch",epoch).put("snapshot",new JSONObject().put("devices",devices)));
         Method analysis=LanSync.class.getDeclaredMethod("analysis");analysis.setAccessible(true);ViewerAnalysis replica=(ViewerAnalysis)analysis.invoke(lan);
         replica.repo.prefs.edit().putString("devices",devices.toString()).putString("analysis.epoch",epoch).commit();SolarPreviewCache.save(context,"wattpit-view-"+plant+"-planning.db",epoch,original);
+        set(replica,"operationFocus","previous-view");lan.displayPriority("detail-view");Method priority=ViewerAnalysis.class.getDeclaredMethod("priority");priority.setAccessible(true);
+        boolean yielded=false;try{priority.invoke(replica);}catch(InvocationTargetException failure){yielded=failure.getCause() instanceof java.io.InterruptedIOException;}
+        check(yielded,"a changed view cancels old analysis before another data packet is fetched");
+        set(replica,"operationFocus",lan.displayFocus());set(replica,"learningOperation",true);set(replica,"operationDemand",lan.displayDemand());lan.displayHistoryRequested();yielded=false;
+        try{priority.invoke(replica);}catch(InvocationTargetException failure){yielded=failure.getCause() instanceof java.io.InterruptedIOException;}
+        check(yielded,"a newly requested foreground curve interrupts the background learning transfer");
+        set(replica,"learningOperation",false);
         ExecutorService reads=Executors.newSingleThreadExecutor();try{
             synchronized(replica){Future<JSONObject> fast=reads.submit(lan::cachedKnowledge);JSONObject cached=fast.get(2,TimeUnit.SECONDS);check(cached!=null&&cached.getJSONObject("analysis").getString("plant").equals(plant),"a cached preview does not wait behind the viewer analysis monitor used by network histories");}
             ((JSONObject)get(lan,"remote")).put("analysisEpoch","replacement");check(lan.cachedKnowledge()==null,"a live source epoch change immediately suppresses an old local prior");

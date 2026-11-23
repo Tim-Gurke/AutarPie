@@ -20,14 +20,14 @@ const fixture=require('./autarpie-fixture.cjs');
  try{
   await page.goto('file://'+path.resolve('app/src/main/assets/index.html'));await page.waitForFunction(()=>apFixture.requests.length>0);
   await answer();await page.waitForTimeout(200);await answer();await page.waitForTimeout(200);
-  await page.evaluate(()=>AutarPieApp.dashboard.detail.open('sample-1'));
+  await page.locator('[data-tile="sample-1"] .tile-menu').click();await page.locator('#tileActionDetail').click();
   await page.waitForFunction(()=>apFixture.focus.some(f=>f.detail));
   const before=await page.evaluate(()=>apFixture.requests.length);await answer();await page.waitForTimeout(250);
   await page.evaluate(()=>{AutarPieApp.poll();AutarPieApp.poll();AutarPieApp.poll();});await page.waitForTimeout(250);
   assert.equal(await page.evaluate(()=>apFixture.requests.length),before,'a detail must not start other dashboard or learning reads');
   assert.equal(await page.locator('#detailReading .detail-number').textContent(),'42');
   await page.screenshot({path:path.join(out,'autarpie-3.1.2-dark.png'),animations:'disabled'});
-  await page.evaluate(()=>AutarPieApp.dashboard.detail.close());await page.waitForTimeout(200);
+  await page.locator('#detailClose').click();await page.waitForTimeout(200);
   await page.reload();await page.waitForFunction(()=>apFixture.requests.length>0);
   const solar=page.locator('[data-tile="sample-1"]');await page.waitForFunction(()=>document.querySelector('[data-tile="sample-1"] .tile-number')?.textContent.includes('42'));
   assert.ok((await solar.getAttribute('class')).includes('data-outdated'),'restored values keep the pending-data marker');
