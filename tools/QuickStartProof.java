@@ -16,6 +16,11 @@ public final class QuickStartProof {
         LanSyncProof.TestContext context=new LanSyncProof.TestContext(root);Repository repo=LanSyncProof.repository(context);
         JSONArray devices=new JSONArray("[{\"kind\":\"solar\",\"mac\":\"fixture-solar\"},{\"kind\":\"shunt\",\"mac\":\"fixture-shunt\"}]");repo.prefs.edit().putString("devices",devices.toString()).commit();
         String source=SolarPlanning.selectedSource(devices),epoch=HistoryExchange.epoch(repo.db),name="fixture-planning.db";JSONObject original=data(source,now);
+        AnalysisResultCache derived=new AnalysisResultCache(context,"fixture-plant");JSONObject curve=new JSONObject().put("points",new JSONArray().put(new JSONObject().put("v",42)));
+        derived.save("solar-today","source-one",curve);
+        check(new AnalysisResultCache(new LanSyncProof.TestContext(root),"fixture-plant").read("solar-today","source-one").getJSONArray("points").getJSONObject(0).getInt("v")==42,"calculated curves survive a new Context without recalculation");
+        check(derived.read("solar-today","source-two")==null&&new AnalysisResultCache(context,"another-plant").read("solar-today","source-one")==null,"changed inputs and another plant cannot reuse the result");
+        derived.save("solar-today","source-one",new JSONObject().put("error","offline"));check(derived.read("solar-today","source-one")!=null,"a failed recalculation preserves the previous completed result");
         SolarPreviewCache.save(context,name,epoch,original);
         JSONObject read=SolarPreviewCache.read(new LanSyncProof.TestContext(root),name,source,epoch,now);
         check(read!=null&&read.getBoolean("cached")&&read.getBoolean("stale")&&read.getJSONArray("observations").toString().equals(original.getJSONArray("observations").toString()),"derived knowledge survives a new Context without network or a history rebuild");

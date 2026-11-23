@@ -10,6 +10,8 @@ import de.wattpit.app.core.EnergyIntegral;
 /** One plant replica per display handset. It never imports into that handset's own plant. */
 final class ViewerAnalysis {
     private final LanSync lan;
+    private final AnalysisResultCache results;
+    private JSONArray operationArgs;private String operationFocus;private long operationDemand;private boolean learningOperation;
     final Repository repo;
     final SolarPlanning planning;
     private final RollerLedger ledger;
@@ -22,20 +24,24 @@ final class ViewerAnalysis {
     JSONObject rollerObservations(){return rollerObservations;}
     private long progressAt;
     private volatile String epoch="";
-    private long modelAt,modelFrom,modelThrough;
+    private long modelAt,modelFrom,modelThrough;private String lastModelOperation="";
     private long rawRevision,downloadedRows,downloadedBlocks;
     private long networkNanos,storageNanos,operationNanos,computeNanos,connectNanos;private int requests;private String operation="";private boolean completed;
     private volatile JSONObject lastTiming=new JSONObject();
     ViewerAnalysis(Context context,LanSync lan,String id){
         if(!id.matches("[A-Za-z0-9_-]{22}"))throw new IllegalArgumentException("Ungültige Anlage.");
-        this.lan=lan;identity=lan.identity();plant=id;String prefix="wattpit-view-"+id;
+        this.lan=lan;results=new AnalysisResultCache(context,id);identity=lan.identity();plant=id;String prefix="wattpit-view-"+id;
         repo=Repository.analysis(context,prefix);ledger=new RollerLedger(context,prefix+"-roller.db");
         planning=new SolarPlanning(context,repo,value->{},prefix+"-planning.db",ledger);
         // Open with this Context, before any request can switch the selected plant.
         repo.db.getWritableDatabase();planning.getWritableDatabase();ledger.getWritableDatabase();
         try{rollerObservations=new JSONObject(repo.prefs.getString("analysis.rollerUsage","{}"));}catch(JSONException ignored){}
     }
+    private void priority()throws IOException{
+        if(operationFocus!=null&&!operationFocus.equals(lan.displayFocus())||learningOperation&&operationDemand!=lan.displayDemand())throw new java.io.InterruptedIOException("Die geöffnete Ansicht erhält Vorrang. Der bisherige Lernstand bleibt erhalten.");
+    }
     private JSONObject get(String method,JSONArray args)throws Exception{
+        priority();
         if(identity!=lan.identity()||!lan.viewer())throw new IOException("Anlage wurde gewechselt.");
         long started=System.nanoTime();JSONObject value;try{value=lan.queryInput(method,args);}finally{networkNanos+=System.nanoTime()-started;connectNanos+=lan.lastConnectNanos();requests++;}
         if(identity!=lan.identity()||!lan.viewer())throw new IOException("Anlage wurde gewechselt.");return value;
@@ -113,7 +119,7 @@ final class ViewerAnalysis {
         long now=System.currentTimeMillis();
         // Ninety-day BMS learning is independent of a visible five-day chart's inputs.
         from=(learning?Math.min(from,now-90L*86400000):from)/86400000L*86400000L;to=Math.min((to+86399999)/86400000L*86400000L,(now/86400000L+1)*86400000L);
-        if(!learning&&modelAt>0&&now>=modelAt&&now-modelAt<5000&&from>=modelFrom&&to<=modelThrough){
+        if(!learning&&lastModelOperation.equals(operation)&&modelAt>0&&now>=modelAt&&now-modelAt<5000&&from>=modelFrom&&to<=modelThrough){
             JSONObject current=get("analysisInputState",new JSONArray());
             if(current.optString("epoch").equals(epoch)&&current.getString("token").equals(metadata.optString("inputToken")))return;
             modelAt=0;
@@ -124,6 +130,10 @@ final class ViewerAnalysis {
             if(m.getInt("algorithm")!=SolarPlanning.ALGORITHM)throw new IOException("Bitte Hauptgerät und Anzeige auf dieselbe AutarPie-Version aktualisieren.");
             JSONObject versions=m.getJSONObject("tables");boolean changed=false;long dirtyRollerFrom=Long.MAX_VALUE,dirtyRollerTo=0;
             for(String table:AnalysisExchange.ALL){
+                if(!learning&&(table.equals("observations")||table.equals("forecasts")||table.equals("confirmed_setups")))continue;
+                if(!learning&&table.equals("roller_raw")&&!operation.equals("rollerEnergy"))continue;
+                if(!learning&&table.equals("load_raw")&&!operation.equals("loadHistory"))continue;
+                if(!learning&&table.equals("charger_raw")&&!operation.equals("chargerJournal"))continue;
                 if(!versions.has(table)&&table.equals("charger_raw"))continue;
                 if(!versions.has(table))throw new IOException("Bitte Zentrale und Anzeigen auf dieselbe AutarPie-Version aktualisieren.");
                 String version=versions.getString(table),scope=(table.equals("model_weather")||table.equals("device_settings")||table.equals("input_intervals")||table.equals("roller_raw")||(table.equals("load_raw")||table.equals("charger_raw")))?":"+from+":"+to:"";
@@ -164,7 +174,7 @@ final class ViewerAnalysis {
                 rollerObservations.put("learning",ledger.usageLearning(RollerLedger.source(repo.prefs),roller,usageNow,m.getString("timezone")));
                 repo.prefs.edit().putString("analysis.rollerUsage",rollerObservations.toString()).apply();usageRevision=usageKey;usageAt=usageNow;
             }
-            modelAt=System.currentTimeMillis();modelFrom=from;modelThrough=to;return;
+            modelAt=System.currentTimeMillis();lastModelOperation=operation;modelFrom=from;modelThrough=to;return;
         }
         throw new IOException("Die Berechnungsgrundlagen ändern sich gerade. Bitte erneut versuchen.");
     }
@@ -173,7 +183,8 @@ final class ViewerAnalysis {
     }
     private static long support(long from){return Math.max(0,from/86400000L*86400000L-4L*86400000-EnergyIntegral.LOOKAROUND);}
     private void prepare(long from,long to)throws Exception{
-        requireProtocol();long a=support(from),b=Math.min(System.currentTimeMillis()+86400000,to+EnergyIntegral.LOOKAROUND);
+        requireProtocol();boolean modelled=operation.startsWith("energy")||operation.equals("dailyEnergy")||operation.equals("dashboardHistory")&&operationArgs!=null&&operationArgs.optString(2).equals("mobileSolarPower")||operation.equals("history")&&operationArgs!=null&&Arrays.asList("mobileSolarPower","mobileSolarEnergy","consumptionEnergy","flowSolarEnergy","flowBalanceEnergy").contains(operationArgs.optString(2));
+        long a=modelled?support(from):Math.max(0,from-EnergyIntegral.LOOKAROUND),b=Math.min(System.currentTimeMillis()+86400000,to+EnergyIntegral.LOOKAROUND);
         // Establish the database identity before installing model inputs.
         JSONObject head=get("analysisManifest",new JSONArray().put(a).put(Math.min(b,a+86400000)));
         if(!head.getString("epoch").equals(repo.prefs.getString("analysis.epoch","")))reset(head.getString("epoch"));
@@ -192,11 +203,14 @@ final class ViewerAnalysis {
         for(String key:new String[]{"solar","consumption","balance","mobile"})if(result.optJSONObject(key)!=null){JSONObject part=result.getJSONObject(key).put("analysis",state);if(changed)part.put("stale",true);else part.remove("stale");}return result;
     }
     synchronized JSONObject query(String method,JSONArray args,Consumer<String> progress)throws Exception{
-        this.progress=progress;downloadedRows=downloadedBlocks=0;beginTiming(method);
+        this.progress=progress;operationArgs=args;learningOperation=false;operationFocus=lan.displayFocus();downloadedRows=downloadedBlocks=0;beginTiming(method);
         try{
             long from=args.getLong(0),to=args.getLong(1),now=System.currentTimeMillis();
             if(from<0||to<=from||to-from>(method.equals("dailyEnergy")?32L:366L)*86400000||(!method.equals("dailyEnergy")&&to>now+86400000))throw new IOException("Ungültiger Zeitraum.");
-            prepare(from,Math.max(from+1,Math.min(to,now)));note("Auswertung auf diesem Handy …");long calculating=System.nanoTime();JSONObject result;
+            prepare(from,Math.max(from+1,Math.min(to,now)));priority();
+            String cacheKey=method+":"+args,token=AnalysisResultCache.token(repo,planning,ledger,support(from),to);JSONObject retained=results.read(cacheKey,token);
+            if(retained!=null){retained.put("calculationReused",true);JSONObject stamped=stamp(retained);completed=true;return stamped;}
+            note("Auswertung auf diesem Handy …");long calculating=System.nanoTime();JSONObject result;
             switch(method){
                 case "chargerJournal":if(!metadata.getJSONObject("tables").has("charger_raw"))throw new IOException("Für das Laderjournal zuerst die Zentrale auf 3.0.8 aktualisieren.");result=ChargerJournal.query(ledger,ChargerJournal.source(repo),from,to,args.optString(2),now);break;
                 case "loadHistory":result=ledger.loadHistory(RollerLedger.source(repo.prefs),from,to,args.getString(2),args.optString(3));break;
@@ -205,16 +219,22 @@ final class ViewerAnalysis {
                 case "dashboardHistory":result=planning.dashboardData(from,to,args.getString(2));break;
                 case "energyHistoryWindow":result=planning.energyFlow(from,to,args.getLong(3),args.getLong(4),args.getString(2));break;
                 case "energyHistory":result=planning.energyFlow(from,to,args.getLong(3),args.getString(2));break;
-                case "dailyEnergy":result=planning.dailyEnergy(from,to,new JSONObject(repo.prefs.getString("weatherCache","{}")).put("analysisTimezone",repo.prefs.getString("analysisTimezone",TimeZone.getDefault().getID())));break;
+                case "dailyEnergy":result=dailyResults(from,to);break;
                 default:throw new IllegalArgumentException("Unbekannte Auswertung.");
-            }computeNanos+=System.nanoTime()-calculating;JSONObject stamped=stamp(result);completed=true;return stamped;
+            }computeNanos+=System.nanoTime()-calculating;result.put("calculatedAt",System.currentTimeMillis());results.save(cacheKey,token,result);JSONObject stamped=stamp(result);completed=true;return stamped;
         }finally{endTiming();this.progress=null;}
     }
     synchronized JSONObject knowledge(Consumer<String> progress)throws Exception{
-        this.progress=progress;downloadedRows=downloadedBlocks=0;beginTiming("knowledge");try{
+        this.progress=progress;learningOperation=true;operationDemand=lan.displayDemand();operationFocus=lan.displayFocus();downloadedRows=downloadedBlocks=0;beginTiming("knowledge");try{
             requireProtocol();long now=System.currentTimeMillis(),since=now-7L*86400000,previous=repo.prefs.getLong("analysis.learningRevision",0);
             JSONObject changes=get("analysisChanges",new JSONArray().put(previous));
             if(!changes.getString("epoch").equals(repo.prefs.getString("analysis.epoch","")))reset(changes.getString("epoch"));
+            String signature=learningSignature();long learnedAt=repo.prefs.getLong("analysis.learnedAt",0);
+            long today=java.time.Instant.ofEpochMilli(now).atZone(java.time.ZoneId.systemDefault()).toLocalDate().atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+            boolean corrected=changes.optLong("changedFrom")>0&&changes.optLong("changedFrom")<Math.min(today,learnedAt-86400000L);
+            if(learnedAt>0&&now>=learnedAt&&now-learnedAt<6L*3600000&&!corrected&&signature.equals(repo.prefs.getString("analysis.learningSignature",""))){
+                JSONObject saved=lan.cachedKnowledge();if(saved!=null){saved.put("stale",false).put("learningReused",true);completed=true;return saved;}
+            }
             model(support(since),now);if(metadata.optLong("measurementAt")>0)now=metadata.getLong("measurementAt");since=planning.learningSince(now);
             long correction=changes.optLong("changedFrom");if(previous>0&&correction>0)since=Math.min(since,correction);
             // An imported partial learning ledger is not proof that its historical raw inputs arrived.
@@ -229,11 +249,26 @@ final class ViewerAnalysis {
             else model(support(since),now);
             raw(support(since),now);
             planning.analysisPresence(presence==null?metadata.getJSONArray("presenceHistory"):presence,metadata.getJSONObject("presence"),since,now);if(previous>0){if(changes.has("ranges"))planning.invalidateLearning(changes.getJSONArray("ranges"));else planning.invalidateLearning(correction);}
-            note("Verbrauch und Solarvorschau werden auf diesem Handy berechnet …");long calculating=System.nanoTime();JSONObject result=planning.calculateKnowledge();computeNanos+=System.nanoTime()-calculating;
+            note("Verbrauch und Solarvorschau werden auf diesem Handy berechnet …");priority();long calculating=System.nanoTime();JSONObject result=planning.calculateKnowledge();priority();computeNanos+=System.nanoTime()-calculating;
             if(result.has("error"))throw new IOException(result.getString("error"));
             stamp(result);if(recovering&&!result.optBoolean("historyRecoveryPending"))planning.completeHistoricalRecovery(since,now);
-            repo.prefs.edit().putLong("analysis.learningRevision",changes.getLong("revision")).commit();completed=true;return result;
+            repo.prefs.edit().putLong("analysis.learningRevision",changes.getLong("revision")).putLong("analysis.learnedAt",System.currentTimeMillis()).putString("analysis.learningSignature",signature).commit();completed=true;return result;
         }finally{endTiming();this.progress=null;}
+    }
+    private JSONObject dailyResults(long from,long to)throws Exception{
+        JSONObject weather=new JSONObject(repo.prefs.getString("weatherCache","{}")).put("analysisTimezone",repo.prefs.getString("analysisTimezone",TimeZone.getDefault().getID()));
+        java.time.ZoneId zone;try{zone=java.time.ZoneId.of(weather.getString("analysisTimezone"));}catch(Exception ignored){zone=java.time.ZoneId.systemDefault();}
+        JSONArray days=new JSONArray();long until=Math.min(to,System.currentTimeMillis());int reused=0,calculated=0;
+        for(long start=from;start<until;){priority();long end=Math.min(until,java.time.Instant.ofEpochMilli(start).atZone(zone).toLocalDate().plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli());
+            String key="daily-part:"+start+":"+end,token=AnalysisResultCache.token(repo,planning,ledger,support(start),end);JSONObject part=results.read(key,token);
+            if(part==null){part=planning.dailyEnergy(start,end,weather);results.save(key,token,part);calculated++;}else reused++;
+            JSONArray values=part.getJSONArray("days");for(int i=0;i<values.length();i++)days.put(values.get(i));start=end;
+        }
+        return new JSONObject().put("days",days).put("accountingVersion",2).put("reusedDays",reused).put("calculatedDays",calculated);
+    }
+    private String learningSignature()throws Exception{
+        JSONObject snapshot=new JSONObject(lan.part("snapshot")),settings=snapshot.optJSONObject("settings");if(settings==null)settings=new JSONObject();
+        return AnalysisResultCache.hash(new JSONArray().put(SolarPlanning.ALGORITHM).put(snapshot.optJSONArray("devices")).put(snapshot.opt("equipment")).put(settings.opt("solarSetup")).put(settings.opt("weatherPlace")).put(settings.opt("capacity")).put(settings.opt("specialUses")).put(new JSONObject(lan.part("presence")).optString("state")).toString());
     }
     synchronized JSONObject diagnostics()throws Exception{return new JSONObject().put("downloadedRows",downloadedRows).put("downloadedBlocks",downloadedBlocks).put("epoch",epoch).put("revision",rawRevision).put("timing",lastTiming);}
     synchronized void rebuildHistory()throws Exception{planning.rebuildHistory();}

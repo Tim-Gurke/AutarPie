@@ -6,16 +6,35 @@
   const missing=()=>({points:[],summary:{},pending:true});
   const pending=method=>method==='dailyEnergy'?{days:[],pending:true}:method.startsWith('energy')?{solar:missing(),consumption:missing(),balance:missing(),mobile:missing(),pending:true}:missing();
   return class {
-    constructor(raw,ready){
+    constructor(raw,ready,storage=globalThis.localStorage){
       this.raw=raw;this.ready=ready;this.cache=new Map();this.queue=new Map();this.nextId=0;this.generation=0;this.epoch=0;this.busy=false;this.active=true;
+      this.storage=storage;this.focusSerial=0;
       this.bridge=new Proxy(raw,{get:(target,name)=>{const value=target[name];if(typeof value!=='function')return value;return methods.has(name)?(...args)=>this.read(name,args):(...args)=>target[name](...args);}});
     }
     source(){
       let source=this.raw.isLanViewer?.()?'viewer':'local';
-      if(source==='viewer'&&this.raw.lanState)try{const lan=JSON.parse(this.raw.lanState());source+=':'+(lan.id||lan.name||'');}catch(_){}
+      if(source==='viewer'&&this.raw.lanState)try{const lan=JSON.parse(this.raw.lanState());source+=':'+(lan.id||lan.name||'')+':'+(lan.sourceEpoch||'');}catch(_){}
+      if(this.raw.historyIdentity)try{source+=':'+this.raw.historyIdentity();}catch(_){}
       if(this.owner!==undefined&&source!==this.owner)this.invalidate(true);
-      this.owner=source;
+      if(this.owner!==source){this.owner=source;this.restore();}
     }
+    restore(){
+      try{const saved=JSON.parse(this.storage?.getItem('autarpie-derived-history-v1')||'{}');if(saved.owner!==this.owner||saved.version!==1||!Array.isArray(saved.entries))return;
+        for(const entry of saved.entries.slice(-48))if(methods.has(entry.method)&&Array.isArray(entry.args)&&entry.data&&entry.at>0&&entry.at<=Date.now()+5000)this.remember(entry.key,{...entry,generation:-1,epoch:this.epoch});
+      }catch(_){}
+    }
+    persist(){
+      try{let entries=[...this.cache.values()].filter(e=>e.data&&!e.error).slice(-48).map(e=>({key:e.key,method:e.method,args:e.args,scope:e.scope,at:e.at,startedAt:e.startedAt,data:e.data})),value;
+        do{value=JSON.stringify({version:1,owner:this.owner,entries});if(value.length<=1800000)break;entries.shift();}while(entries.length);
+        this.storage?.setItem('autarpie-derived-history-v1',value);
+      }catch(_){}
+    }
+    setFocus(mode,key=''){
+      const focus=mode+':'+key;if(this.focus===focus)return;this.focus=focus;this.focusMode=mode;this.focusToken=String(++this.focusSerial)+':'+focus;
+      this.queue.clear();clearTimeout(this.timer);this.inflight=null;
+      this.raw.setReadFocus?.(this.focusToken,mode==='detail');
+    }
+    allowed(scope){if(this.focusMode!=='detail')return true;try{const parts=JSON.parse(scope);return Array.isArray(parts)&&(parts[0]==='detail'||this.allowed(parts[0]));}catch(_){return false;}}
     state(state){
       this.source();const changed=this.busy!==!!state.busy||this.runId!==state.runId;
       if(changed){this.invalidate();this.epoch++;this.queue.clear();this.runId=state.runId;}
@@ -77,6 +96,7 @@
       const error=data?.error||(!data||typeof data!=='object'?'Zeitraum konnte nicht geladen werden.':'');
       const old=error?this.previous(query.method,query.args,query.scope):null;
       this.remember(query.key,{...query,data:error?old?.data:data,at:error?old?.at:Date.now(),error,generation:query.generation-(!error&&data.stale?1:0),retryAt:error?Date.now()+5000:0});
+      if(!error&&!data.pending&&!data.syncing)this.persist();
     }
     initialPending(){return [this.inflight,...this.queue.values()].some(query=>query&&!this.previous(query.method,query.args,query.scope)?.data);}
     retry(queries){
@@ -93,7 +113,8 @@
       }
     }
     read(method,args,scope){
-      this.source();const key=this.key(method,args,scope),query={key,method,args,scope,generation:this.generation,epoch:this.epoch};
+      this.source();const key=this.key(method,args,scope),query={key,method,args,scope,generation:this.generation,epoch:this.epoch,focus:this.focusToken};
+      if(!this.allowed(scope))return this.value(this.previous(method,args,scope),method,false,query);
       // Local model/history reads can be just as expensive as LAN queries. Keep
       // them off the WebView's JavaScript thread whenever the worker is available.
       if(!this.raw.requestHistory){

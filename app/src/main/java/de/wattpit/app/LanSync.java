@@ -251,6 +251,12 @@ final class LanSync {
     private synchronized ViewerAnalysis analysis(){
         if(!viewer())throw new IllegalStateException();if(analysis==null||analysisIdentity!=config){if(analysis!=null)analysis.close();analysis=new ViewerAnalysis(context,this,config.optString("id"));analysisIdentity=config;}return analysis;
     }
+    private volatile String displayFocus="";
+    private final java.util.concurrent.atomic.AtomicLong displayDemand=new java.util.concurrent.atomic.AtomicLong();
+    String displayFocus(){return displayFocus;}
+    long displayDemand(){return displayDemand.get();}
+    void displayPriority(String focus){displayFocus=focus;displayDemand.incrementAndGet();}
+    void displayHistoryRequested(){displayDemand.incrementAndGet();}
     JSONObject analysisKnowledge(Consumer<String> progress)throws Exception{analysisPending=true;try{JSONObject result=analysis().knowledge(progress);analysisAt=result.getJSONObject("analysis").optLong("at");return result;}finally{analysisPending=false;}}
     JSONObject cachedKnowledge()throws Exception{
         Object owner=identity();JSONObject bundle=remote;ViewerAnalysis replica=analysis();JSONObject snapshot=bundle.optJSONObject("snapshot");

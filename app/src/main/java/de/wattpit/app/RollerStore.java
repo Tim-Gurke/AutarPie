@@ -41,9 +41,9 @@ final class RollerStore {
         String name=in.optString("name","Roller").trim(),mac=in.optString("mac","").trim().toUpperCase(java.util.Locale.ROOT),tech=in.optString("technology","Li-Ion");
         if(name.isEmpty()||name.length()>60||(!mac.isEmpty()&&!mac.matches("([0-9A-F]{2}:){5}[0-9A-F]{2}"))||!java.util.Arrays.asList("Li-Ion","LiFePO4").contains(tech))throw new IllegalArgumentException("Bitte Name, Technologie und Bluetooth-Adresse prüfen.");
         JSONObject o=new JSONObject().put("planCharge",in.optBoolean("planCharge",false)).put("autoSpecialUse",in.optBoolean("autoSpecialUse",false)).put("name",name).put("mac",mac).put("technology",tech);
-        String[] keys={"capacityAh","nominalVoltage","reservePercent","targetPercent","idleWatts","conversionEfficiency","chargeWatts","rideKm","whPerKm","rideReservePercent","departure","returnAt"};
-        double[] defaults={26,48.1,20,90,21,96.0/117.0,96,0,19,20,0,0};
-        double[] min={1,1,0,1,0,.1,1,0,1,0,0,0},max={1000,200,99,100,500,1,5000,2000,200,100,4102444800000.0,4102444800000.0};
+        String[] keys={"displayFreshSeconds","capacityAh","nominalVoltage","reservePercent","targetPercent","idleWatts","conversionEfficiency","chargeWatts","rideKm","whPerKm","rideReservePercent","departure","returnAt"};
+        double[] defaults={15,26,48.1,20,90,21,96.0/117.0,96,0,19,20,0,0};
+        double[] min={1,1,1,0,1,0,.1,1,0,1,0,0,0},max={300,1000,200,99,100,500,1,5000,2000,200,100,4102444800000.0,4102444800000.0};
         for(int i=0;i<keys.length;i++){double v=in.has(keys[i])?in.getDouble(keys[i]):defaults[i];if(!Double.isFinite(v)||v<min[i]||v>max[i])throw new IllegalArgumentException("Ungültiger Wert: "+keys[i]);o.put(keys[i],v);}
         if(o.getDouble("targetPercent")<o.getDouble("reservePercent"))throw new IllegalArgumentException("Ladeziel muss mindestens der Mindestreserve entsprechen.");
         if(o.getDouble("returnAt")>0&&o.getDouble("returnAt")<=o.getDouble("departure"))throw new IllegalArgumentException("Rückkehr muss nach der Abfahrt liegen.");

@@ -13,6 +13,7 @@ let readRepaint,readsDirty=false;
 function repaintReads(){
   if(!window.wattDisplayActive||!readsDirty||lifecycle?.blocked)return;
   readsDirty=false;dashboard?.cache.clear();lastMiniLoad=0;
+  if(dashboard?.detail?.active){dashboard.detail.refresh(false);return;}
   if(page==='overview'||window.AutarPieUI?.active===page){renderOverview();loadMini(true);}
   if(page==='history')loadHistory();
   dashboard?.detail?.refresh(false);
@@ -29,7 +30,7 @@ window.onHistoryProgress=result=>reads?.progress(result);
 window.onDisplayActive=result=>{const active=!!result.active;window.wattDisplayActive=active;reads?.setActive(active);if(!active){freshness?.reset();clearTimeout(readRepaint);solar?.stopSensors();return;}lastMiniLoad=0;solar&&(solar.renderKey='');roller?.expireReadings();poll();repaintReads();};
 document.addEventListener('visibilitychange',()=>window.onDisplayActive({active:!document.hidden}));
 window.addEventListener('pageshow',()=>window.onDisplayActive({active:!document.hidden}));
-const historyRead=(method,args,scope)=>reads?reads.read(method,args,scope):deviceNative?.[method](...args);
+const historyRead=(method,args,scope)=>reads?reads.read(method,args,dashboard?.detail?.reading?JSON.stringify(['detail',scope]):scope):deviceNative?.[method](...args);
 const refreshNote=data=>data?.progress|| (data?.stale?(data.pending?'Letzter Stand · neue Daten werden geladen …':data.refreshError?'Letzter Stand · Aktualisierung fehlgeschlagen. Neuer Versuch folgt.':'Letzter Stand'):data?.pending?'Daten werden im Hintergrund geladen …':data?.error?data.error:'');
 const dataTime=()=>lifecycle?.busy?lifecycle.startedAt||Date.now():Date.now();
 const icons = {
@@ -91,6 +92,7 @@ function toast(message) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').hidden = true,5500);
 }
 function showPage(next) {
+  reads?.setFocus('dashboard',next);
   const resolved=window.AutarPieUI?.beforePage(next);if(resolved)next=resolved;
   dashboard?.detail?.close();
   page = next;
@@ -197,7 +199,7 @@ function poll() {
   }
   supplies?.render();presence?.render();extras?.render();equipment?.render();roller?.render();
   window.AutarPieUI?.poll();
-  if (page === 'overview'||window.AutarPieUI?.active===page) { renderOverview();if(dashboard.config.showMiniHistory!==false)loadMini(); }
+  if (!dashboard?.detail?.active&&(page === 'overview'||window.AutarPieUI?.active===page)) { renderOverview();if(dashboard.config.showMiniHistory!==false)loadMini(); }
   if (page === 'devices') renderDevices();
   if (page === 'settings') renderSettings();
   if (page === 'history') {
@@ -308,7 +310,7 @@ function sampleDemo(from,to,chosen) {
   return out;
 }
 function loadHistory() {
-  if(lifecycle?.blocked||!viewFrom)return;
+  if(lifecycle?.blocked||!viewFrom||dashboard?.detail?.active)return;
   clearTimeout(loadTimer);
   energyData=null;historyPending=false;let fetched;const scope=JSON.stringify(['history',demo,metric,source,viewFrom,viewTo]);
   try{
@@ -331,7 +333,7 @@ function loadHistory() {
 }
 function delayedHistory(){clearTimeout(loadTimer);loadTimer=setTimeout(loadHistory,300);}
 function loadMini(force=false) {
-  if(lifecycle?.blocked)return;
+  if(lifecycle?.blocked||dashboard?.detail?.active)return;
   const mode=native?snapshot.settings.miniRange||'today':localStorage.getItem('wattpit-mini-range')||'today';
   miniWindow=window.WattDashboardCore.miniWindow(mode,snapshot.weather,dataTime());
   $('miniRange').value=mode;$('miniPeriodLabel').textContent=miniWindow.label.toLocaleUpperCase('de-DE');
@@ -537,7 +539,7 @@ lifecycle.poll();
 dashboard = new window.WattDashboard({native,read:historyRead,resizeMini:drawMini,isBlocked:()=>lifecycle.blocked,dataTime,getSnapshot:()=>snapshot,reading,isDemo:()=>demo,openModal,closeModal,toast});
 equipment = new window.WattEquipment({native,getSnapshot:()=>snapshot,getValueColor:metric=>window.WattDashboardCore.metricColor(dashboard.config,metric),getValueTextColor:metric=>dashboard.paint(window.WattDashboardCore.metricColor(dashboard.config,metric),window.WattDashboardCore.tile(metric),true),openModal,closeModal,toast,poll,repaint:()=>dashboard?.update()});
 extras = new window.WattExtras({native,renderSolar:()=>solar?.render(),getSnapshot:()=>snapshot,isDemo:()=>demo,toast,poll,cancelArchive:()=>lifecycle.confirmCancellation(),repaint:()=>{dashboard?.update();drawHistory();drawMini();},imported:()=>{dashboard?.clearCache();if(page==='history')loadHistory();lastMiniLoad=0;}});
-solar = new window.WattSolarPlan({native:deviceNative,canRequestData:()=>!deviceNative?.isLanViewer?.()||!reads?.initialPending(),equipment,getSnapshot:()=>snapshot,getReading:reading,getPresence:()=>presence?.state,openModal,closeModal,toast,poll,symbol:code=>extras.symbol(code)});
+solar = new window.WattSolarPlan({native:deviceNative,canRequestData:()=>!dashboard?.detail?.active&&(!deviceNative?.isLanViewer?.()||!reads?.initialPending()),equipment,getSnapshot:()=>snapshot,getReading:reading,getPresence:()=>presence?.state,openModal,closeModal,toast,poll,symbol:code=>extras.symbol(code)});
 roller = new window.WattRoller({native,read:historyRead,isDemo:()=>demo,getSolar:()=>solar,openModal,closeModal,toast,poll});
 configuration = new window.WattSettingsBackup({native,getSnapshot:()=>snapshot,dashboard,equipment,openModal,closeModal,toast,applied:backup=>{
   settingsDirty=false;poll();
@@ -566,7 +568,7 @@ window.addEventListener('resize',()=>{drawHistory();drawMini();});
 
 for(const [id,method] of [['backupSettings','backupSettings'],['chooseAppRole','chooseAppRole'],['migrationBackup','migrationBackup'],['migrationImport','migrationImport']])$(id).onclick=()=>{if(typeof deviceNative?.[method]==='function')deviceNative[method]();else toast('Diese Funktion steht in der installierten AutarPie-App bereit.');};
 if(typeof deviceNative?.appRole==='function')$('appRoleLabel').textContent=({central:'Zentrale · Daten sammeln und im WLAN bereitstellen',viewer:'Anzeigehandy · mit einer Zentrale koppeln',direct:'Eigenständig · Victron direkt, ohne Zentrale'})[deviceNative.appRole()]||'Betriebsart wählen';
-window.AutarPieApp={get dashboard(){return dashboard;},get snapshot(){return snapshot;},get solar(){return solar;},get supplies(){return supplies;},get equipment(){return equipment;},get roller(){return roller;},native:deviceNative,read:historyRead,loadMini,repaint:()=>{drawHistory();drawMini();},showPage,openModal,closeModal,toast,poll,theme,reading,icon,escapeHtml};
+window.AutarPieApp={get dashboard(){return dashboard;},get snapshot(){return snapshot;},get solar(){return solar;},get supplies(){return supplies;},get equipment(){return equipment;},get roller(){return roller;},native:deviceNative,read:historyRead,readFocus:(mode,key)=>reads?.setFocus(mode,key??page),loadMini,repaint:()=>{drawHistory();drawMini();},showPage,openModal,closeModal,toast,poll,theme,reading,icon,escapeHtml};
 
 setInterval(()=>{if(window.wattDisplayActive&&!document.hidden)roller?.expireReadings();},1000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)roller?.expireReadings();});

@@ -63,7 +63,7 @@
       this.period=copy(source.period);if(this.period.mode==='live')this.period.mode='last';
       this.selectedTime=null;this.scaleMode='auto';this.manual=C.fixedRange(this.tile,this.a.getSnapshot());this.valueMode=C.usesLiveValue(source)?'live':source.period.aggregate;
       this.root.classList.toggle('is-live-only',!!C.CATALOG[source.metric].liveOnly);
-      this.active=true;this.previousOverflow=document.body.style.overflow;document.body.style.overflow='hidden';this.root.hidden=false;this.pointers.clear();
+      this.active=true;window.AutarPieApp?.readFocus?.('detail',id);this.previousOverflow=document.body.style.overflow;document.body.style.overflow='hidden';this.root.hidden=false;this.pointers.clear();
       this.root.innerHTML=`<div class="detail-top"><div><h2 id="tileDetailTitle">${esc(label(source))}</h2><span>Änderungen gelten nur in dieser Großansicht.</span></div><button id="detailClose" class="iconbutton" aria-label="Großansicht schließen">×</button></div><div class="detail-content"><div class="detail-toolbar"><label>Zeitraum<select id="detailPeriod">${[['last','Letzte …'],['today','Heute'],['yesterday','Gestern'],['week','Woche'],['month','Monat'],['sunrise','Seit Sonnenaufgang'],['reset','Seit Zurücksetzen'],['custom','Von / bis']].map(([v,n])=>`<option value="${v}">${n}</option>`).join('')}</select></label><div class="detail-zoom"><button id="detailZoomIn" aria-label="Vergrößern">+</button><button id="detailZoomOut" aria-label="Verkleinern">−</button><button id="detailReset">Gesamter Zeitraum</button></div></div><div id="detailLast" class="detail-period-fields"><label>Anzahl<input id="detailAmount" type="number" min="1" max="10000"></label><label>Einheit<select id="detailTimeUnit"><option value="min">Minuten</option><option value="h">Stunden</option><option value="d">Tage</option></select></label></div><div id="detailCustom" class="detail-period-fields"><label>Von<input id="detailFrom" type="datetime-local"></label><label>Bis<input id="detailTo" type="datetime-local"></label><button id="detailApplyPeriod" class="secondary">Anzeigen</button></div><p id="detailError" class="form-error" hidden></p><details id="detailSettings" class="detail-options"><summary>Ansicht einstellen</summary><div class="form-grid"><label>Darstellung<select id="detailType"><option value="number">Zahlenwert</option><option value="gauge">Rundinstrument</option><option value="chart">Verlauf</option></select></label><label>Einheit<select id="detailUnit">${C.CATALOG[source.metric].units.map(u=>`<option>${esc(u)}</option>`).join('')}</select></label><label>Große Zahl<select id="detailValue">${[['live','Aktuell'],['last','Letzter Wert'],['avg','Durchschnitt'],['min','Minimum'],['max','Maximum']].filter(([v])=>!C.CATALOG[source.metric].energy||v==='last').map(([v,n])=>`<option value="${v}">${n}</option>`).join('')}</select></label><label>Skala<select id="detailScale"><option value="auto">Automatisch</option><option value="fixed">Feste Grenzen</option></select></label><label>Minimum<input id="detailMin" type="number" step="any"></label><label>Maximum<input id="detailMax" type="number" step="any"></label><label>Nachkommastellen<select id="detailDigits"><option value="0">Keine</option><option value="1">Eine</option><option value="2">Zwei</option><option value="3">Drei</option></select></label><label>Farbe<input id="detailColor" type="color"></label></div>${C.CATALOG[source.metric].energy&&!C.CATALOG[source.metric].flow?'<label class="detail-check"><input id="detailReverse" type="checkbox"> Vorzeichen umkehren (+/−)</label>':''}</details><details id="detailComparisons" class="detail-options"><summary>Vergleichswerte <span id="detailCompareCount"></span></summary><div id="detailCompareOptions" class="detail-compare-options"></div><p>Werte mit gleicher Einheit liegen übereinander. Andere Einheiten erhalten eigene Skalen mit gemeinsamer Zeitachse.</p></details><div class="detail-main"><div id="detailReading" class="detail-reading"></div><div class="detail-plot"><p id="detailWindow" class="detail-window"></p><div id="detailLegend" class="detail-legend"></div><canvas id="detailCanvas" aria-label="Verlauf; antippen oder gedrückt halten und Messpunktauswahl ziehen; mit zwei Fingern zoomen" tabindex="0"></canvas><button id="detailClearSelection" class="textbutton" hidden>Auswahl aufheben</button><div id="detailTooltip" class="detail-tooltip" hidden></div><p class="detail-note">Antippen oder gedrückt halten wählt einen Messpunkt. Die Auswahl lässt sich ziehen. Nach „Auswahl aufheben“ verschiebt seitliches Wischen den Zeitraum; zwei Finger zoomen. Nach oben oder unten wischen scrollt die Ansicht. Am Computer: Strg + Mausrad zum Zoomen.</p><p id="detailNote" class="detail-note"></p></div></div><div id="detailWeather" hidden></div></div>`;
       if(C.CATALOG[source.metric].liveOnly){
         this.valueMode='live';
@@ -101,7 +101,7 @@
     }
     close(){
       if(!this.active)return;this.active=false;clearTimeout(this.pickTimer);clearInterval(this.timer);this.root.hidden=true;this.root.innerHTML='';document.body.style.overflow=this.previousOverflow||'';this.pointers.clear();
-      this.d.elements.get(this.tile.id)?.focus({preventScroll:true});
+      window.AutarPieApp?.readFocus?.('dashboard');this.d.elements.get(this.tile.id)?.focus({preventScroll:true});
     }
     error(message){$('detailError').textContent=message;$('detailError').hidden=!message;}
     scaleControls(){const auto=this.scaleMode==='auto';$('detailMin').disabled=auto;$('detailMax').disabled=auto;}
@@ -111,7 +111,7 @@
       const window=periodWindow(this.period,this.a.getSnapshot().weather||{},this.a.dataTime?.()??Date.now());
       if(!window||this.period.mode==='custom'&&window.to<=window.from){this.error('Bitte einen gültigen Zeitraum wählen.');return;}
       if(this.period.mode==='last'&&(!Number.isFinite(this.period.amount)||this.period.amount<1||this.period.amount>10000)){this.error('Bitte eine Anzahl zwischen 1 und 10.000 wählen.');return;}
-      this.selectedTime=null;this.error('');this.base=window;this.view={from:window.from,to:window.to};this.refresh(false);
+      window.AutarPieApp?.readFocus?.('detail',JSON.stringify([this.tile.id,this.period]));this.selectedTime=null;this.error('');this.base=window;this.view={from:window.from,to:window.to};this.refresh(false);
     }
     renderComparisons(){
       const options=$('detailCompareOptions');
@@ -122,6 +122,7 @@
       options.querySelectorAll('[data-compare]').forEach(input=>input.onchange=()=>{if(input.checked)this.selected.add(input.dataset.compare);else this.selected.delete(input.dataset.compare);this.refresh(false);});
       options.querySelectorAll('[data-compare-unit]').forEach(input=>input.onchange=()=>{this.tiles.get(input.dataset.compareUnit).unit=input.value;this.refresh(false);});
     }
+    readData(...args){this.reading=true;try{return this.d.data(...args);}finally{this.reading=false;}}
     refresh(follow=false){
       if(!this.active||this.a.isBlocked?.())return;
       if(C.CATALOG[this.tile.metric].widget){this.weather();return;}
@@ -135,7 +136,7 @@
         const solarSunrise=this.period.mode==='sunrise'&&(t.metric==='solar'||m.flow==='solar');
         const sun=C.miniWindow('sunrise',snapshot.weather||{},this.a.dataTime?.()??Date.now()),daily=m.flow&&['today','sunrise'].includes(this.period.mode);
         const query=solarSunrise?C.solarQueryWindow(this.base):this.base;
-        const data=m.status||m.liveOnly?{points:[],summary:{}}:this.d.data(t,query,daily?Math.max(query.from,sun.solarFrom??query.from):query.from,daily?sun.solarTo??query.to:query.to,JSON.stringify(['detail',m.flow?'flow':metric,this.period,['today','sunrise','yesterday'].includes(this.period.mode)?new Date(query.from).toLocaleDateString('sv-SE'):'']));
+        const data=m.status||m.liveOnly?{points:[],summary:{}}:this.readData(t,query,daily?Math.max(query.from,sun.solarFrom??query.from):query.from,daily?sun.solarTo??query.to:query.to,JSON.stringify(['detail',m.flow?'flow':metric,this.period,['today','sunrise','yesterday'].includes(this.period.mode)?new Date(query.from).toLocaleDateString('sv-SE'):'']));
         this.series.push({tile:t,data,points:seriesPoints(t,data.points||[],snapshot.settings.capacity||100,snapshot)});
       }
       const primary=this.series[0],m=C.CATALOG[this.tile.metric];

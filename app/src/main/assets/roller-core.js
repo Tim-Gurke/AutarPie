@@ -1,6 +1,6 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.WattRollerCore=api;})(typeof globalThis==='object'?globalThis:this,function(){
   'use strict';
-  const defaults={chargePath:'inverter',planCharge:false,autoSpecialUse:false,name:'Roller',mac:'',technology:'Li-Ion',capacityAh:26,nominalVoltage:48.1,reservePercent:20,targetPercent:90,idleWatts:21,conversionEfficiency:96/117,chargeWatts:96,rideKm:0,whPerKm:19,rideReservePercent:20,departure:0,returnAt:0};
+  const defaults={displayFreshSeconds:15,chargePath:'inverter',planCharge:false,autoSpecialUse:false,name:'Roller',mac:'',technology:'Li-Ion',capacityAh:26,nominalVoltage:48.1,reservePercent:20,targetPercent:90,idleWatts:21,conversionEfficiency:96/117,chargeWatts:96,rideKm:0,whPerKm:19,rideReservePercent:20,departure:0,returnAt:0};
   const input=(watts,p)=>watts>0?p.idleWatts+watts/p.conversionEfficiency:0;
   const displayDefaults=['stored','soc','power','charged','input','temperature'];
   function readingState(state={},now=Date.now()){
@@ -8,6 +8,11 @@
     const latest=valid(live.at)&&(!valid(saved.at)||live.at>=saved.at)?live:saved;
     const fresh=state.fresh===true&&valid(live.at)&&now>=live.at&&now-live.at<=10000;
     return {...state,fresh,live:fresh?live:{},lastKnown:latest};
+  }
+  function displayState(state={},now=Date.now()){
+    const strict=readingState(state,now),latest=strict.lastKnown||{},seconds=Number(state.profile?.displayFreshSeconds??15);
+    const fresh=typeof latest.at==='number'&&now>=latest.at&&now-latest.at<=Math.max(1,Math.min(300,Number.isFinite(seconds)?seconds:15))*1000;
+    return {...strict,fresh,live:fresh?latest:{},measurementFresh:strict.fresh};
   }
   const displayMetrics={
     stored:{label:'Enthaltene Energie · geschätzt',unit:'Wh'},soc:{label:'Ladezustand · BMS',unit:'%'},power:{label:'Batterieleistung · BMS',unit:'W'},
@@ -47,5 +52,5 @@
     const end=now+r.hours*3600000;if(p.departure>0&&p.departure<end&&p.departure>now)return [];
     return [{from:now,to:end,watts:input(p.chargeWatts,p)}];
   }
-  return {defaults,input,storedEnergy,plan,loads,readingState,displayDefaults,displayMetrics,normalizeDisplay,displayOptions,displayReading};
+  return {defaults,input,storedEnergy,plan,loads,readingState,displayState,displayDefaults,displayMetrics,normalizeDisplay,displayOptions,displayReading};
 });

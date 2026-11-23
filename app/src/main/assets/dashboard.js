@@ -237,8 +237,8 @@
     }
     update() {
       if(this.a.isBlocked?.()||!this.a.getSnapshot)return;
-      const snapshot=this.a.getSnapshot(),shunt=this.a.reading('shunt'),solar=this.a.reading('solar'),now=this.a.dataTime?.()??Date.now();
-      if(snapshot.roller)snapshot.roller=window.WattRollerCore.readingState(snapshot.roller);
+      const snapshot={...this.a.getSnapshot()},shunt=this.a.reading('shunt'),solar=this.a.reading('solar'),now=this.a.dataTime?.()??Date.now();
+      if(snapshot.roller)snapshot.roller=window.WattRollerCore.displayState(snapshot.roller);
       this.updateChargeEstimate(shunt,snapshot);globalThis.AutarPieMetricUI?.prepare(this,snapshot,Date.now());
       const sun=C.miniWindow('sunrise',snapshot.weather||{},now);
       let visibilityChanged=false;

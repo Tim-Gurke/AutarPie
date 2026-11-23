@@ -80,7 +80,7 @@
       $('weatherStrip').dataset.outdated=String(weatherStale);$('weatherStrip').dataset.pending=String(!weather.updated&&!snapshot.weatherError);$('weatherStrip').dataset.updated=String(weather.updated||0);
       this.knowledgeStale=knowledgeStale;
       const tile=$('weatherStrip').closest?.('.cockpit-tile');tile?.classList.toggle('data-outdated',weatherStale);
-      if(this.a.native?.requestSolarData&&!snapshot.archiveBusy&&this.a.canRequestData?.()!==false&&(Date.now()-this.lastRequest>300000||this.revision!==snapshot.historyRevision&&Date.now()-this.lastRequest>30000)){
+      if(this.a.native?.requestSolarData&&(!snapshot.archiveBusy||this.a.native?.isLanViewer?.())&&this.a.canRequestData?.()!==false&&(Date.now()-this.lastRequest>300000||this.revision!==snapshot.historyRevision&&Date.now()-this.lastRequest>30000)){
         this.lastRequest=Date.now();this.revision=snapshot.historyRevision;this.a.native.requestSolarData();
       }
       if(key===this.renderKey){this.renderNote(snapshot,weather,now);return;}this.renderKey=key;

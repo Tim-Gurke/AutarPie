@@ -36,6 +36,9 @@ public final class DisplayActivity extends Activity {
     private static final int READOUT_PERMISSION=28;
     private final ExecutorService files = Executors.newSingleThreadExecutor();
     private final ExecutorService historyReads = Executors.newSingleThreadExecutor();
+    private final ExecutorService learningReads = Executors.newSingleThreadExecutor();
+    private volatile String readFocus="";
+    private volatile boolean detailFocus;
     private CsvCodec.Table pendingImport;
     private volatile String pendingSettingsExport;
     private String pendingChargerMac="";
@@ -399,16 +402,18 @@ public final class DisplayActivity extends Activity {
         }
         @JavascriptInterface public String syncState(){return lan.viewer()?lan.remoteSyncState():repository.syncState();}
         @JavascriptInterface public String backgroundArchive(long runId){return repository.archiveRun.background(runId)?"":"Dieser Synchronisationslauf ist bereits beendet. Bitte erneut versuchen.";}
+        @JavascriptInterface public void setReadFocus(String focus,boolean detail){if(focus==null||focus.length()>2048)return;readFocus=focus;detailFocus=detail;lan.displayPriority(focus);}
+        @JavascriptInterface public String historyIdentity(){try{return lan.viewer()?"viewer":"local:"+HistoryExchange.epoch(repository.db)+":"+SolarPlanning.selectedSource(repository.configs());}catch(Exception ignored){return "unavailable";}}
         @JavascriptInterface public void requestHistory(String json){
             try{
                 if(json.length()>4096)throw new IllegalArgumentException();
-                JSONObject request=new JSONObject(json);long id=request.getLong("id");String method=request.getString("method");JSONArray args=request.getJSONArray("args");
+                JSONObject request=new JSONObject(json);String focus=request.optString("focus",readFocus);if(!focus.equals(readFocus))return;lan.displayHistoryRequested();long id=request.getLong("id");String method=request.getString("method");JSONArray args=request.getJSONArray("args");
                 long from=args.getLong(0),to=args.getLong(1);if(from<0||to<=from)throw new IllegalArgumentException();final boolean remote=lan.viewer();final Object owner=lan.identity();
                 historyReads.execute(()->{
                     JSONObject response=new JSONObject();
                     try{
                         JSONObject data;
-                        if(remote!=lan.viewer()||owner!=lan.identity())return;
+                        if(remote!=lan.viewer()||owner!=lan.identity()||!focus.equals(readFocus))return;
                         if(!foreground)throw new java.io.IOException("Anzeige pausiert. Beim Öffnen wird neu geladen.");
                         if(remote)data=lan.query(method,args,message->{try{call("onHistoryProgress",new JSONObject().put("id",id).put("message",message));}catch(JSONException ignored){}});else switch(method){
                             case "chargerJournal":data=ChargerJournal.query(RollerLedger.get(DisplayActivity.this),ChargerJournal.source(repository),from,to,args.optString(2),System.currentTimeMillis());break;
@@ -543,7 +548,7 @@ public final class DisplayActivity extends Activity {
                 value=viewer?lan.cachedKnowledge():solarPlanning.cachedKnowledge(SolarPlanning.selectedSource(repository.configs()),HistoryExchange.epoch(repository.db));
             }catch(Exception ignored){}finally{try{if(owner==lan.identity()&&viewer==lan.viewer()&&foreground)call("onSolarCachedData",new JSONObject().put("id",id).put("data",value==null?JSONObject.NULL:value));}catch(Exception ignored){}}});
         }
-        @JavascriptInterface public void requestSolarData(){if(!foreground)return;if(!lan.viewer()){solarPlanning.request();return;}if(!analysisBusy.compareAndSet(false,true))return;Object owner=lan.identity();historyReads.execute(()->{try{if(owner!=lan.identity()||!lan.viewer()||!foreground)return;JSONObject result=lan.analysisKnowledge(null);if(owner==lan.identity()&&lan.viewer())call("onSolarPlanData",result);}catch(Exception e){try{if(owner==lan.identity()&&lan.viewer())call("onSolarPlanData",new JSONObject().put("error",e instanceof java.io.IOException?e.getMessage():"Lerndaten gerade nicht verfügbar. Die letzte Vorschau bleibt erhalten."));}catch(JSONException ignored){}}finally{analysisBusy.set(false);}});}
+        @JavascriptInterface public void requestSolarData(){if(!foreground||detailFocus)return;if(!lan.viewer()){solarPlanning.request();return;}if(!analysisBusy.compareAndSet(false,true))return;Object owner=lan.identity();learningReads.execute(()->{try{if(owner!=lan.identity()||!lan.viewer()||!foreground||detailFocus)return;JSONObject result=lan.analysisKnowledge(null);if(owner==lan.identity()&&lan.viewer())call("onSolarPlanData",result);}catch(Exception e){try{if(owner==lan.identity()&&lan.viewer())call("onSolarPlanData",new JSONObject().put("error",e instanceof java.io.IOException?e.getMessage():"Lerndaten gerade nicht verfügbar. Die letzte Vorschau bleibt erhalten."));}catch(JSONException ignored){}}finally{analysisBusy.set(false);}});}
         @JavascriptInterface public void startSolarCompass(String place){runOnUiThread(()->{try{siteSensors.startCompass(new JSONObject(place));}catch(Exception e){siteSensors.startCompass(new JSONObject());}});}
         @JavascriptInterface public void stopSolarCompass(){runOnUiThread(()->siteSensors.stopCompass());}
         @JavascriptInterface public void cancelSolarLocation(){runOnUiThread(()->{pendingSiteLocation=false;siteSensors.cancelLocation();});}
@@ -629,5 +634,5 @@ public final class DisplayActivity extends Activity {
     @Override public void onBackPressed() {
         web.evaluateJavascript("window.handleBack ? window.handleBack() : false",value -> { if (!"true".equals(value)) finish(); });
     }
-    @Override protected void onDestroy() { if(siteSensors!=null)siteSensors.stop();if(viewerReadout!=null)viewerReadout.close();if(solarPlanning!=null)solarPlanning.shutdown();historyReads.shutdownNow();files.shutdown(); if (web != null) { web.removeJavascriptInterface("WattPit"); web.destroy(); web = null; } super.onDestroy(); }
+    @Override protected void onDestroy() { if(siteSensors!=null)siteSensors.stop();if(viewerReadout!=null)viewerReadout.close();if(solarPlanning!=null)solarPlanning.shutdown();historyReads.shutdownNow();learningReads.shutdownNow();files.shutdown(); if (web != null) { web.removeJavascriptInterface("WattPit"); web.destroy(); web = null; } super.onDestroy(); }
 }
