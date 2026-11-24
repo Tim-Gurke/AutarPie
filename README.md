@@ -1,22 +1,22 @@
-# AutarPie 3.1.4
+# AutarPie 3.1.5
 
 ![AutarPie Ressourcen-Kreislauf](app/src/main/assets/brand.svg)
 
 **Das lokale Cockpit für autarkes Leben.** Solar und Stromverteilung, Wohnwagenakku, E-Scooter, Modellbau, Gas und Wasser in einer gemeinsamen App. AutarPie führt **Watt’n’Pit und WohnPit** weiter.
 
-**[AutarPie 3.1.4 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.1.4/AutarPie-v3.1.4.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.1.4.md) · [Vollständige Versionshistorie](CHANGELOG.md)
+**[AutarPie 3.1.5 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.1.5/AutarPie-v3.1.5.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.1.5.md) · [Vollständige Versionshistorie](CHANGELOG.md)
 
 Android 8 oder neuer; das Cockpit benötigt einen aktuellen Android-System-WebView. Kein Pflichtkonto, keine Werbung. Mess- und Lerndaten werden lokal gespeichert; eine freiwillige verschlüsselte Sicherung kann in einem selbst gewählten lokalen oder unterstützten Online-Ordner abgelegt werden. Der optionale Wetterabruf verwendet Open-Meteo. Der Anlagenverbund überträgt Daten verschlüsselt im lokalen WLAN.
 
 ## Ansichten
 
-| Gespeicherte Prognose nach Neustart · dunkel | Gespeicherte Prognose nach Neustart · hell |
+| Verwendbare Akku-Prognose · dunkel | Verwendbare Akku-Prognose · hell |
 | --- | --- |
-| ![AutarPie 3.1.4: Wettervorschau aus gespeicherten Lernfaktoren, dunkle Ansicht](docs/images/autarpie-3.1.4-dark.svg) | ![AutarPie 3.1.4: Wettervorschau aus gespeicherten Lernfaktoren, helle Ansicht](docs/images/autarpie-3.1.4-light.svg) |
+| ![AutarPie 3.1.5: grüne Akku-Prognose mit gespeichertem Modell trotz noch abzugleichendem Journal, dunkle Ansicht](docs/images/autarpie-3.1.5-dark.svg) | ![AutarPie 3.1.5: grüne Akku-Prognose mit gespeichertem Modell trotz noch abzugleichendem Journal, helle Ansicht](docs/images/autarpie-3.1.5-light.svg) |
 
-![AutarPie 3.1.4: native Zentralansicht auf Android 11](docs/images/autarpie-3.1.4-central.svg)
+![AutarPie 3.1.5: native Zentralansicht auf Android 11](docs/images/autarpie-3.1.5-central.svg)
 
-Die Browseransichten verwenden neutrale Beispielmesswerte aus dem Neustart-/Modelltest; die native Zentralansicht mit pausierter Aufzeichnung wurde mit demselben App-Quellstand im Android-Emulator aufgenommen.
+Die Browseransichten verwenden neutrale Beispielmesswerte aus dem Neustart-/Modelltest und eine ausdrücklich eingestellte grüne Balkenfarbe. Die native Zentralansicht mit pausierter Aufzeichnung wurde mit demselben App-Quellstand im Android-Emulator aufgenommen.
 
 ## Ein Cockpit, mehrere Anwendungen
 
@@ -50,6 +50,14 @@ Der SmartSolar-Lastausgang ist E-Scooter, Modellbau oder einem anderen Verbrauch
 Die **optionale Rollerautomatik ist zunächst aus**. Ladeziel, Wohnwagenreserve, Tagesziel, Überschussschwellen und Prognosereserve sind variabel. Ein aktives Anzeigehandy erstellt den zeitlich begrenzten Plan; die Zentrale kontrolliert direkte Abschaltbedingungen. Ein Schaltauftrag ist erst mit der tatsächlichen Geräteantwort bestätigt. Ohne gültigen Plan wird zum Ausschalten angefordert. BMS-Empfang allein beweist noch keinen eingesteckten Ladestecker.
 
 Bis zu drei 608PD erhalten getrennte Profile, private Kennungen und eigene Verbindungen. Suche und Einrichtung laufen am erfassenden Handy; Anzeigen bedienen den Ablauf. Die neue direkte Ersteinrichtung verlangt eine Bestätigung am Lader und muss am eigenen 608PD praktisch geprüft werden. Vorhandene Verbindungen aus der eigenen Bluetooth-Aufzeichnung bleiben erhalten. Unterstützt sind die nachgewiesenen Livefelder und das Beenden von Laden/Powerbank-Betrieb. App-Start ist zunächst auf das beobachtete **3S-LiPo-Profil 4,21 V/Zelle / 0,50 A** mit ausdrücklicher Profilbestätigung begrenzt. Powerbank und andere Profile am Gerät starten. Nicht belegte Temperatur-/USB-/CC-CV-Felder werden nicht erfunden.
+
+## Update 3.1.5
+
+**Akku-Prognose in der Wetterkarte rechtzeitig freigeben:** Ein passendes gespeichertes Lernmodell wird bereits verwendet, während das historische Journal im Hintergrund lädt. Die Akkubalken erscheinen dann wieder in der eingestellten Farbe. In 3.1.4 hielt eine verbliebene Prüfung sie dabei fälschlich grau. Neue bekannte Faktor-Grundlagen bleiben bis zur erfolgreichen Speicherung des Ersatzmodells grau. Veraltetes Wetter, fehlende aktuelle Shuntwerte und ein Anlagenwechsel behalten ihre jeweiligen Prüfungen. Die Meldungen unterscheiden verwendetes Modell und Hintergrundabgleich.
+
+Der [vollständige Freigabelauf 45407412328](https://github.com/Tim-Gurke/AutarPie/actions/runs/45407412328) ist erfolgreich; alle sieben Jobs sind grün. Enthalten sind APK-Bau/Lint, 661 Unit-Prüfungen (379 JavaScript, 275 JVM, sieben Veröffentlichungstests), 1153 native Integrationsaussagen, 16 Android-Oberflächenprüfungen und acht Sicherungs-/UID-Wiederherstellungsausführungen auf Android 8/11 sowie 41 verschiedene Browser-Prüfskripte. Der Gegenversuch mit unveränderten 3.1.4-App-Dateien reproduziert die falsche Grau-Kennzeichnung. Die neue Browserprüfung bestätigt die verwendbare grüne Prognose bei zurückgehaltenem Journal und weiterhin null erneute Lernaufrufe bei bloßem Wetterwechsel. Die ursprüngliche Updatesignatur ist geprüft. Die Softwareprüfungen sind keine Messung der Funkstabilität oder Ladezeit am eigenen G5/S20/S10.
+
+**3.1.5 auf Anzeigehandys beziehungsweise im eigenständigen Betrieb über die vorhandene Installation installieren.** Eine Zentrale auf 3.1.4 bleibt kompatibel; bei Aktualisierung des ganzen Verbunds zuerst G5/Zentrale, danach S20/S10 und weitere Anzeigen. Messdaten, Kopplungen, Faktoren, Farben und Layouts bleiben erhalten. Ein Löschen oder kompletter Neuaufbau der Lerndaten ist nicht erforderlich. [Korrektur, Updateweg und Prüfgrenzen](docs/changes-3.1.5.md).
 
 ## Update 3.1.4
 
