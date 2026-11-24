@@ -11,6 +11,7 @@
   window.WattSolarPlan=class {
     constructor(a){
       this.a=a;this.special=new window.WattSpecialUses({...a,render:()=>{this.renderKey='';this.render();}});$('solarSpecialUses').onclick=()=>this.special.open();this.knowledge={source:'',observations:[],forecasts:[],updated:0};this.renderKey='';this.lastRequest=0;this.contextKey=null;this.lastRemembered='';
+      if(window.WattLearnedModel)this.modelStore=new window.WattLearnedModel.Store('solar',a.native,()=>{if(this.modelStore.value&&!this.knowledge.updated){const m=this.modelStore.value;this.knowledge={source:m.source,updated:m.inputAt,observations:[],forecasts:[],compiledOnly:true,cached:true};this.knowledgeState='cached';}this.renderKey='';this.render();});
       $('solarSetupSettings').onclick=()=>this.openSetup();$('solarSetupButton').onclick=()=>this.openSetup();$('solarConsumptionSettings').onclick=()=>this.openUsage();
       $('solarMobileToggle').onclick=()=>this.mobile();$('solarGpsSettings').onclick=()=>{this.openSetup();this.locate();};
       window.onSolarLearningProgress=data=>{if($('solarHistoryStatus'))$('solarHistoryStatus').textContent=data.message||'';};
@@ -75,8 +76,15 @@
       this.requestCachedKnowledge(this.a.getSnapshot());
       let rollerState={};try{rollerState=JSON.parse(this.a.native?.rollerSnapshot?.()||'{}');}catch(_){}
       const specialConfig=this.special.read(),rollerLoads=[];
-      const snapshot=this.a.getSnapshot(),weather=snapshot.weather||{},eq=this.equipment(),plan=this.plan(),now=Date.now(),shunt=this.a.getReading?.('shunt'),key=JSON.stringify([weather,eq,plan,this.knowledge.updated,this.knowledgeState,this.knowledge.stale,this.knowledge.error,Math.floor(now/60000),shunt?[Math.round(shunt.soc),Math.round(shunt.voltage*10)/10]:null,snapshot.settings.capacity,snapshot.deviceSettings,[rollerState.profile,rollerState.fresh,rollerState.session?.active,Math.round(rollerState.live?.soc??0),Math.round((rollerState.live?.power??0)/10)],specialConfig,this.a.getPresence?.()]);
-      const weatherStale=!weather.updated||now<weather.updated||now-weather.updated>6*3600000||!!snapshot.weatherError,knowledgeStale=this.knowledgeState==='cached'||this.knowledgeState==='loading'||!!this.knowledge.error||!!this.knowledge.stale;
+      const snapshot=this.a.getSnapshot(),weather=snapshot.weather||{},eq=this.equipment(),plan=this.plan(),now=Date.now(),shunt=this.a.getReading?.('shunt'),key=JSON.stringify([weather,eq,plan,this.knowledge.updated,this.knowledgeState,this.knowledge.stale,this.knowledge.error,Math.floor(now/60000),shunt?[Math.round(shunt.soc),Math.round(shunt.voltage*10)/10]:null,snapshot.settings.capacity,snapshot.deviceSettings,this.modelStore?.value?.revision,this.modelStore?.error,[rollerState.profile,rollerState.fresh,rollerState.session?.active,Math.round(rollerState.live?.soc??0),Math.round((rollerState.live?.power??0)/10)],specialConfig,this.a.getPresence?.()]);
+      let learned=this.modelStore?.select(window.WattLearnedModel.solarKey(C,snapshot,eq,plan));
+      if(this.modelStore&&!this.knowledge.compiledOnly&&this.knowledge.updated>0&&weather.days?.length){
+        const today=C.stamp(now,weather.timezone)?.day;
+        if(this.factorInputObject!==this.knowledge||this.factorInputDay!==today||this.factorContextKey!==C.calibrationKey(eq,plan,weather.place,this.knowledge.source)){this.factorInputObject=this.knowledge;this.factorInputDay=today;this.factorContextKey=C.calibrationKey(eq,plan,weather.place,this.knowledge.source);this.factorInputRevision=window.WattLearnedModel.solarRevision(this.knowledge,today,this.factorContextKey);}
+        this.modelStore.update(this.factorInputRevision,window.WattLearnedModel.solarBuilder(C,this.knowledge,weather,eq,plan,now));
+      }
+      const forecastKnowledge={...this.knowledge,source:this.knowledge.source||learned?.source||'',learnedModel:learned,requireLearnedModel:!!this.modelStore};
+      const weatherStale=!weather.updated||now<weather.updated||now-weather.updated>6*3600000||!!snapshot.weatherError,knowledgeStale=this.knowledgeState==='cached'||this.knowledgeState==='loading'||!!this.knowledge.error||!!this.knowledge.stale||!!this.modelStore&&(!learned||learned.revision!==this.factorInputRevision&&!!this.factorInputRevision);
       $('weatherStrip').dataset.outdated=String(weatherStale);$('weatherStrip').dataset.pending=String(!weather.updated&&!snapshot.weatherError);$('weatherStrip').dataset.updated=String(weather.updated||0);
       this.knowledgeStale=knowledgeStale;
       const tile=$('weatherStrip').closest?.('.cockpit-tile');tile?.classList.toggle('data-outdated',weatherStale);
@@ -84,7 +92,7 @@
         this.lastRequest=Date.now();this.revision=snapshot.historyRevision;this.a.native.requestSolarData();
       }
       if(key===this.renderKey){this.renderNote(snapshot,weather,now);return;}this.renderKey=key;
-      this.days=C.forecast(weather,eq,plan,{...this.knowledge,batteryVoltage:shunt?.voltage,presence:this.a.getPresence?.()||this.knowledge.presence},now);
+      this.days=C.forecast(weather,eq,plan,{...forecastKnowledge,batteryVoltage:shunt?.voltage,presence:this.a.getPresence?.()||this.knowledge.presence},now);
       const battery=shunt?{...shunt,capacity:snapshot.settings.capacity}:null,reserves=C.batteryForecast(this.days,weather,battery,now);
       this.extraPlan=window.WattSpecialUseCore.build(this.days,specialConfig,rollerState,window.WattRollerCore,now,weather.timezone);
       const extraReserves=C.batteryForecast(this.days,weather,battery,now,this.extraPlan.loads);let extraProblem='';

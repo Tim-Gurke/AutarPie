@@ -6,7 +6,7 @@
   const stamp=t=>t?new Date(t).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'Noch kein Eintrag';
   const id=()=>globalThis.crypto?.randomUUID?.()||'supply-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10);
   window.WattSupplies=class{
-    constructor(a){this.a=a;this.error='';this.renderKey='';$('suppliesWater').onclick=()=>this.edit('water','supply');$('suppliesGas').onclick=()=>this.edit('gas','swap');$('suppliesSettings').onclick=()=>this.settings();$('suppliesRefresh').onclick=()=>this.refresh();}
+    constructor(a){this.a=a;this.error='';this.renderKey='';if(window.WattLearnedModel)this.modelStore=new window.WattLearnedModel.Store('supplies',a.native,()=>{this.calculationKey='';this.renderKey='';this.render();});$('suppliesWater').onclick=()=>this.edit('water','supply');$('suppliesGas').onclick=()=>this.edit('gas','swap');$('suppliesSettings').onclick=()=>this.settings();$('suppliesRefresh').onclick=()=>this.refresh();}
     read(){
       try{
         const raw=this.a.native?JSON.parse(this.a.native.suppliesSnapshot?.()||'{}'):JSON.parse(localStorage.getItem('wattpit-supplies-preview')||'{"version":1,"protocol":1}');
@@ -17,8 +17,10 @@
     }
     render(){
       const config=this.read(),snapshot=this.a.getSnapshot(),connected=!snapshot.lan||snapshot.lan.role!=='viewer'||snapshot.lan.connected;
-      this.connected=connected;const key=JSON.stringify([document.documentElement.dataset.theme,config.revision,config.updated,config.events,config.sites,config.defaults,this.a.getSupplyUnits?.(),config.weather?.location,config.weather?.updated,config.weather?.pending,config.weather?.error,config.weather?.siteKey,config.weather?.history,config.weather?.timezone,config.weather?.enabled,config.weather?.forecast,this.a.getValueColor?.('waterStock'),this.a.getValueColor?.('gasStock'),Math.floor(Date.now()/60000)]);
-      if(key!==this.calculationKey){this.analysis=C.build(config);this.calculationKey=key;}
+      let learned=null;
+      if(this.modelStore){this.modelStore.select(JSON.stringify([1,window.WattLearnedModel.owner(snapshot)]));const now=Date.now(),revision=C.learningKey(config,now);this.modelStore.update(revision,(cancelled,done)=>{const model=C.learn(config,now);if(!cancelled())done(model);});learned=this.modelStore.value;}
+      this.connected=connected;const key=JSON.stringify([document.documentElement.dataset.theme,config.revision,this.modelStore?.value?.revision,config.updated,config.events,config.sites,config.defaults,this.a.getSupplyUnits?.(),config.weather?.location,config.weather?.updated,config.weather?.pending,config.weather?.error,config.weather?.siteKey,config.weather?.history,config.weather?.timezone,config.weather?.enabled,config.weather?.forecast,this.a.getValueColor?.('waterStock'),this.a.getValueColor?.('gasStock'),Math.floor(Date.now()/60000)]);
+      if(key!==this.calculationKey){this.analysis=C.build(config,Date.now(),learned,{requireLearned:!!this.modelStore});this.calculationKey=key;}
       snapshot.suppliesAnalysis=this.analysis;
       const renderKey=key+'|'+connected+'|'+this.supported+'|'+this.error;if(renderKey===this.renderKey)return;this.renderKey=renderKey;
       for(const kind of ['water','gas']){

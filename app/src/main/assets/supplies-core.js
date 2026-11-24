@@ -102,10 +102,21 @@
     if(profile.historyWeatherCorrected)detail+=' Der bisherige Verbrauch seit dem letzten bekannten Vorrat wurde mit Wetterrückblick korrigiert.';
     return {...status,state,title,detail,baseline};
   }
-  function build(input={},now=Date.now()){
+  function learningKey(input={},now=Date.now()){
+    const config=normalize(input),text=JSON.stringify([1,Math.floor(now/DAY),config.events.filter(e=>e.at<=now),config.sites||[],config.weather?.history||[]]);
+    let a=2166136261,b=3339675911;for(let i=0;i<text.length;i++){a=Math.imul(a^text.charCodeAt(i),16777619);b=Math.imul(b^text.charCodeAt(i),2246822519);}return 'supply-factors-v1:'+(a>>>0).toString(16)+':'+(b>>>0).toString(16)+':'+text.length;
+  }
+  function learn(input={},now=Date.now()){
+    const config=normalize(input),weather={...(config.weather||{})},profiles={};weather[PREPARED]=historyRows(weather);
+    for(const kind of ['water','gas']){const {journal,rows}=intervals(config.events,kind,now,weather,config.sites||[]),days=rows.reduce((s,r)=>s+r.days,0),amount=rows.reduce((s,r)=>s+r.amount,0);
+      profiles[kind]={journal,rows,daily:days>0?amount/days:null,model:kind==='gas'?weatherModel(rows):null};}
+    return {version:1,at:now,inputKey:learningKey(config,now),profiles};
+  }
+  function build(input={},now=Date.now(),learned=null,options={}){
     const config=normalize(input),weather={...(config.weather||{})},result={};weather[PREPARED]=historyRows(weather);weather[FORECAST]=forecastRows(weather);
+    const ready=learned?.inputKey===learningKey(config,now),factors=ready?learned:options.requireLearned?null:learn(config,now);
     for(const kind of ['water','gas']){
-      const {journal,rows}=intervals(config.events,kind,now,weather,config.sites||[]),days=rows.reduce((s,r)=>s+r.days,0),amount=rows.reduce((s,r)=>s+r.amount,0),daily=days>0?amount/days:null,model=kind==='gas'?weatherModel(rows):null;
+      const {journal,rows,daily,model}=factors?.profiles[kind]||{journal:config.events.filter(e=>e.kind===kind&&e.type===(kind==='gas'?'swap':'supply')&&e.at<=now),rows:[],daily:null,model:null};
       const profile={kind,daily,model,containerSize:kind==='gas'?config.defaults.gas:config.defaults.waterContainer,intervals:rows.length,intervalHours:mean(rows.map(r=>r.days*24)),lastAt:journal.at(-1)?.at??null,stock:null,remainingHours:null,rangeHours:null,nextSupplyAt:null,needs:{},weatherCorrected:false,historyWeatherCorrected:false,forecastWeatherCorrected:false,rangeWeatherCorrected:false};
       if(profile.lastAt!==null&&finite(profile.intervalHours))profile.nextSupplyAt=profile.lastAt+profile.intervalHours*HOUR;
       const anchors=config.events.filter(e=>e.kind===kind&&e.at<=now&&(e.type==='stock'||kind==='gas'&&e.type==='swap')),anchor=anchors.at(-1),site=weather.siteKey||anchor?.site?.key;
@@ -122,8 +133,8 @@
       profile.basis=rows.length===0?'Noch kein vollständiger Nutzungsabschnitt':rows.length<3?'Vorläufig · '+rows.length+' Abschnitt'+(rows.length===1?'':'e'):rows.length+' Nutzungsabschnitte';
       if(kind==='water'&&rows.length)profile.basis+=' · aus Beschaffungen geschätzt';
       if(kind==='gas'&&model)profile.basis+=model.provisional?' · Temperatur vorläufig berücksichtigt':' · Temperatur'+(model.wind?' und Wind':'')+' gelernt';
-      profile.hint=profile.basis+(profile.stock===null?' · Vorrat unbekannt':'');result[kind]=profile;
+      profile.modelPending=!factors;profile.hint=profile.basis+(profile.stock===null?' · Vorrat unbekannt':'')+(profile.modelPending?' · Verbrauchsmodell wird geladen':'');result[kind]=profile;
     }return result;
   }
-  return {HOUR,DAY,normalize,duration,quantityUnits,quantity,containerHint,weatherFeatures,historyRows,intervals,weatherModel,consumption,build};
+  return {HOUR,DAY,normalize,duration,quantityUnits,quantity,containerHint,weatherFeatures,historyRows,intervals,weatherModel,consumption,learningKey,learn,build};
 });

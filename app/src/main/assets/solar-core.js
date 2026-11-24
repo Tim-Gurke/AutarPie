@@ -54,8 +54,10 @@
     return setupKey(hardware,settings,{latitude:0,longitude:0},source);
   }
   function weightedMedian(rows){const a=[...rows].sort((x,y)=>x.value-y.value),total=a.reduce((n,x)=>n+x.weight,0);let sum=0;for(let i=0;i<a.length;i++){sum+=a[i].weight;if(sum>=total/2)return Math.abs(sum-total/2)<1e-10&&i+1<a.length?(a[i].value+a[i+1].value)/2:a[i].value;}return null;}
+  const emptyCalibration=()=>PARTS.map(()=>({factor:1,days:0,spread:.3,basis:'model',mobileFactor:1,mobileDays:0}));
+  const unknownUsage=()=>({wh:null,parts:[null,null,null],days:0,manual:false,provisional:true,extrapolated:true,pendingSlots:[0,1,2],slotStats:[],usedHours:0,usedEstimatedHours:0});
   function calibration(observations=[],forecasts=[],key='',hardware='',now=Date.now()){
-    const output=PARTS.map(()=>({factor:1,days:0,spread:.3,basis:'model',mobileFactor:1,mobileDays:0}));if(!key)return output;
+    const output=emptyCalibration();if(!key)return output;
     const predictions=new Map();
     for(const f of forecasts){if(!finite(f.wh)||f.wh<20||!finite(f.issued)||f.issued>f.from-12*HOUR||f.issued<f.from-3*DAY)continue;const id=f.key+':'+f.from+':'+f.to,old=predictions.get(id);if(!old||f.issued<old.issued)predictions.set(id,f);}
     for(let slot=0;slot<3;slot++){
@@ -154,7 +156,10 @@
     return day.code??null;
   }
   function forecast(weather,equipment,plan,knowledge={},now=Date.now()){
-    const today=stamp(now,weather.timezone)?.day,key=calibrationKey(equipment,plan,weather.place,knowledge.source||''),corrections=calibration(knowledge.observations,knowledge.forecasts,key,systemKey(equipment,knowledge.source||''),now),out=[];
+    const today=stamp(now,weather.timezone)?.day,key=calibrationKey(equipment,plan,weather.place,knowledge.source||''),hardware=systemKey(equipment,knowledge.source||''),model=knowledge.learnedModel;
+    const compiled=model?.version===1&&model.source===knowledge.source&&model.calibrationKey===key&&model.systemKey===hardware;
+    const corrections=compiled?model.calibration:knowledge.requireLearnedModel?emptyCalibration():calibration(knowledge.observations,knowledge.forecasts,key,hardware,now),out=[];
+    const usageFor=(day,mode='home')=>compiled&&model.profiles?.[day]?.[mode]|| (knowledge.requireLearnedModel?unknownUsage():consumption(plan,knowledge.observations,day,now,mode));
     const active=(equipment.groups||[]).filter(g=>plan.groups[g.id]?.active),mapped=new Map();
     for(const series of weather.solar||[])mapped.set(series.geometry,new Map((series.values||[]).map(p=>[p.t,p.v])));
     const byDay=new Map();for(const h of weather.hours||[]){const local=stamp(h.t-HOUR/2,weather.timezone);if(!local)continue;const list=byDay.get(local.day)||[];list.push({t:h.t,slot:part(local.hour)});byDay.set(local.day,list);}
@@ -182,12 +187,12 @@
         bins[slot][isMobile?'mobile':'fixed']+=wh*factor;if(measured){bins[slot].raw+=wh;timeline.get(t).raw+=wh;}bins[slot].remaining+=wh*factor*clamp((t-now)/HOUR,0,1);timeline.get(t).wh+=wh*factor;
       }
       if(active.length&&!seen)complete=false;
-      const fixed=complete?bins.reduce((a,b)=>a+b.fixed,0):null,mobile=complete?bins.reduce((a,b)=>a+b.mobile,0):null,total=fixed===null?null:fixed+mobile,baseline=consumption(plan,knowledge.observations,d.day,now);
+      const fixed=complete?bins.reduce((a,b)=>a+b.fixed,0):null,mobile=complete?bins.reduce((a,b)=>a+b.mobile,0):null,total=fixed===null?null:fixed+mobile,baseline=usageFor(d.day);
       const usageHours=validWindows?windows.map(w=>(w.to-w.from)/HOUR):[11,5,8],usage={...baseline,hours:usageHours,parts:baseline.parts.map((x,i)=>x===null?null:x*usageHours[i]/[11,5,8][i]),slotStats:baseline.slotStats?.map((s,i)=>({...s,candidateWh:s.candidateWh===null?null:s.candidateWh*usageHours[i]/[11,5,8][i]}))};usage.wh=baseline.wh===null?null:usage.parts.reduce((a,b)=>a+b,0);
       const spread=clamp(Math.max(...corrections.map(x=>x.spread))+.025*index+(unknownShade?.2:0),.2,.8);
       out.push({...d,code:sunshineCode(d),index,complete,measuredComplete,issues,unknownShade,fixed,mobile,total,low:total===null?null:total*(1-spread),high:total===null?null:total*(1+spread),spread,timeline:[...timeline.values()],parts:bins,usage,balance:total===null||usage.wh===null?null:total-usage.wh,key,calibration:corrections.map((x,i)=>({...x,mobileApplied:active.filter(g=>g.measurement==='solar').every(g=>plan.groups[g.id]?.shade?.[i]===0)&&x.mobileDays>=3})),learningDays:Math.min(...corrections.map(x=>x.days))});
     }if(knowledge.presence?.state)for(const d of out){
-      const scaled=mode=>{const u=consumption(plan,knowledge.observations,d.day,now,mode),hours=d.usage.hours||[11,5,8];return {...u,hours,parts:u.parts.map((x,i)=>x===null?null:x*hours[i]/[11,5,8][i])};};
+      const scaled=mode=>{const u=usageFor(d.day,mode),hours=d.usage.hours||[11,5,8];return {...u,hours,parts:u.parts.map((x,i)=>x===null?null:x*hours[i]/[11,5,8][i])};};
       Presence.apply(d,{home:scaled('home'),away:scaled('away')},knowledge.presence,now);
     }
     return out;

@@ -37,6 +37,7 @@ public final class DisplayActivity extends Activity {
     private final ExecutorService files = Executors.newSingleThreadExecutor();
     private final ExecutorService historyReads = Executors.newSingleThreadExecutor();
     private final ExecutorService learningReads = Executors.newSingleThreadExecutor();
+    private final ExecutorService modelFiles = Executors.newSingleThreadExecutor();
     private volatile String readFocus="";
     private volatile boolean detailFocus;
     private CsvCodec.Table pendingImport;
@@ -548,6 +549,22 @@ public final class DisplayActivity extends Activity {
                 value=viewer?lan.cachedKnowledge():solarPlanning.cachedKnowledge(SolarPlanning.selectedSource(repository.configs()),HistoryExchange.epoch(repository.db));
             }catch(Exception ignored){}finally{try{if(owner==lan.identity()&&viewer==lan.viewer()&&foreground)call("onSolarCachedData",new JSONObject().put("id",id).put("data",value==null?JSONObject.NULL:value));}catch(Exception ignored){}}});
         }
+        private String modelNamespace(){return lan.viewer()?lan.state().optString("id","local"):"local";}
+        @JavascriptInterface public void requestLearnedModel(String json){modelFile(json,false);}
+        @JavascriptInterface public void saveLearnedModel(String json){modelFile(json,true);}
+        private void modelFile(String json,boolean save){
+            if(json==null||json.length()>LearnedModelStore.LIMIT)return;Object owner=lan.identity();
+            modelFiles.execute(()->{JSONObject reply=new JSONObject();try{
+                JSONObject request=new JSONObject(json);String kind=request.getString("kind"),key=request.getString("key");
+                if(!kind.equals("solar")&&!kind.equals("supplies"))return;
+                reply.put("id",request.getLong("id")).put("kind",kind).put("key",key).put("action",save?"save":"read");
+                if(owner!=lan.identity())return;String namespace=modelNamespace();
+                if(save){LearnedModelStore.save(DisplayActivity.this,namespace,kind,key,request.getJSONObject("data"),System.currentTimeMillis());reply.put("ok",true);}
+                else reply.put("data",LearnedModelStore.read(DisplayActivity.this,namespace,kind,key,System.currentTimeMillis()));
+            }catch(Exception e){try{reply.put("ok",false).put("error","Lernmodell konnte nicht gespeichert oder gelesen werden.");}catch(Exception ignored){}}
+            if(owner==lan.identity())call("onLearnedModelData",reply);
+            });
+        }
         @JavascriptInterface public void requestSolarData(){if(!foreground||detailFocus)return;if(!lan.viewer()){solarPlanning.request();return;}if(!analysisBusy.compareAndSet(false,true))return;Object owner=lan.identity();learningReads.execute(()->{try{if(owner!=lan.identity()||!lan.viewer()||!foreground||detailFocus)return;JSONObject result=lan.analysisKnowledge(null);if(owner==lan.identity()&&lan.viewer())call("onSolarPlanData",result);}catch(Exception e){try{if(owner==lan.identity()&&lan.viewer())call("onSolarPlanData",new JSONObject().put("error",e instanceof java.io.IOException?e.getMessage():"Lerndaten gerade nicht verfügbar. Die letzte Vorschau bleibt erhalten."));}catch(JSONException ignored){}}finally{analysisBusy.set(false);}});}
         @JavascriptInterface public void startSolarCompass(String place){runOnUiThread(()->{try{siteSensors.startCompass(new JSONObject(place));}catch(Exception e){siteSensors.startCompass(new JSONObject());}});}
         @JavascriptInterface public void stopSolarCompass(){runOnUiThread(()->siteSensors.stopCompass());}
@@ -634,5 +651,5 @@ public final class DisplayActivity extends Activity {
     @Override public void onBackPressed() {
         web.evaluateJavascript("window.handleBack ? window.handleBack() : false",value -> { if (!"true".equals(value)) finish(); });
     }
-    @Override protected void onDestroy() { if(siteSensors!=null)siteSensors.stop();if(viewerReadout!=null)viewerReadout.close();if(solarPlanning!=null)solarPlanning.shutdown();historyReads.shutdownNow();learningReads.shutdownNow();files.shutdown(); if (web != null) { web.removeJavascriptInterface("WattPit"); web.destroy(); web = null; } super.onDestroy(); }
+    @Override protected void onDestroy() { if(siteSensors!=null)siteSensors.stop();if(viewerReadout!=null)viewerReadout.close();if(solarPlanning!=null)solarPlanning.shutdown();historyReads.shutdownNow();learningReads.shutdownNow();modelFiles.shutdown();files.shutdown(); if (web != null) { web.removeJavascriptInterface("WattPit"); web.destroy(); web = null; } super.onDestroy(); }
 }
