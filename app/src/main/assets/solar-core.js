@@ -157,7 +157,7 @@
   }
   function forecast(weather,equipment,plan,knowledge={},now=Date.now()){
     const today=stamp(now,weather.timezone)?.day,key=calibrationKey(equipment,plan,weather.place,knowledge.source||''),hardware=systemKey(equipment,knowledge.source||''),model=knowledge.learnedModel;
-    const compiled=model?.version===1&&model.algorithm===ALGORITHM&&Array.isArray(model.calibration)&&model.calibration.length===3&&model.source===knowledge.source&&model.calibrationKey===key&&model.systemKey===hardware;
+    const compiled=model?.version===1&&model.algorithm===ALGORITHM&&Array.isArray(model.calibration)&&model.calibration.length===3&&model.calibration.every(x=>x&&finite(x.factor)&&finite(x.spread)&&finite(x.mobileFactor))&&model.source===knowledge.source&&model.calibrationKey===key&&model.systemKey===hardware;
     const corrections=compiled?model.calibration:knowledge.requireLearnedModel?emptyCalibration():calibration(knowledge.observations,knowledge.forecasts,key,hardware,now),out=[];
     const usageFor=(day,mode='home')=>compiled&&model.profiles?.[day]?.[mode]|| (knowledge.requireLearnedModel?unknownUsage():consumption(plan,knowledge.observations,day,now,mode));
     const active=(equipment.groups||[]).filter(g=>plan.groups[g.id]?.active),mapped=new Map();

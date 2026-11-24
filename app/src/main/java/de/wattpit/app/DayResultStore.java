@@ -18,7 +18,7 @@ final class DayResultStore {
     static synchronized void save(Context context,String namespace,JSONObject snapshot,String method,JSONArray args,JSONObject data)throws Exception{
         if(!method.equals("energyHistory")&&!method.equals("energyHistoryWindow")||data.has("error")||data.optBoolean("pending"))return;
         JSONObject dataAnalysis=data.optJSONObject("analysis"),plant=snapshot.optJSONObject("lan");String currentEpoch=plant==null?snapshot.optString("historyEpoch"):plant.optString("sourceEpoch");if(dataAnalysis!=null&&!currentEpoch.equals(dataAnalysis.optString("epoch")))return;
-        JSONObject analysis=data.optJSONObject("analysis"),lan=snapshot.optJSONObject("lan");String epoch=lan==null?snapshot.optString("historyEpoch"):lan.optString("sourceEpoch");if(analysis!=null&&!epoch.equals(analysis.optString("epoch")))return;
+        JSONObject analysis=data.optJSONObject("analysis"),lan=snapshot.optJSONObject("lan");String epoch=lan==null?snapshot.optString("historyEpoch"):lan.optString("sourceEpoch");if(analysis!=null&&!epoch.equals(analysis.optString("epoch"))||data.has("sourceEpoch")&&!epoch.equals(data.optString("sourceEpoch")))return;
         String key=parent(snapshot,args);if(key==null)return;long now=System.currentTimeMillis();JSONObject saved=LearnedModelStore.read(context,namespace,"energy",key,now);
         if(saved==null)saved=new JSONObject().put("version",1).put("key",key).put("entries",new JSONObject());
         JSONObject entry=new JSONObject(data.toString());entry.put("dataAt",data.optLong("calculatedAt",now));saved.getJSONObject("entries").put(part(method,args),entry);

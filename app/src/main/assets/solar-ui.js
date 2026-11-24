@@ -64,6 +64,7 @@
       if(!this.cachedRead&&this.a.native?.requestCachedSolarData){this.cachedRead={id:this.cachedRequestId=(this.cachedRequestId||0)+1};this.a.native.requestCachedSolarData(this.cachedRead.id);}
     }
     knowledgeStatus(){
+      if(this.modelStore?.error)return this.modelStore.error;
       if(this.knowledgeState==='cached')return 'Bisheriger Lernstand'+(this.knowledge.updated?' vom '+new Date(this.knowledge.updated).toLocaleString('de-DE'):'')+' · wird aktualisiert.';
       return this.knowledgeState==='loading'?'Lernstand wird geladen.':'';
     }

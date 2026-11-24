@@ -414,7 +414,7 @@ public final class DisplayActivity extends Activity {
                 historyReads.execute(()->{
                     JSONObject response=new JSONObject();
                     try{
-                        JSONObject data;
+                        JSONObject data;String sourceEpoch=!remote&&method.startsWith("energy")?HistoryExchange.epoch(repository.db):"";
                         if(remote!=lan.viewer()||owner!=lan.identity()||!focus.equals(readFocus))return;
                         if(!foreground)throw new java.io.IOException("Anzeige pausiert. Beim Öffnen wird neu geladen.");
                         if(remote)data=lan.query(method,args,message->{try{call("onHistoryProgress",new JSONObject().put("id",id).put("message",message));}catch(JSONException ignored){}});else switch(method){
@@ -428,6 +428,7 @@ public final class DisplayActivity extends Activity {
                             case "dailyEnergy":data=solarPlanning.dailyEnergy(from,to,new JSONObject(repository.prefs.getString("weatherCache","{}")));break;
                             default:throw new IllegalArgumentException();
                         }
+                        if(!sourceEpoch.isEmpty()){if(!sourceEpoch.equals(HistoryExchange.epoch(repository.db)))throw new java.io.IOException("Der Datenbestand wurde gewechselt. Bitte erneut laden.");data.put("sourceEpoch",sourceEpoch);}
                         try{if(owner==lan.identity()&&(method.equals("energyHistory")||method.equals("energyHistoryWindow")))DayResultStore.save(DisplayActivity.this,modelNamespace(),dayIdentity(),method,args,data);}catch(Exception ignored){}
                         response.put("id",id).put("data",data);
                     }catch(Exception e){try{response.put("id",id).put("data",new JSONObject().put("error",e instanceof java.io.IOException||e instanceof IllegalArgumentException?e.getMessage():"Zeitraum konnte nicht geladen werden."));}catch(JSONException ignored){}}

@@ -1,6 +1,7 @@
 package de.wattpit.app;
 
 import android.content.ContentValues;
+import de.wattpit.app.core.Reading;
 import org.json.*;
 import java.nio.file.*;
 import java.lang.reflect.*;
@@ -44,6 +45,16 @@ public final class QuickStartProof {
         JSONObject retainedDay=DayResultStore.read(new LanSyncProof.TestContext(root),"fixture-plant",dayIdentity,"energyHistoryWindow",dayArgs);
         check(retainedDay!=null&&retainedDay.getJSONObject("solar").getJSONObject("summary").getInt("last")==0&&retainedDay.getBoolean("pending"),"the saved current day, including zero, is available before history synchronization with its provisional marker");
         check(DayResultStore.read(context,"fixture-plant",new JSONObject(dayIdentity.toString()).put("historyEpoch","replacement"),"energyHistoryWindow",dayArgs)==null,"a replaced source archive cannot inherit another day snapshot");
+        long dailyFrom=dayStart-3L*86400000;repo.db.getWritableDatabase().beginTransaction();try{for(int d=0;d<2;d++)for(int minute=0;minute<=120;minute++)for(int k=0;k<2;k++){Reading r=new Reading();r.kind=k==0?"solar":"shunt";r.device=k==0?"fixture-solar":"fixture-shunt";r.origin="live";r.timestamp=dailyFrom+d*86400000L+8*3600000L+minute*60000L;r.period=60;r.voltage=13.2;if(k==0){r.solar=10.0;r.state=3;}else{r.power=-5.0;r.current=-5/13.2;}repo.db.insert(r);}repo.db.getWritableDatabase().setTransactionSuccessful();}finally{repo.db.getWritableDatabase().endTransaction();}
+        JSONArray weatherDays=new JSONArray();for(int d=0;d<2;d++)weatherDays.put(new JSONObject().put("day",java.time.Instant.ofEpochMilli(dailyFrom+d*86400000L).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toString()).put("temperature",5+d));JSONObject dailyWeather=new JSONObject().put("days",weatherDays);
+        RollerLedger journalLedger=new RollerLedger(context,"journal-fixture-roller.db");SolarPlanning journal=new SolarPlanning(context,repo,v->{},"journal-fixture-planning.db",journalLedger);
+        JSONObject firstDaily=journal.dailyEnergy(dailyFrom,dailyFrom+2L*86400000,dailyWeather);check(firstDaily.getInt("calculatedDays")==2&&firstDaily.getJSONArray("days").getJSONObject(0).getDouble("last")>0,"the durable day journal stores measured daily usage and its available temperature");journal.shutdown();
+        SolarPlanning againJournal=new SolarPlanning(new LanSyncProof.TestContext(root),repo,v->{},"journal-fixture-planning.db",journalLedger);repo.db.getWritableDatabase().execSQL("ALTER TABLE readings RENAME TO temporarily_unavailable_readings");try{
+            JSONObject cachedDays=againJournal.dailyEnergy(dailyFrom,dailyFrom+2L*86400000,dailyWeather);check(cachedDays.getInt("reusedDays")==2&&cachedDays.getInt("calculatedDays")==0,"completed day totals survive restart and remain readable when the raw-reading table is unavailable");
+        }finally{repo.db.getWritableDatabase().execSQL("ALTER TABLE temporarily_unavailable_readings RENAME TO readings");}
+        weatherDays.getJSONObject(0).put("temperature",-2);JSONObject changedTemperature=againJournal.dailyEnergy(dailyFrom,dailyFrom+2L*86400000,dailyWeather);check(changedTemperature.getInt("reusedDays")==2&&changedTemperature.getJSONArray("days").getJSONObject(0).getDouble("temperature")==-2,"a corrected model temperature updates the day record without recalculating energy");
+        Reading correctedDay=new Reading();correctedDay.kind="solar";correctedDay.device="fixture-solar";correctedDay.origin="live";correctedDay.timestamp=dailyFrom+86400000L+9*3600000L+30000;correctedDay.period=30;correctedDay.voltage=13.2;correctedDay.solar=20.0;repo.db.insert(correctedDay);
+        JSONObject correctedDays=againJournal.dailyEnergy(dailyFrom,dailyFrom+2L*86400000,dailyWeather);check(correctedDays.getInt("reusedDays")==1&&correctedDays.getInt("calculatedDays")==1,"a corrected later day recomputes that day and preserves the unaffected earlier day");againJournal.shutdown();journalLedger.close();
         AnalysisResultCache derived=new AnalysisResultCache(context,"fixture-plant");JSONObject curve=new JSONObject().put("points",new JSONArray().put(new JSONObject().put("v",42)));
         derived.save("solar-today","source-one",curve);
         check(new AnalysisResultCache(new LanSyncProof.TestContext(root),"fixture-plant").read("solar-today","source-one").getJSONArray("points").getJSONObject(0).getInt("v")==42,"calculated curves survive a new Context without recalculation");

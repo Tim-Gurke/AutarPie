@@ -48,6 +48,7 @@ jobs:
         run: |
           npm install --no-save --prefix "$RUNNER_TEMP/quick-start-ui" playwright@1.51.1 pngjs@7.0.0
           NODE_PATH="$RUNNER_TEMP/quick-start-ui/node_modules" node tools/quick-start-smoke.cjs
+          NODE_PATH="$RUNNER_TEMP/quick-start-ui/node_modules" node tools/learned-model-smoke.cjs
           NODE_PATH="$RUNNER_TEMP/quick-start-ui/node_modules" node tools/viewer-readout-smoke.cjs
           NODE_PATH="$RUNNER_TEMP/quick-start-ui/node_modules" node tools/gray-retry-smoke.cjs
           NODE_PATH="$RUNNER_TEMP/quick-start-ui/node_modules" node tools/priority-cache-smoke.cjs

@@ -32,7 +32,7 @@
       document.querySelectorAll('[data-stock]').forEach(b=>b.onclick=()=>this.edit(b.dataset.stock,'stock'));
       document.querySelectorAll('[data-supply-unit]').forEach(select=>select.onchange=()=>{this.a.setSupplyUnit(select.dataset.supplyUnit,select.value);this.renderKey='';this.render();});
       const weather=config.weather||{},hasPlace=!!snapshot.settings?.weatherPlace?.name;
-      $('suppliesStatus').textContent=this.error||(!this.supported?'Bitte Zentrale und Anzeige auf AutarPie 3.0.0 aktualisieren.':!connected?'Letzter Stand · Die Zentrale ist gerade nicht erreichbar.':weather.error||weather.pending?'Letzter Stand · '+(weather.error||'Wetterdaten werden ergänzt …'):weather.updated?'Wetterstand: '+stamp(weather.updated)+' · '+(weather.place?.name||'Wohnwagenstandort'):hasPlace?'Wetter wird auf der Zentrale gesammelt.':'Für wetterabhängige Gasprognosen unter Einstellungen einen Wetterort festlegen.');
+      $('suppliesStatus').textContent=this.modelStore?.error||this.error||(!this.supported?'Bitte Zentrale und Anzeige auf AutarPie 3.0.0 aktualisieren.':!connected?'Letzter Stand · Die Zentrale ist gerade nicht erreichbar.':weather.error||weather.pending?'Letzter Stand · '+(weather.error||'Wetterdaten werden ergänzt …'):weather.updated?'Wetterstand: '+stamp(weather.updated)+' · '+(weather.place?.name||'Wohnwagenstandort'):hasPlace?'Wetter wird auf der Zentrale gesammelt.':'Für wetterabhängige Gasprognosen unter Einstellungen einen Wetterort festlegen.');
       this.weatherHistory(config);
       for(const key of ['suppliesWater','suppliesGas','suppliesSettings','suppliesRefresh'])$(key).disabled=!this.supported||!connected;
       document.querySelectorAll('[data-stock]').forEach(b=>b.disabled=!this.supported||!connected);

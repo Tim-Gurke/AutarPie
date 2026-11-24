@@ -133,3 +133,19 @@ Berechnete Kurven bleiben im privaten Speicher des jeweiligen Handys erhalten un
 Ein weiterhin passender Verbrauchslernstand wird bis zu sechs Stunden weiterverwendet. Neue aktuelle Shuntwerte und Wetterdaten aktualisieren die Prognose, ohne das Verbrauchslernen bei jeder Anzeige vollständig neu auszuführen. Ergänzte historische Lerndaten, ältere Messkorrekturen und geänderte Konfiguration können früheres Nachlernen erfordern.
 
 Unter **Roller → Rollerprofil** bestimmt „Als nicht aktuell markieren nach“ die reine Anzeigetoleranz in Sekunden, zwischen 1 und 300, Vorgabe 15. Innerhalb der Frist bleiben die letzten empfangenen Werte normal stehen; anschließend bleiben sie grau mit Datenstand erhalten. Neue BMS-Messungen ersetzen sie unmittelbar. Aufzeichnung, Ladeplanung und Schaltentscheidungen behalten ihre bisherigen Frischeprüfungen.
+
+
+## Gespeicherte Lernmodelle ab 3.1.4
+
+Auf jeder Anzeige bleiben fertige Solar-Verbrauchsprofile und Solarkorrekturen sowie
+Gas-/Wasser-Verbrauchsfaktoren privat erhalten. Neue Livewerte oder eine neue
+Wettervorhersage verwenden diesen Stand. Nachlernen läuft getrennt; ein neuer
+fertiger Stand ersetzt den bisherigen nach erfolgreichem Speichern. Beim ersten
+Update werden die Faktoren einmal aus dem vorhandenen Lernjournal vorbereitet.
+Fehlen dessen Grundlagen, ist zunächst der Erstabgleich erforderlich.
+
+Bereits gespeicherte heutige Energieansichten erscheinen mit Datenstand und
+Grau-/Lädt-Kennzeichnung, während der Abgleich weiterläuft. Das Tagesarchiv behält
+abgeschlossene Auswertungen und zeigt verfügbare Tagesmitteltemperaturen als
+Wettermodell. Geänderte Messwerte aktualisieren betroffene Tage und notwendige
+Abhängigkeiten. Einstellungen, Kopplungen und Layouts werden dabei erhalten.

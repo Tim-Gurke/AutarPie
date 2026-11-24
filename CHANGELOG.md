@@ -8,6 +8,12 @@ Das bestehende GitHub-Repository heißt jetzt [`Tim-Gurke/AutarPie`](https://git
 
 ## Aktuelles Update
 
+### 3.1.4 · Fertige Lernfaktoren, gespeicherte Tageswerte und stimmige Rückschau
+
+Solarprognosen verwenden dauerhaft gespeicherte Verbrauchsprofile und Solarkorrekturen. Neue Shunt-/Wetterwerte benötigen keine erneute Faktorableitung. Die Profile werden getrennt und in kleinen Schritten vorbereitet; ein neuer Stand wird nach erfolgreichem Speichern übernommen. Gas und Wasser verwenden gespeicherte Verbrauchsstatistiken beziehungsweise Temperatur-/Windkoeffizienten. Ein neuer Wetterbericht wendet diese Faktoren an, statt sie erneut zu lernen.
+
+Gespeicherte heutige Energieansichten können vor dem Netz-/Rohdatenabgleich bereits als vorläufiger Stand erscheinen. Ein dauerhafter Tagesauswertungsspeicher erhält abgeschlossene Tage; aktuelle oder rückwirkend betroffene Ergebnisse werden gezielt aktualisiert. Verfügbare Modelltemperaturen stehen im Tagesarchiv. Die Wetterrückschau wählt ihr Symbol wie die Vorschau aus dem Sonnenanteil der Tageslänge. [Installation, Verhalten und Prüfgrenzen](docs/changes-3.1.4.md).
+
 ### 3.1.3 · Live-Empfang löst kein unnötiges Verbrauchslernen aus
 
 Die Gültigkeitsprüfung des gespeicherten Verbrauchslernstands berücksichtigt nur ausgewählte Geräte und relevante Anlagen-/Standort-/Planungsgrundlagen. Empfangszeit, RSSI, Gerätename, Verbindungsstatus und neu aufgelöste Ortsnamen ändern den Prüfwert nicht mehr. Damit kann eine laufende Liveaufzeichnung den passenden sechs Stunden gültigen Lernstand weiterverwenden. Ein nativer Regressionstest über tatsächliches verschlüsseltes TCP bestätigt neue sichtbare Gerätezeitstempel bei unverändertem Lernstand und Berechnungszeitpunkt. Die übrigen Funktionen aus 3.1.2 bleiben enthalten. [Updateweg und Prüfgrenzen](docs/changes-3.1.3.md).
