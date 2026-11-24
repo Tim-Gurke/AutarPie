@@ -1,22 +1,22 @@
-# AutarPie 3.1.3
+# AutarPie 3.1.4
 
 ![AutarPie Ressourcen-Kreislauf](app/src/main/assets/brand.svg)
 
 **Das lokale Cockpit für autarkes Leben.** Solar und Stromverteilung, Wohnwagenakku, E-Scooter, Modellbau, Gas und Wasser in einer gemeinsamen App. AutarPie führt **Watt’n’Pit und WohnPit** weiter.
 
-**[AutarPie 3.1.3 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.1.3/AutarPie-v3.1.3.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.1.3.md) · [Vollständige Versionshistorie](CHANGELOG.md)
+**[AutarPie 3.1.4 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.1.4/AutarPie-v3.1.4.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.1.4.md) · [Vollständige Versionshistorie](CHANGELOG.md)
 
 Android 8 oder neuer; das Cockpit benötigt einen aktuellen Android-System-WebView. Kein Pflichtkonto, keine Werbung. Mess- und Lerndaten werden lokal gespeichert; eine freiwillige verschlüsselte Sicherung kann in einem selbst gewählten lokalen oder unterstützten Online-Ordner abgelegt werden. Der optionale Wetterabruf verwendet Open-Meteo. Der Anlagenverbund überträgt Daten verschlüsselt im lokalen WLAN.
 
 ## Ansichten
 
-| Bevorzugter Solar-Tagesverlauf | Einstellbare BMS-Anzeigegrenze |
+| Gespeicherte Prognose nach Neustart · dunkel | Gespeicherte Prognose nach Neustart · hell |
 | --- | --- |
-| ![AutarPie 3.1.3: Großansicht des Solarverlaufs](docs/images/autarpie-3.1.3-dark.svg) | ![AutarPie 3.1.3: BMS-Anzeigegrenze im Rollerprofil](docs/images/autarpie-3.1.3-settings.svg) |
+| ![AutarPie 3.1.4: Wettervorschau aus gespeicherten Lernfaktoren, dunkle Ansicht](docs/images/autarpie-3.1.4-dark.svg) | ![AutarPie 3.1.4: Wettervorschau aus gespeicherten Lernfaktoren, helle Ansicht](docs/images/autarpie-3.1.4-light.svg) |
 
-![AutarPie 3.1.3: native Rollenauswahl auf Android 11](docs/images/autarpie-3.1.3-central.svg)
+![AutarPie 3.1.4: native Zentralansicht auf Android 11](docs/images/autarpie-3.1.4-central.svg)
 
-Die Browseransichten verwenden neutrale Beispielmesswerte; die native Ersteinrichtung wurde im Android-Emulator aufgenommen.
+Die Browseransichten verwenden neutrale Beispielmesswerte aus dem Neustart-/Modelltest; die native Zentralansicht mit pausierter Aufzeichnung wurde mit demselben App-Quellstand im Android-Emulator aufgenommen.
 
 ## Ein Cockpit, mehrere Anwendungen
 
@@ -50,6 +50,16 @@ Der SmartSolar-Lastausgang ist E-Scooter, Modellbau oder einem anderen Verbrauch
 Die **optionale Rollerautomatik ist zunächst aus**. Ladeziel, Wohnwagenreserve, Tagesziel, Überschussschwellen und Prognosereserve sind variabel. Ein aktives Anzeigehandy erstellt den zeitlich begrenzten Plan; die Zentrale kontrolliert direkte Abschaltbedingungen. Ein Schaltauftrag ist erst mit der tatsächlichen Geräteantwort bestätigt. Ohne gültigen Plan wird zum Ausschalten angefordert. BMS-Empfang allein beweist noch keinen eingesteckten Ladestecker.
 
 Bis zu drei 608PD erhalten getrennte Profile, private Kennungen und eigene Verbindungen. Suche und Einrichtung laufen am erfassenden Handy; Anzeigen bedienen den Ablauf. Die neue direkte Ersteinrichtung verlangt eine Bestätigung am Lader und muss am eigenen 608PD praktisch geprüft werden. Vorhandene Verbindungen aus der eigenen Bluetooth-Aufzeichnung bleiben erhalten. Unterstützt sind die nachgewiesenen Livefelder und das Beenden von Laden/Powerbank-Betrieb. App-Start ist zunächst auf das beobachtete **3S-LiPo-Profil 4,21 V/Zelle / 0,50 A** mit ausdrücklicher Profilbestätigung begrenzt. Powerbank und andere Profile am Gerät starten. Nicht belegte Temperatur-/USB-/CC-CV-Felder werden nicht erfunden.
+
+## Update 3.1.4
+
+**Fertige Lernfaktoren speichern und direkt verwenden:** Solar-Verbrauchsprofile und Solarkorrekturen sowie die Gas-Wetterkoeffizienten und Wasserstatistik bleiben dauerhaft je Anlage und passender Konfiguration erhalten. Neue Wetter- oder Livewerte aktualisieren die Prognose mit diesen Faktoren. Neue oder korrigierte Lerngrundlagen bereiten getrennt einen neuen Modellstand vor; die Übernahme erfolgt nach Speicherbestätigung. Die native Zentrale sammelt weiter die Grundlagen, Anzeigehandys beziehungsweise der eigenständige Betrieb berechnen die Prognosen.
+
+**Vorhandene Tageswerte sofort zeigen:** Gespeicherte heutige Energieansichten erscheinen mit ihrem bisherigen Datenstand vor dem weiteren Abgleich. Abgeschlossene Auswertungen bleiben in einem dauerhaften Tagesjournal. Änderungen ergänzen betroffene Tage und notwendige Abhängigkeiten. Verfügbare Tagesmitteltemperaturen stehen im Archiv als Wettermodell; fehlende Werte bleiben unbekannt. Die Wetterrückschau richtet ihr Tagessymbol wie die Vorschau nach Sonnenanteil und Tageslänge.
+
+Der [vollständige Freigabelauf 45372035750](https://github.com/Tim-Gurke/AutarPie/actions/runs/45372035750) ist erfolgreich; alle sieben Jobs sind im ersten Durchlauf grün. Geprüft wurden APK-Bau und Lint, 365 JavaScript- und 275 JVM-Unit-Prüfungen, sieben Veröffentlichungstests, 1153 native Integrationsaussagen, 16 Android-Oberflächenprüfungen und acht Sicherungs-/UID-Wiederherstellungsausführungen auf Android 8/11 sowie 41 verschiedene Browser-Prüfskripte. Die zusätzliche JavaScript-Prüfung der neuen Modellschicht bringt die Gesamtzahl der JavaScript-Prüfungen auf 379. Der echte Browser-Neustarttest bestätigt neue Wetterprognosen mit gespeicherten Faktoren bei null erneuten Verbrauchs-, Solar-Kalibrierungs- und Gaslernaufrufen. Die ursprüngliche Updatesignatur ist geprüft. G5-/WLAN-/Victron-Laufzeiten wurden hier nicht am eigenen Gerät gemessen.
+
+**Zuerst G5/Zentrale beziehungsweise das direkt erfassende Handy, danach S20/S10 und weitere Anzeigen auf 3.1.4 aktualisieren.** Über die vorhandene Installation installieren. Messdaten, Kopplungen, Farben und Layouts bleiben erhalten. Der Verbund bleibt mit 3.1.3 kompatibel; die neue Wiederverwendung benötigt 3.1.4 auf der jeweiligen Anzeige. Beim ersten Start werden fehlende Faktoren einmal aus den vorhandenen Lernbeobachtungen erzeugt. [Installation, erster Start und Prüfgrenzen](docs/changes-3.1.4.md).
 
 ## Update 3.1.3
 
