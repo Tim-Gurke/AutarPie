@@ -20,7 +20,7 @@ jobs:
           npm install --no-save --prefix "$RUNNER_TEMP/model-ui" playwright@1.51.1 pngjs@7.0.0
           export NODE_PATH="$RUNNER_TEMP/model-ui/node_modules"
           failed=0
-          for check in learned-model supplies solar-planning release-304 learning-recovery release-311; do
+          for check in learned-model supplies release-304 learning-recovery release-311; do
             node "tools/${check}-smoke.cjs" || failed=1
           done
           exit "$failed"

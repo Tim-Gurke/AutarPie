@@ -78,32 +78,3 @@ neue Wetterdaten ohne erneute Faktor-/Gaslernberechnung.
 Der vollständige Freigabelauf muss vor Veröffentlichung erfolgreich sein.
 Software-, Emulator- und Browserprüfungen sind keine gemessene Laufzeit oder
 Bluetooth-/WLAN-Abnahme am tatsächlichen G5, S20 oder S10.
-
-## Update und erste Verwendung
-
-Zuerst G5/Zentrale beziehungsweise das direkt erfassende Handy aktualisieren,
-danach S20/S10 und weitere Anzeigen. Über die bestehende Installation installieren;
-Messdaten, Kopplungen, Schlüssel, Profile, Farben und eigene Layouts bleiben erhalten.
-Paketkennung `de.wattpit.app`, Mindestversion Android 8 und Updatesignatur bleiben
-bestehen. Der Anlagenverbund bleibt mit 3.1.3 kompatibel; die neue Wiederverwendung
-benötigt 3.1.4 auf der jeweiligen Anzeige. Neue Tagesmitteltemperaturen benötigen
-auch die aktualisierte Wettererfassung auf der Zentrale.
-
-Beim ersten Start nach dem Update werden fehlende fertige Faktoren einmal aus dem
-vorhandenen abgeleiteten Lernjournal vorbereitet. Sind noch keine passenden
-Grundlagen vorhanden, ist zunächst der notwendige Erstabgleich erforderlich.
-Unbekannte Werte werden dabei nicht durch erfundene Nullen ersetzt. Danach bleiben
-passende Faktoren und vorhandene Tagesansichten über App-Neustarts erhalten.
-
-## Prüfung und Grenzen
-
-Automatische Prüfungen vergleichen die bisherige Solarrechnung mit den gespeicherten
-Profilen, neue Wetter-/Akkuprognosen ohne Zugriff auf Lernbeobachtungen, gespeicherte
-Gasfaktoren und geänderte Wettervorhersagen. Der Oberflächentest startet die Anzeige
-neu und zählt die Aufrufe des Lernens. Native Prüfungen verwenden private Dateien,
-echte SQLite-Datenbanken und den produktiven verschlüsselten TCP-Abgleich.
-
-Ein Software-/Emulatortest belegt keine gemessene G5-/WLAN-/Victron-Laufzeit. Die
-bereits beobachteten Wartezeiten lassen sich ohne erneuten praktischen Vergleich
-nicht vollständig zeitlich erklären. Anhaltende Funk- oder Archivprobleme werden
-nicht allein durch einen fertigen Lernmodell-Speicher als behoben erklärt.
