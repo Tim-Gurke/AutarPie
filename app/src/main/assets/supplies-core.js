@@ -133,7 +133,7 @@
       profile.basis=rows.length===0?'Noch kein vollständiger Nutzungsabschnitt':rows.length<3?'Vorläufig · '+rows.length+' Abschnitt'+(rows.length===1?'':'e'):rows.length+' Nutzungsabschnitte';
       if(kind==='water'&&rows.length)profile.basis+=' · aus Beschaffungen geschätzt';
       if(kind==='gas'&&model)profile.basis+=model.provisional?' · Temperatur vorläufig berücksichtigt':' · Temperatur'+(model.wind?' und Wind':'')+' gelernt';
-      profile.modelPending=!factors;profile.hint=profile.basis+(profile.stock===null?' · Vorrat unbekannt':'')+(profile.modelPending?' · Verbrauchsmodell wird geladen':'');result[kind]=profile;
+      profile.modelPending=!factors;if(profile.modelPending)profile.basis='Verbrauchsmodell wird geladen';profile.hint=profile.basis+(profile.stock===null?' · Vorrat unbekannt':'')+(profile.modelPending?' · Verbrauchsmodell wird geladen':'');result[kind]=profile;
     }return result;
   }
   return {HOUR,DAY,normalize,duration,quantityUnits,quantity,containerHint,weatherFeatures,historyRows,intervals,weatherModel,consumption,learningKey,learn,build};

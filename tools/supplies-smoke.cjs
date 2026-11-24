@@ -87,6 +87,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
    for(let d=0;d<15;d++)forecast.push({site:site.key,source:'forecast',from:now+d*D,to:now+(d+1)*D,heat:20,windHeat:10});
    Object.assign(window.suppliesFixture,{events,weather:{updated:now,timezone:'UTC',siteKey:site.key,place:site,history,forecast}});poll();
   });
+  await waitForPage(page,()=>!supplies.analysis.gas.modelPending);
   assert.equal(await page.locator('.supply-weather').getAttribute('data-state'),'active');
   assert.match(await page.locator('.supply-weather strong').textContent(),/aktiv · Temperatur/);
   assert.match(await page.locator('.supply-weather').textContent(),/6 Verbrauchsabschnitte erfasst · davon 6 fürs Wetterlernen geeignet/);

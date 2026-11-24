@@ -34,7 +34,7 @@
   }
  }
  function solarKey(C,snapshot,equipment,plan){const place=snapshot.settings?.weatherPlace||snapshot.weather?.place||{},devices=(snapshot.devices||[]).filter(d=>d.kind==='solar'||d.kind==='shunt').map(d=>[d.kind,d.mac]);return JSON.stringify([1,C.ALGORITHM,owner(snapshot),devices,C.setupKey(equipment,plan,place,'model'),plan.usageMode,plan.manual]);}
- function solarRevision(knowledge,today,contextKey=''){return knowledge.source&&finite(knowledge.updated)&&knowledge.updated>0?JSON.stringify([knowledge.source,knowledge.factorInputToken||hash(JSON.stringify([knowledge.observations,knowledge.forecasts])),today,contextKey]):'';}
+ function solarRevision(knowledge,today,contextKey=''){return typeof knowledge.source==='string'&&finite(knowledge.updated)&&knowledge.updated>0?JSON.stringify([knowledge.source,knowledge.factorInputToken||hash(JSON.stringify([knowledge.observations,knowledge.forecasts])),today,contextKey]):'';}
  function solarBuilder(C,knowledge,weather,equipment,plan,now){
   return (cancelled,done)=>{
    const today=C.stamp(now,weather.timezone)?.day;if(!today)return;

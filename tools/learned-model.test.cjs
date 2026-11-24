@@ -25,6 +25,10 @@ test('incompatible or absent compiled factors leave consumption unknown without 
  const f=fixture(),model=await compiled(f),knowledge={source:'different-source',learnedModel:model,requireLearnedModel:true};Object.defineProperties(knowledge,{observations:{get:forbidden},forecasts:{get:forbidden}});
  const days=C.forecast(f.weather,f.equipment,f.plan,knowledge,now);assert.equal(days[0].usage.wh,null);
 });
+test('source-less preview knowledge and manual consumption remain usable without measurement history',async()=>{
+ const f=fixture();f.knowledge.source='';assert.ok(L.solarRevision(f.knowledge,'2026-11-24'));const known=await compiled(f);assert.ok(C.forecast(f.weather,f.equipment,f.plan,{...f.knowledge,learnedModel:known,requireLearnedModel:true},now)[0].usage.wh>0);
+ f.plan.usageMode='manual';f.plan.manual=[240,240,240,240];f.knowledge.observations=[];const manual=await compiled(f),day=C.forecast(f.weather,f.equipment,f.plan,{...f.knowledge,learnedModel:manual,requireLearnedModel:true},now)[0];assert.equal(day.usage.wh,240);assert.equal(day.usage.manual,true);
+});
 test('saved models survive a new store and an unchanged revision never invokes its builder',async()=>{
  const data=new Map(),storage={getItem:k=>data.get(k),setItem:(k,v)=>data.set(k,v)},store=new L.Store('solar',null,()=>{},storage);
  store.select('plant-and-config');store.update('input-v1',(_,done)=>done({at:Date.now(),profiles:{},source:'neutral'}));await pause(50);

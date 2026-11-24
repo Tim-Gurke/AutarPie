@@ -1,3 +1,4 @@
+const waitForPage=require('./browser-wait.cjs');
 /* Exercise the shipped learning explanation and viewer export entry points. */
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),wait=require('./browser-wait.cjs');
 (async()=>{
@@ -26,6 +27,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
    const old={...row,from:from-86400000,to:from-86400000+11*H,day:new Date(from-86400000).toLocaleDateString('sv-SE'),presenceRejections:false,usage:{...usage,rejected:{weather:2*H}}};
    onSolarPlanData({source:'',updated:now,historyRange:{from:from-40*86400000,to:now,count:5000},observations:[row,old],forecasts:[]});AutarPieApp.solar.openDay(0);document.getElementById('solarLearningCoverage').open=true;
   });
+  await waitForPage(page,()=>AutarPieApp.solar.modelStore.value?.revision===AutarPieApp.solar.factorInputRevision);
   const explanation=await page.locator('#solarLearningCoverage').textContent();assert.match(explanation,/Messgrundlage auf diesem Handy/);assert.match(explanation,/Gemeinsame Messabdeckung fehlt/);assert.match(explanation,/anderen Anwesenheitsprofil/);assert.match(explanation,/unbekannter Anwesenheit/);assert.match(explanation,/Ältere Ausschlüsse.*Anwesenheit nicht zuordenbar/);assert.match(explanation,/Passende historische Wetterdaten fehlen/);
   await page.screenshot({path:path.join(out,'autarpie-3.0.5-learning.png'),animations:'disabled'});await page.locator('#closeModal').click();
   await page.evaluate(()=>{AutarPieApp.showPage('overview');document.getElementById('toast').hidden=true;});await page.screenshot({path:path.join(out,'autarpie-3.0.5-dark.png'),animations:'disabled'});
