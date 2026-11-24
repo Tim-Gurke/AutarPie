@@ -103,7 +103,7 @@
     return {...status,state,title,detail,baseline};
   }
   function learningKey(input={},now=Date.now()){
-    const config=normalize(input),text=JSON.stringify([1,Math.floor(now/DAY),config.events.filter(e=>e.at<=now),config.sites||[],config.weather?.history||[]]);
+    const config=normalize(input),text=JSON.stringify([1,Math.floor(now/DAY),config.events.filter(e=>e.at<=now).map(e=>[e.id,e.order,e.kind,e.type,e.at,e.amount,e.empty,e.site?.key]),(config.sites||[]).map(s=>[s.at,s.until,s.site?.key]),historyRows(config.weather||{}).map(r=>[r.site,r.from,r.to,r.heat,r.windHeat,r.resolution])]);
     let a=2166136261,b=3339675911;for(let i=0;i<text.length;i++){a=Math.imul(a^text.charCodeAt(i),16777619);b=Math.imul(b^text.charCodeAt(i),2246822519);}return 'supply-factors-v1:'+(a>>>0).toString(16)+':'+(b>>>0).toString(16)+':'+text.length;
   }
   function learn(input={},now=Date.now()){

@@ -410,6 +410,7 @@ public final class DisplayActivity extends Activity {
                 if(json.length()>4096)throw new IllegalArgumentException();
                 JSONObject request=new JSONObject(json);String focus=request.optString("focus",readFocus);if(!focus.equals(readFocus))return;lan.displayHistoryRequested();long id=request.getLong("id");String method=request.getString("method");JSONArray args=request.getJSONArray("args");
                 long from=args.getLong(0),to=args.getLong(1);if(from<0||to<=from)throw new IllegalArgumentException();final boolean remote=lan.viewer();final Object owner=lan.identity();
+                if(method.equals("energyHistory")||method.equals("energyHistoryWindow"))modelFiles.execute(()->{try{if(remote!=lan.viewer()||owner!=lan.identity()||!focus.equals(readFocus))return;JSONObject retained=DayResultStore.read(DisplayActivity.this,modelNamespace(),dayIdentity(),method,args);if(retained!=null&&owner==lan.identity()&&focus.equals(readFocus))call("onHistoryResult",new JSONObject().put("id",id).put("interim",true).put("data",retained));}catch(Exception ignored){}});
                 historyReads.execute(()->{
                     JSONObject response=new JSONObject();
                     try{
@@ -427,6 +428,7 @@ public final class DisplayActivity extends Activity {
                             case "dailyEnergy":data=solarPlanning.dailyEnergy(from,to,new JSONObject(repository.prefs.getString("weatherCache","{}")));break;
                             default:throw new IllegalArgumentException();
                         }
+                        try{if(owner==lan.identity()&&(method.equals("energyHistory")||method.equals("energyHistoryWindow")))DayResultStore.save(DisplayActivity.this,modelNamespace(),dayIdentity(),method,args,data);}catch(Exception ignored){}
                         response.put("id",id).put("data",data);
                     }catch(Exception e){try{response.put("id",id).put("data",new JSONObject().put("error",e instanceof java.io.IOException||e instanceof IllegalArgumentException?e.getMessage():"Zeitraum konnte nicht geladen werden."));}catch(JSONException ignored){}}
                     if(!isDestroyed()&&remote==lan.viewer()&&owner==lan.identity())call("onHistoryResult",response);
@@ -548,6 +550,11 @@ public final class DisplayActivity extends Activity {
                 if(owner!=lan.identity()||viewer!=lan.viewer()||!foreground)return;
                 value=viewer?lan.cachedKnowledge():solarPlanning.cachedKnowledge(SolarPlanning.selectedSource(repository.configs()),HistoryExchange.epoch(repository.db));
             }catch(Exception ignored){}finally{try{if(owner==lan.identity()&&viewer==lan.viewer()&&foreground)call("onSolarCachedData",new JSONObject().put("id",id).put("data",value==null?JSONObject.NULL:value));}catch(Exception ignored){}}});
+        }
+        private JSONObject dayIdentity()throws Exception{
+            if(lan.viewer())return new JSONObject(lan.snapshot());
+            JSONObject settings=new JSONObject().put("capacity",repository.prefs.getFloat("capacity",100)).put("solarSetup",new JSONObject(repository.prefs.getString("solar-setup-v1","{}"))).put("specialUses",new JSONObject(repository.prefs.getString(SpecialUses.KEY,"{}"))).put("weatherPlace",new JSONObject(repository.prefs.getString("weatherPlace","{}")));
+            return new JSONObject().put("devices",repository.configs()).put("equipment",repository.equipment()).put("settings",settings).put("historyEpoch",HistoryExchange.epoch(repository.db)).put("weather",new JSONObject(repository.prefs.getString("weatherCache","{}")));
         }
         private String modelNamespace(){return lan.viewer()?lan.state().optString("id","local"):"local";}
         @JavascriptInterface public void requestLearnedModel(String json){modelFile(json,false);}

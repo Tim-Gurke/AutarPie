@@ -151,16 +151,16 @@
     result(response){
       this.source();
       const query=this.inflight;if(!query||query.id!==response.id)return;
-      clearTimeout(this.timer);this.inflight=null;
+      if(!response.interim){clearTimeout(this.timer);this.inflight=null;}
       const data=response.data||{error:response.error||'Zeitraum konnte nicht geladen werden.'};
       const completed=data&&typeof data==='object'&&!data.error&&!data.pending&&!data.syncing;
       // A complete first result from this same plant is useful while recording
       // continues. Keep its original revision so it is visibly stale and a new
       // read follows. Plant changes and import transitions still reject it.
-      if(query.epoch===this.epoch&&(query.generation===this.generation||query.scope!=null&&completed)){
+      if(query.epoch===this.epoch&&(query.generation===this.generation||query.scope!=null&&(completed||response.interim&&!data.error))){
         this.accept(query,data);if(this.active)this.ready(query.method);
       }
-      this.pump();
+      if(!response.interim)this.pump();
     }
   };
 });

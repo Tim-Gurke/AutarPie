@@ -69,7 +69,7 @@ final class WeatherClient {
                 if(!force&&current(cached,signature,pastDays,repository.prefs.getString("weatherError",""),System.currentTimeMillis()))return;
                 JSONObject p=new JSONObject(place);long updated=System.currentTimeMillis();
                 String base="https://api.open-meteo.com/v1/forecast?latitude="+p.getDouble("latitude")+"&longitude="+p.getDouble("longitude")+"&forecast_days=16&past_days="+pastDays+"&timeformat=unixtime&timezone=auto";
-                JSONObject result=get(base+"&daily=weather_code,sunshine_duration,sunrise,sunset,shortwave_radiation_sum&hourly=shortwave_radiation,sunshine_duration");
+                JSONObject result=get(base+"&daily=weather_code,sunshine_duration,sunrise,sunset,shortwave_radiation_sum,temperature_2m_mean,temperature_2m_min,temperature_2m_max&hourly=shortwave_radiation,sunshine_duration");
                 JSONObject cache=timeline(result).put("forecastDays",16);JSONArray series=new JSONArray();
                 JSONObject eq=new JSONObject(equipment),plan=SolarPlanning.checked(new JSONObject(setup),eq);JSONArray groups=eq.getJSONArray("groups");java.util.Set<String> requested=new java.util.LinkedHashSet<>();boolean partial=false;
                 for(int i=0;i<groups.length();i++){
@@ -120,6 +120,7 @@ final class WeatherClient {
             if(previous!=null&&!date.equals(previous.plusDays(1)))throw new IOException("Wettertage sind nicht aufeinanderfolgend.");previous=date;
             long rise=daily.getJSONArray("sunrise").optLong(i)*1000L,set=daily.getJSONArray("sunset").optLong(i)*1000L;
             days.put(new JSONObject().put("day",date.toString()).put("code",codes.isNull(i)?JSONObject.NULL:codes.getInt(i)).put("hours",finiteAt(sun,i,3600)).put("radiation",finiteAt(daily.optJSONArray("shortwave_radiation_sum"),i,.0036)).put("sunrise",rise>0?rise:JSONObject.NULL).put("sunset",set>rise?set:JSONObject.NULL));
+            JSONObject day=days.getJSONObject(days.length()-1);for(String field:new String[]{"temperature","temperatureMin","temperatureMax"}){String parameter=field.equals("temperature")?"temperature_2m_mean":field.equals("temperatureMin")?"temperature_2m_min":"temperature_2m_max";JSONArray temperatures=daily.optJSONArray(parameter);Object temperature=JSONObject.NULL;if(temperatures!=null&&!temperatures.isNull(i)){double v=temperatures.optDouble(i,Double.NaN);if(Double.isFinite(v)&&v>=-90&&v<=65)temperature=v;}day.put(field,temperature);}
             long[] bounds=ForecastTime.boundaries(date,zone);for(int slot=0;slot<3;slot++)windows.put(new JSONObject().put("day",date.toString()).put("slot",slot).put("from",bounds[slot]).put("to",bounds[slot+1]));
         }
         if(days.length()==0)throw new IOException();

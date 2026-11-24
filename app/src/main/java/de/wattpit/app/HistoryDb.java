@@ -349,8 +349,8 @@ final class HistoryDb extends SQLiteOpenHelper {
                 break;
             }
             List<EnergyIntegral.ModelInterval> clipped=null;if(model!=null){clipped=new ArrayList<>();for(EnergyIntegral.ModelInterval x:model){long a=Math.max(start,x.interval.from),b=Math.min(next,x.interval.to);if(b>a)clipped.add(x.slice(a,b));}}
-            EnergyIntegral.Result result=EnergyIntegral.flowIntervals(clipIntervals(solar,start,next),clipIntervals(battery,start,next),start,next,solarFrom,solarTo,clipped,null).consumption;
-            days.put(new JSONObject().put("day",day.toString()).put("last",result.wh==null?JSONObject.NULL:result.wh)
+            EnergyIntegral.Flow flow=EnergyIntegral.flowIntervals(clipIntervals(solar,start,next),clipIntervals(battery,start,next),start,next,solarFrom,solarTo,clipped,null);EnergyIntegral.Result result=flow.consumption;
+            days.put(new JSONObject().put("day",day.toString()).put("solarWh",flow.solar.wh==null?JSONObject.NULL:flow.solar.wh).put("balanceWh",flow.balance.wh==null?JSONObject.NULL:flow.balance.wh).put("last",result.wh==null?JSONObject.NULL:result.wh)
                     .put("coverage",result.coverage(start,next)).put("modelledMillis",result.modelledMillis).put("inconsistentMillis",result.inconsistentMillis).put("adjustedMillis",result.adjustedMillis).put("limitedMillis",result.limitedMillis).put("interpolatedMillis",result.interpolatedMillis).put("coveredMillis",result.coveredMillis).put("from",start).put("to",next));
             day=day.plusDays(1);
         }

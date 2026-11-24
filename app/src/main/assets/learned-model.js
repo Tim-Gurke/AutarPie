@@ -33,12 +33,12 @@
    });}catch(e){if(!cancelled()){this.error=e.message;this.retryAt=Date.now()+30000;this.requested='';this.changed();}}},20);
   }
  }
- function solarKey(C,snapshot,equipment,plan){const place=snapshot.settings?.weatherPlace||snapshot.weather?.place||{},devices=(snapshot.devices||[]).filter(d=>d.kind==='solar'||d.kind==='shunt').map(d=>[d.kind,d.mac]);return JSON.stringify([1,owner(snapshot),devices,C.setupKey(equipment,plan,place,'model'),plan.usageMode,plan.manual]);}
+ function solarKey(C,snapshot,equipment,plan){const place=snapshot.settings?.weatherPlace||snapshot.weather?.place||{},devices=(snapshot.devices||[]).filter(d=>d.kind==='solar'||d.kind==='shunt').map(d=>[d.kind,d.mac]);return JSON.stringify([1,C.ALGORITHM,owner(snapshot),devices,C.setupKey(equipment,plan,place,'model'),plan.usageMode,plan.manual]);}
  function solarRevision(knowledge,today,contextKey=''){return knowledge.source&&finite(knowledge.updated)&&knowledge.updated>0?JSON.stringify([knowledge.source,knowledge.factorInputToken||hash(JSON.stringify([knowledge.observations,knowledge.forecasts])),today,contextKey]):'';}
  function solarBuilder(C,knowledge,weather,equipment,plan,now){
   return (cancelled,done)=>{
    const today=C.stamp(now,weather.timezone)?.day;if(!today)return;
-   const key=C.calibrationKey(equipment,plan,weather.place,knowledge.source),system=C.systemKey(equipment,knowledge.source),model={at:now,source:knowledge.source,inputAt:knowledge.updated,calibrationKey:key,systemKey:system,profiles:{}};
+   const key=C.calibrationKey(equipment,plan,weather.place,knowledge.source),system=C.systemKey(equipment,knowledge.source),model={algorithm:C.ALGORITHM,at:now,source:knowledge.source,inputAt:knowledge.updated,calibrationKey:key,systemKey:system,profiles:{}};
    const tasks=[()=>{model.calibration=C.calibration(knowledge.observations,knowledge.forecasts,key,system,now);}];
    for(let i=0;i<32;i++){const day=new Date(Date.parse(today+'T12:00:00Z')+i*C.DAY).toISOString().slice(0,10);model.profiles[day]={};for(const mode of ['home','away'])tasks.push(()=>{model.profiles[day][mode]=C.consumption(plan,knowledge.observations,day,now,mode);});}
    let index=0;const step=()=>{if(cancelled())return;try{tasks[index++]();if(index<tasks.length)setTimeout(step,0);else done(model);}catch(e){done({error:e.message});}};step();

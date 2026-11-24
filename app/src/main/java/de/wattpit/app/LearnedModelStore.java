@@ -10,7 +10,7 @@ import java.nio.file.*;
 final class LearnedModelStore {
     static final int LIMIT=2*1024*1024;
     private static File file(Context context,String plant,String kind)throws IOException{
-        if(!plant.matches("[A-Za-z0-9_-]{1,80}")||!kind.matches("solar|supplies"))throw new IOException("Ungültiger Lernspeicher.");
+        if(!plant.matches("[A-Za-z0-9_-]{1,80}")||!kind.matches("solar|supplies|energy"))throw new IOException("Ungültiger Lernspeicher.");
         return new File(new File(context.getFilesDir(),"learned-models-v1"),plant+"-"+kind+".json");
     }
     static synchronized JSONObject read(Context context,String plant,String kind,String key,long now){

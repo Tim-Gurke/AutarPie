@@ -5,7 +5,7 @@
   'use strict';
   const Presence=typeof module==='object'&&module.exports?require('./presence-core.js'):globalThis.WattPresenceCore;
   const Equipment=typeof module==='object'&&module.exports?require('./equipment.js'):globalThis.WattEquipmentCore;
-  const HOUR=3600000,DAY=24*HOUR;
+  const ALGORITHM=1722,HOUR=3600000,DAY=24*HOUR;
   const finite=x=>typeof x==='number'&&Number.isFinite(x);
   const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
   const DIRECTIONS=['Nord','Nord/Nordost','Nordost','Ost/Nordost','Ost','Ost/Südost','Südost','Süd/Südost','Süd','Süd/Südwest','Südwest','West/Südwest','West','West/Nordwest','Nordwest','Nord/Nordwest'];
@@ -157,7 +157,7 @@
   }
   function forecast(weather,equipment,plan,knowledge={},now=Date.now()){
     const today=stamp(now,weather.timezone)?.day,key=calibrationKey(equipment,plan,weather.place,knowledge.source||''),hardware=systemKey(equipment,knowledge.source||''),model=knowledge.learnedModel;
-    const compiled=model?.version===1&&model.source===knowledge.source&&model.calibrationKey===key&&model.systemKey===hardware;
+    const compiled=model?.version===1&&model.algorithm===ALGORITHM&&Array.isArray(model.calibration)&&model.calibration.length===3&&model.source===knowledge.source&&model.calibrationKey===key&&model.systemKey===hardware;
     const corrections=compiled?model.calibration:knowledge.requireLearnedModel?emptyCalibration():calibration(knowledge.observations,knowledge.forecasts,key,hardware,now),out=[];
     const usageFor=(day,mode='home')=>compiled&&model.profiles?.[day]?.[mode]|| (knowledge.requireLearnedModel?unknownUsage():consumption(plan,knowledge.observations,day,now,mode));
     const active=(equipment.groups||[]).filter(g=>plan.groups[g.id]?.active),mapped=new Map();
@@ -231,5 +231,5 @@
     if(!groups.length||groups.some(g=>!geometry(g,plan.groups[g.id])))return [];
     const rows=[];for(const d of days){if(!d.measuredComplete)continue;for(let slot=0;slot<3;slot++){const bounds=(weather.windows||[]).find(w=>w.day===d.day&&w.slot===slot);if(bounds&&bounds.from>weather.updated)rows.push({key,systemKey:systemKey(equipment,source),from:bounds.from,to:bounds.to,issued:weather.updated,wh:d.parts[slot].raw,intervals:d.timeline.filter(h=>h.from>=bounds.from&&h.to<=bounds.to).map(h=>({from:h.from,to:h.to,wh:h.raw}))});}}return rows;
   }
-  return {HOUR,DAY,learningSince,usageRows,DIRECTIONS,PARTS,bearing,direction,panelHeading,geometry,normalize,newSite,stamp,part,setupKey,calibrationKey,systemKey,median,seasonWeights,consumption,calibration,sunshineCode,forecast,batteryForecast,trainingRows};
+  return {ALGORITHM,HOUR,DAY,learningSince,usageRows,DIRECTIONS,PARTS,bearing,direction,panelHeading,geometry,normalize,newSite,stamp,part,setupKey,calibrationKey,systemKey,median,seasonWeights,consumption,calibration,sunshineCode,forecast,batteryForecast,trainingRows};
 });

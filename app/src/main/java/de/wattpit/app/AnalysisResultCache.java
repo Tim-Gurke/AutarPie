@@ -38,13 +38,13 @@ final class AnalysisResultCache {
         }catch(Exception ignored){}
     }
     static String token(Repository repo,SolarPlanning plan,RollerLedger ledger,long from,long to)throws Exception{
-        StringBuilder value=new StringBuilder("v1:").append(SolarPlanning.ALGORITHM).append(':').append(repo.prefs.getString("analysis.epoch",""));
-        value.append(new TreeMap<>(HistoryExchange.cachedVersions(repo.db,from,to)));
+        StringBuilder value=new StringBuilder("v2:").append(SolarPlanning.ALGORITHM).append(':').append(HistoryExchange.epoch(repo.db)).append(repo.prefs.getString("analysis.epoch",""));
+        value.append(new TreeMap<>(HistoryExchange.cachedVersions(repo.db,from,to)));value.append(HistoryExchange.manifest(repo.db,from,Math.max(from+1,Math.min(to,System.currentTimeMillis()))).getJSONArray("blocks"));
         for(String key:new String[]{"devices","equipment-v1","solar-setup-v1","weatherPlace","rollerChargeWindows",SpecialUses.KEY,"analysisTimezone"})value.append('|').append(repo.prefs.getString(key,""));
         value.append('|').append(repo.prefs.getFloat("capacity",100));
         JSONObject weather=new JSONObject(repo.prefs.getString("weatherCache","{}"));JSONArray days=weather.optJSONArray("days");
         String first=java.time.Instant.ofEpochMilli(from).atZone(java.time.ZoneId.of(repo.prefs.getString("analysisTimezone",TimeZone.getDefault().getID()))).toLocalDate().toString(),last=java.time.Instant.ofEpochMilli(Math.max(from,to-1)).atZone(java.time.ZoneId.of(repo.prefs.getString("analysisTimezone",TimeZone.getDefault().getID()))).toLocalDate().toString();
-        if(days!=null)for(int i=0;i<days.length();i++){JSONObject day=days.getJSONObject(i);String date=day.optString("day");if(date.compareTo(first)>=0&&date.compareTo(last)<=0)value.append(day.toString());}
+        if(days!=null)for(int i=0;i<days.length();i++){JSONObject day=days.getJSONObject(i);String date=day.optString("day");if(date.compareTo(first)>=0&&date.compareTo(last)<=0){JSONObject energyDay=new JSONObject(day.toString());for(String field:new String[]{"temperature","temperatureMin","temperatureMax"})energyDay.remove(field);value.append(energyDay.toString());}}
         // Hash rows only in the supported interval. A changed hour outside it cannot
         // invalidate a completed result; the preceding contexts remain dependencies.
         for(String table:new String[]{"contexts","display_contexts","model_weather","device_settings","input_intervals","roller_raw","load_raw","charger_raw","archive_clock_state"}){

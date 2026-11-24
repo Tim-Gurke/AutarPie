@@ -31,6 +31,19 @@ public final class QuickStartProof {
         check(RollerStore.checked(new JSONObject()).getDouble("displayFreshSeconds")==15,"existing roller profiles receive a fifteen-second display tolerance");
         boolean badTolerance=false;try{RollerStore.checked(new JSONObject().put("displayFreshSeconds",301));}catch(IllegalArgumentException expected){badTolerance=true;}
         check(badTolerance,"invalid display tolerances are rejected without changing BMS control freshness");
+        JSONObject compiled=new JSONObject().put("version",1).put("at",now).put("key","fixture-model").put("profiles",new JSONObject()).put("coefficients",new JSONArray().put(0.4).put(0.03));
+        LearnedModelStore.save(context,"fixture-plant","supplies","fixture-model",compiled,now);
+        JSONObject restored=LearnedModelStore.read(new LanSyncProof.TestContext(root),"fixture-plant","supplies","fixture-model",now);
+        check(restored!=null&&restored.getJSONArray("coefficients").getDouble(1)==0.03,"compiled gas factors survive a new Context without raw data or learning");
+        check(LearnedModelStore.read(context,"fixture-plant","supplies","changed-model",now)==null&&LearnedModelStore.read(context,"other-plant","supplies","fixture-model",now)==null,"compiled factors are isolated by plant and configuration identity");
+        boolean invalidModel=false;try{LearnedModelStore.save(context,"fixture-plant","supplies","fixture-model",new JSONObject(compiled.toString()).put("at",now+86400000),now);}catch(java.io.IOException expected){invalidModel=true;}
+        check(invalidModel&&LearnedModelStore.read(context,"fixture-plant","supplies","fixture-model",now)!=null,"an invalid new model preserves the last atomically saved factors");
+        JSONObject dayIdentity=new JSONObject(signatureSnapshot.toString()).put("historyEpoch",epoch);long dayStart=java.time.Instant.ofEpochMilli(now).atZone(java.time.ZoneId.systemDefault()).toLocalDate().atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+        JSONArray dayArgs=new JSONArray().put(dayStart).put(now).put("all").put(dayStart).put(now);JSONObject flow=new JSONObject().put("solar",new JSONObject().put("summary",new JSONObject().put("last",0)).put("points",new JSONArray())).put("calculatedAt",now-60000);
+        DayResultStore.save(context,"fixture-plant",dayIdentity,"energyHistoryWindow",dayArgs,flow);
+        JSONObject retainedDay=DayResultStore.read(new LanSyncProof.TestContext(root),"fixture-plant",dayIdentity,"energyHistoryWindow",dayArgs);
+        check(retainedDay!=null&&retainedDay.getJSONObject("solar").getJSONObject("summary").getInt("last")==0&&retainedDay.getBoolean("pending"),"the saved current day, including zero, is available before history synchronization with its provisional marker");
+        check(DayResultStore.read(context,"fixture-plant",new JSONObject(dayIdentity.toString()).put("historyEpoch","replacement"),"energyHistoryWindow",dayArgs)==null,"a replaced source archive cannot inherit another day snapshot");
         AnalysisResultCache derived=new AnalysisResultCache(context,"fixture-plant");JSONObject curve=new JSONObject().put("points",new JSONArray().put(new JSONObject().put("v",42)));
         derived.save("solar-today","source-one",curve);
         check(new AnalysisResultCache(new LanSyncProof.TestContext(root),"fixture-plant").read("solar-today","source-one").getJSONArray("points").getJSONObject(0).getInt("v")==42,"calculated curves survive a new Context without recalculation");

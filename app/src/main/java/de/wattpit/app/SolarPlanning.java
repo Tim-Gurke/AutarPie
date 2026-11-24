@@ -48,7 +48,7 @@ final class SolarPlanning extends SQLiteOpenHelper {
         this(context,repository,callback,"wattpit-planning.db",null);
     }
     SolarPlanning(Context context,Repository repository,Consumer<JSONObject> callback,String database,RollerLedger ledger){
-        super(context,database,null,6);this.repository=repository;this.callback=callback;this.context=context.getApplicationContext();previewName=database;analysis=ledger!=null;rollerLedger=ledger==null?RollerLedger.get(context):ledger;display=new MobileSolarDisplay(repository,this);setWriteAheadLoggingEnabled(true);
+        super(context,database,null,7);this.repository=repository;this.callback=callback;this.context=context.getApplicationContext();previewName=database;analysis=ledger!=null;rollerLedger=ledger==null?RollerLedger.get(context):ledger;display=new MobileSolarDisplay(repository,this);setWriteAheadLoggingEnabled(true);
     }
     @Override public void onCreate(SQLiteDatabase db){
         db.execSQL("CREATE TABLE observations(start INTEGER NOT NULL,end INTEGER NOT NULL,source TEXT NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(start,end,source))");
@@ -56,7 +56,7 @@ final class SolarPlanning extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE contexts(at INTEGER PRIMARY KEY,key TEXT NOT NULL,mobile_free INTEGER NOT NULL,source TEXT NOT NULL,solar_key TEXT NOT NULL DEFAULT '',payload TEXT NOT NULL DEFAULT '{}')");
         PlanningConfirmation.create(db);
         MobileSolarDisplay.create(db);
-        createModelRevision(db);
+        createModelRevision(db);createDailyJournal(db);
     }
     @Override public void onUpgrade(SQLiteDatabase db,int oldVersion,int newVersion){
         if(oldVersion<2){db.execSQL("ALTER TABLE contexts ADD COLUMN solar_key TEXT NOT NULL DEFAULT ''");db.execSQL("ALTER TABLE contexts ADD COLUMN payload TEXT NOT NULL DEFAULT '{}'");}
@@ -64,7 +64,9 @@ final class SolarPlanning extends SQLiteOpenHelper {
         if(oldVersion<4&&newVersion>=4)MobileSolarDisplay.create(db);
         if(oldVersion==4&&newVersion>=5){db.execSQL("ALTER TABLE model_weather ADD COLUMN night INTEGER NOT NULL DEFAULT 0");db.execSQL("ALTER TABLE model_weather ADD COLUMN sunrise INTEGER NOT NULL DEFAULT 0");db.execSQL("ALTER TABLE model_weather ADD COLUMN sunset INTEGER NOT NULL DEFAULT 0");}
         if(oldVersion<6&&newVersion>=6)createModelRevision(db);
+        if(oldVersion<7&&newVersion>=7)createDailyJournal(db);
     }
+    private static void createDailyJournal(SQLiteDatabase db){db.execSQL("CREATE TABLE IF NOT EXISTS daily_energy_results(start INTEGER PRIMARY KEY,end INTEGER NOT NULL,token TEXT NOT NULL,payload TEXT NOT NULL)");}
     private static void createModelRevision(SQLiteDatabase db){
         db.execSQL("CREATE TABLE IF NOT EXISTS analysis_model_meta(revision INTEGER NOT NULL)");db.execSQL("INSERT INTO analysis_model_meta SELECT 1 WHERE NOT EXISTS(SELECT 1 FROM analysis_model_meta)");
         db.execSQL("CREATE TABLE IF NOT EXISTS analysis_model_tables(name TEXT PRIMARY KEY,revision INTEGER NOT NULL)");
@@ -113,7 +115,7 @@ final class SolarPlanning extends SQLiteOpenHelper {
         saved.put("forecasts",forecasts);saved.put("factorInputToken",factorToken(saved));SolarPreviewCache.save(context,previewName,repository.prefs.getString("analysis.epoch",""),saved);return saved;
     }
     static String factorToken(JSONObject data)throws Exception{
-        StringBuilder text=new StringBuilder("factor-input-v1|").append(data.optString("source")).append(data.optJSONArray("observations"));
+        StringBuilder text=new StringBuilder("factor-input-v1|").append(ALGORITHM).append("|").append(data.optString("source")).append(data.optJSONArray("observations"));
         Set<String> intervals=new HashSet<>();JSONArray rows=data.optJSONArray("observations"),forecasts=data.optJSONArray("forecasts");
         if(rows!=null)for(int i=0;i<rows.length();i++){JSONObject r=rows.getJSONObject(i);intervals.add(r.optString("solarKey",r.optString("key"))+":"+r.optLong("from")+":"+r.optLong("to"));}
         if(forecasts!=null)for(int i=0;i<forecasts.length();i++){JSONObject f=forecasts.getJSONObject(i);if(intervals.contains(f.optString("key")+":"+f.optLong("from")+":"+f.optLong("to")))text.append(f);}
@@ -151,8 +153,20 @@ final class SolarPlanning extends SQLiteOpenHelper {
     }
     JSONObject dailyEnergy(long from,long to,JSONObject weather)throws Exception{
         if(from<0||to<=from||to-from>32L*86400000)throw new IllegalArgumentException("Ungültiger Tageszeitraum.");
-        long until=Math.min(to,System.currentTimeMillis());MobileSolarDisplay.Model model=displayModel(from,until,"all");return repository.db.dailyEnergy(from,until,weather,model.extra).put("accountingVersion",2);
+        long until=Math.min(to,System.currentTimeMillis());ZoneIdHolder zone=new ZoneIdHolder(weather.optString("analysisTimezone",weather.optString("timezone",repository.prefs.getString("analysisTimezone",TimeZone.getDefault().getID()))));
+        JSONObject basis=new JSONObject(weather.toString()).put("analysisTimezone",zone.value.getId());JSONArray days=new JSONArray();int reused=0,calculated=0;
+        for(long start=from;start<until;){checkpoint();long end=Math.min(until,java.time.Instant.ofEpochMilli(start).atZone(zone.value).toLocalDate().plusDays(1).atStartOfDay(zone.value).toInstant().toEpochMilli());
+            long prior=Math.max(0,start/86400000L*86400000L-4L*86400000L);String token=AnalysisResultCache.token(repository,this,rollerLedger,prior,end);JSONObject part=null;
+            try(Cursor cursor=getReadableDatabase().rawQuery("SELECT payload FROM daily_energy_results WHERE start=? AND end=? AND token=?",new String[]{""+start,""+end,token})){if(cursor.moveToFirst())try{part=new JSONObject(cursor.getString(0));}catch(JSONException ignored){}}
+            if(part==null){MobileSolarDisplay.Model model=displayModel(start,end,"all");part=repository.db.dailyEnergy(start,end,basis,model.extra);calculated++;}else reused++;
+            JSONArray values=part.getJSONArray("days"),weatherDays=basis.optJSONArray("days");
+            for(int i=0;i<values.length();i++){JSONObject day=values.getJSONObject(i);if(weatherDays!=null)for(int j=0;j<weatherDays.length();j++){JSONObject w=weatherDays.getJSONObject(j);if(!day.optString("day").equals(w.optString("day")))continue;for(String field:new String[]{"temperature","temperatureMin","temperatureMax"})if(w.has(field))day.put(field,w.get(field));day.put("temperatureSource","weather-model");break;}days.put(day);}
+            ContentValues entry=new ContentValues();entry.put("start",start);entry.put("end",end);entry.put("token",token);entry.put("payload",part.toString());getWritableDatabase().insertWithOnConflict("daily_energy_results",null,entry,SQLiteDatabase.CONFLICT_REPLACE);start=end;
+        }
+        return new JSONObject().put("days",days).put("accountingVersion",2).put("reusedDays",reused).put("calculatedDays",calculated);
+
     }
+    private static final class ZoneIdHolder{final java.time.ZoneId value;ZoneIdHolder(String id){java.time.ZoneId zone;try{zone=java.time.ZoneId.of(id);}catch(Exception e){zone=java.time.ZoneId.systemDefault();}value=zone;}}
     static JSONObject checked(JSONObject input,JSONObject equipment)throws JSONException{
         if(input.has("version")&&input.optInt("version")!=1)throw new IllegalArgumentException("Unbekannte Aufstellung.");
         JSONObject groups=new JSONObject(),given=input.optJSONObject("groups");JSONArray list=equipment.getJSONArray("groups");

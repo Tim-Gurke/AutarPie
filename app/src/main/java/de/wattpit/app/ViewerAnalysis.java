@@ -265,14 +265,7 @@ final class ViewerAnalysis {
     }
     private JSONObject dailyResults(long from,long to)throws Exception{
         JSONObject weather=new JSONObject(repo.prefs.getString("weatherCache","{}")).put("analysisTimezone",repo.prefs.getString("analysisTimezone",TimeZone.getDefault().getID()));
-        java.time.ZoneId zone;try{zone=java.time.ZoneId.of(weather.getString("analysisTimezone"));}catch(Exception ignored){zone=java.time.ZoneId.systemDefault();}
-        JSONArray days=new JSONArray();long until=Math.min(to,System.currentTimeMillis());int reused=0,calculated=0;
-        for(long start=from;start<until;){priority();long end=Math.min(until,java.time.Instant.ofEpochMilli(start).atZone(zone).toLocalDate().plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli());
-            String key="daily-part:"+start+":"+end,token=AnalysisResultCache.token(repo,planning,ledger,support(start),end);JSONObject part=results.read(key,token);
-            if(part==null){part=planning.dailyEnergy(start,end,weather);results.save(key,token,part);calculated++;}else reused++;
-            JSONArray values=part.getJSONArray("days");for(int i=0;i<values.length();i++)days.put(values.get(i));start=end;
-        }
-        return new JSONObject().put("days",days).put("accountingVersion",2).put("reusedDays",reused).put("calculatedDays",calculated);
+        return planning.dailyEnergy(from,to,weather);
     }
     private static String learningVersions(JSONObject tables){return tables.optString("observations")+"|"+tables.optString("confirmed_setups")+"|"+tables.optString("archive_clock_state");}
     private String learningSignature()throws Exception{return learningSignature(new JSONObject(lan.part("snapshot")),new JSONObject(lan.part("presence")));}

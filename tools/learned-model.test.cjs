@@ -48,6 +48,9 @@ test('a new gas weather forecast changes need while the stored learning identity
  input.weather.forecast=input.weather.forecast.map(r=>({...r,heat:15,windHeat:4}));input.weather.forecastUpdated=now+1000;
  assert.equal(S.learningKey(input,now),model.inputKey);const second=S.build(input,now,model,{requireLearned:true});assert.notEqual(second.gas.needs[3],first.gas.needs[3]);assert.equal(second.gas.modelPending,false);assert.equal(JSON.stringify(model),before);
 });
+test('retrieving the same historical weather again does not change gas learning factors',()=>{
+ const input=supply(),key=S.learningKey(input,now);input.weather.history=input.weather.history.map(r=>({...r,issuedAt:now+3600000}));input.weather.updated=now+3600000;assert.equal(S.learningKey(input,now),key);
+});
 test('a corrected historical gas input withdraws incompatible coefficients until background learning finishes',()=>{
  const input=supply(),model=S.learn(input,now);input.events[1].amount=7;
  const next=S.build(input,now,model,{requireLearned:true});assert.equal(next.gas.modelPending,true);assert.equal(next.gas.daily,null);
