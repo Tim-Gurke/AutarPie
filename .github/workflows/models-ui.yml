@@ -1,7 +1,7 @@
 name: Gespeicherte Modelle in der Oberfläche prüfen
 on:
   push:
-    branches: ['prepare/3.1.4-*']
+    branches: ['prepare/3.1.*']
   workflow_dispatch:
 permissions:
   contents: read
