@@ -8,6 +8,10 @@ Das bestehende GitHub-Repository heißt jetzt [`Tim-Gurke/AutarPie`](https://git
 
 ## Aktuelles Update
 
+### 3.1.5 · Akkubalken verwenden die Bereitschaft des gespeicherten Modells
+
+Die Wetter-Akkubalken bleiben nach einem Neustart nicht mehr allein deshalb grau, weil das historische Lernjournal noch lädt oder als Zwischenstand vorliegt. Ein passendes gespeichertes Lernmodell liefert die Prognose unmittelbar in der eingestellten Akkufarbe. Bekannte neue Lerngrundlagen halten die Prognose bis zur Speicherbestätigung des neuen Modells weiterhin grau. Fehlende aktuelle Shuntwerte und unvollständige Wettergrundlagen bleiben unbekannt. Beim Anlagenwechsel werden auch ausstehende Modell-Prüfwerte zurückgesetzt. Die Hinweise unterscheiden ein bereits verwendetes Modell vom Hintergrundabgleich des Journals. [Korrektur, Updateweg und Prüfgrenzen](docs/changes-3.1.5.md).
+
 ### 3.1.4 · Fertige Lernfaktoren, gespeicherte Tageswerte und stimmige Rückschau
 
 Solarprognosen verwenden dauerhaft gespeicherte Verbrauchsprofile und Solarkorrekturen. Neue Shunt-/Wetterwerte benötigen keine erneute Faktorableitung. Die Profile werden getrennt und in kleinen Schritten vorbereitet; ein neuer Stand wird nach erfolgreichem Speichern übernommen. Gas und Wasser verwenden gespeicherte Verbrauchsstatistiken beziehungsweise Temperatur-/Windkoeffizienten. Ein neuer Wetterbericht wendet diese Faktoren an, statt sie erneut zu lernen.

@@ -56,7 +56,7 @@
     sameKnowledgeSource(data,snapshot){return (!data.analysis?.plant||data.analysis.plant===snapshot.lan?.id)&&(!data.analysis?.epoch||!snapshot.lan?.sourceEpoch||data.analysis.epoch===snapshot.lan.sourceEpoch);}
     knowledgeSource(snapshot){
       const owner=JSON.stringify([snapshot.lan?.id||'local',snapshot.lan?.sourceEpoch||'',(snapshot.devices||[]).filter(d=>d.kind==='solar'||d.kind==='shunt').map(d=>[d.kind,d.mac])]);
-      if(owner!==this.knowledgeOwner){this.knowledgeOwner=owner;this.knowledgeState=this.a.native?.requestSolarData||this.a.native?.requestCachedSolarData?'loading':'ready';this.knowledge={source:'',observations:[],forecasts:[],updated:0};this.cachedRead=null;this.lastRequest=0;this.contextKey=null;this.lastRemembered='';this.renderKey='';}
+      if(owner!==this.knowledgeOwner){this.knowledgeOwner=owner;this.knowledgeState=this.a.native?.requestSolarData||this.a.native?.requestCachedSolarData?'loading':'ready';this.knowledge={source:'',observations:[],forecasts:[],updated:0};this.cachedRead=null;this.lastRequest=0;this.contextKey=null;this.lastRemembered='';this.factorInputObject=null;this.factorInputRevision='';this.factorInputDay=null;this.factorContextKey=null;this.renderKey='';}
       return owner;
     }
     requestCachedKnowledge(snapshot){
@@ -65,6 +65,7 @@
     }
     knowledgeStatus(){
       if(this.modelStore?.error)return this.modelStore.error;
+      if(this.modelStore?.value&&!this.knowledgeStale&&(this.knowledgeState==='cached'||this.knowledgeState==='loading'||this.knowledge.stale))return 'Gespeichertes Lernmodell wird verwendet · Lernjournal wird im Hintergrund abgeglichen.';
       if(this.knowledgeState==='cached')return 'Bisheriger Lernstand'+(this.knowledge.updated?' vom '+new Date(this.knowledge.updated).toLocaleString('de-DE'):'')+' · wird aktualisiert.';
       return this.knowledgeState==='loading'?'Lernstand wird geladen.':'';
     }
@@ -86,7 +87,10 @@
         this.modelStore.update(this.factorInputRevision,window.WattLearnedModel.solarBuilder(C,training,weather,eq,plan,now));
       }
       const forecastKnowledge={...this.knowledge,source:this.knowledge.source||learned?.source||'',learnedModel:learned,requireLearnedModel:!!this.modelStore};
-      const weatherStale=!weather.updated||now<weather.updated||now-weather.updated>6*3600000||!!snapshot.weatherError,knowledgeStale=this.knowledgeState==='cached'||this.knowledgeState==='loading'||!!this.knowledge.error||!!this.knowledge.stale||!!this.modelStore&&(!learned||learned.revision!==this.factorInputRevision&&!!this.factorInputRevision);
+      const weatherStale=!weather.updated||now<weather.updated||now-weather.updated>6*3600000||!!snapshot.weatherError;
+      // Forecasts use the saved model. Reading its historical journal is not a
+      // missing forecast input; a known changed revision still awaits its save.
+      const knowledgeStale=this.modelStore?(!learned||!!this.modelStore.error||!!this.factorInputRevision&&learned.revision!==this.factorInputRevision):(this.knowledgeState==='cached'||this.knowledgeState==='loading'||!!this.knowledge.error||!!this.knowledge.stale);
       $('weatherStrip').dataset.outdated=String(weatherStale);$('weatherStrip').dataset.pending=String(!weather.updated&&!snapshot.weatherError);$('weatherStrip').dataset.updated=String(weather.updated||0);
       this.knowledgeStale=knowledgeStale;
       const tile=$('weatherStrip').closest?.('.cockpit-tile');tile?.classList.toggle('data-outdated',weatherStale);
@@ -149,13 +153,13 @@
     renderNote(snapshot,weather,now){
       const index=this.days?.findIndex(d=>known(d.reserve?.evening.at)&&d.reserve.evening.at>=now);this.noteDay=index>=0?index:0;
       const reserve=this.days?.[this.noteDay]?.reserve?.evening,labels={soc:'Akku: aktueller Shuntwert fehlt',capacity:'Akku: Kapazität fehlt',voltage:'Akku: Batteriespannung fehlt',consumption:'Akku: Verbrauch wird ermittelt',weather:'Akku: Ertragsdaten unvollständig',sun:'Akku: Sonnenzeit fehlt',past:'Akku: Zeitpunkt bereits vergangen'};
-      const text=(labels[reserve?.reasonCode]||'Akku bei Sonnenuntergang')+(this.knowledgeState==='cached'?' · bisheriger Lernstand':this.knowledgeState==='loading'?' · Lernstand wird geladen':'')+(this.extraPlan?.profiles.length?' · mit Extras'+(this.days?.[this.noteDay]?.specialUses?.wh===null?': Bedarf unklar':''):'')+(snapshot.weatherError?' · Wetter nicht aktuell':weather.partial?' · Wetterdaten teilweise unvollständig':'');
+      const text=(labels[reserve?.reasonCode]||'Akku bei Sonnenuntergang')+(this.modelStore?.value&&!this.knowledgeStale&&(this.knowledgeState==='cached'||this.knowledgeState==='loading')?' · gespeichertes Lernmodell':this.knowledgeState==='cached'?' · bisheriger Lernstand':this.knowledgeState==='loading'?' · Lernstand wird geladen':'')+(this.extraPlan?.profiles.length?' · mit Extras'+(this.days?.[this.noteDay]?.specialUses?.wh===null?': Bedarf unklar':''):'')+(snapshot.weatherError?' · Wetter nicht aktuell':weather.partial?' · Wetterdaten teilweise unvollständig':'');
       $('weatherNote').textContent=text;$('weatherNote').title=(reserve?.reason?reserve.reason+' ':'')+'Akku bei Sonnenuntergang · feste Skala von 0 bis 100 %. Sonne: Einstrahlung relativ zum besten Vorschautag. Antippen öffnet die Erklärung und die Reserve beim nächsten Sonnenaufgang.'+(snapshot.weatherError?' '+snapshot.weatherError:weather.updated?' Stand '+new Date(weather.updated).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}):'');
     }
     scale(kind,label,value,text,title,stale=false){return `<span class="solar-scale-row solar-scale-${kind}${known(value)?'':' solar-no-data'}${stale?' data-outdated':''}" title="${esc(title+(stale?' · Berechnungsstand noch nicht aktuell.':''))}"><b>${label}</b><span class="solar-track"><i style="width:${known(value)?Math.max(0,Math.min(100,value)):0}%"></i></span><em>${esc(text)}</em></span>`;}
     learningPanel(usage){
       if(usage.manual||!usage.slotStats)return '';
-      if(this.knowledgeState==='loading'&&!this.knowledge.observations.length||this.modelStore&&(!this.modelStore.value||this.modelStore.value.revision!==this.factorInputRevision&&!(usage.usedHours>0)))return '<details class="solar-explanation" id="solarLearningCoverage"><summary>Lernstand wird geladen</summary><p class="muted">Vorhandene Lerndaten werden gelesen. Die Messzeit steht fest, sobald dieser Stand verfügbar ist.</p></details>';
+      if(this.modelStore?(!this.modelStore.value||this.modelStore.value.revision!==this.factorInputRevision&&!(usage.usedHours>0)):(this.knowledgeState==='loading'&&!this.knowledge.observations.length))return '<details class="solar-explanation" id="solarLearningCoverage"><summary>Lernstand wird geladen</summary><p class="muted">Vorhandene Lerndaten werden gelesen. Die Messzeit steht fest, sobald dieser Stand verfügbar ist.</p></details>';
       const rows=usage.slotStats.map((s,i)=>`<tr><th scope="row">${C.PARTS[i]}<small>${['00–11 Uhr','11–16 Uhr','16–24 Uhr'][i]}</small></th><td>${s.extrapolated?'Fehlt · hochgerechnet':number(s.hours,1)+' h · '+s.days+' '+(s.days===1?'Tag':'Tage')}<small>${s.extrapolated?'Noch keine eigene Datengrundlage':s.provisional?'Vorläufig · wenig Datengrundlage':'Saisonal gelernt'}</small>${s.recentDays?`<small>Letzte 14 Tage: ${s.recentDays} Vergleichstage</small>`:''}${s.estimatedHours?`<small>${number(s.estimatedHours,1)} h mit Schätzanteilen${s.reconstructedHours?`, davon ${number(s.reconstructedHours,1)} h Archivschätzung`:''}</small>`:''}${s.rollerAdjustedHours?`<small>${number(s.rollerAdjustedHours,1)} h mit abgezogenem Roller-Ladeanteil</small>`:''}</td><td>${s.pending?'Noch offen':known(s.candidateWh)?'≈ '+energy(s.candidateWh):'—'}${s.pending?`<small>Einzelschätzung: ≈ ${energy(s.candidateWh)} · weitere Vergleichstage nötig</small>`:''}</td></tr>`).join('');
       const labels={specialUse:'Zugeordnete Sondernutzung',roller:'Rollerladung · Sondernutzung',unknownSetup:'Frühere Aufstellung unbekannt',solarGap:'Solarwerte fehlen',measurementGap:'Gemeinsame Messabdeckung fehlt',missingValue:'Verbrauch nicht bestimmbar',controllerProfile:'Frühere Reglereinstellungen fehlen',chargeLimit:'Ladephase begrenzt oder unklar',weather:'Passende historische Wetterdaten fehlen',extraCharging:'Weitere ungemessene Ladung',invalidValue:'Unplausibler Energiewert',inconsistentEnergy:'Energie und geschätzter Beitrag widersprechen sich',outlier:'Abweichender Tag · Ausreißer'};
       const exclusions=usage.slotStats.flatMap((s,i)=>Object.entries(s.rejected||{}).map(([reason,hours])=>`<div><dt>${C.PARTS[i]} · ${esc(labels[reason]||reason)}</dt><dd>${number(hours,2)} h</dd></div>`)).join('');

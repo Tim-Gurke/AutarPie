@@ -137,6 +137,13 @@ Unter **Roller → Rollerprofil** bestimmt „Als nicht aktuell markieren nach�
 
 ## Gespeicherte Lernmodelle ab 3.1.4
 
+Ab 3.1.5 wartet ein bereits verwendbares gespeichertes Modell nicht mehr auf den
+vollständigen Journalabruf, bevor seine Akku-Prognose in der eingestellten
+Akkufarbe erscheint. Ein bekannter geänderter Modellstand bleibt bis zur
+erfolgreichen Speicherung grau. Fehlende aktuelle Shunt-/Wettergrundlagen bleiben
+unbekannt; eigene Wetterfarben werden erhalten. Der Hinweis unterscheidet das
+verwendete Modell vom noch laufenden Hintergrundabgleich des Lernjournals.
+
 Auf jeder Anzeige bleiben fertige Solar-Verbrauchsprofile und Solarkorrekturen sowie
 Gas-/Wasser-Verbrauchsfaktoren privat erhalten. Neue Livewerte oder eine neue
 Wettervorhersage verwenden diesen Stand. Nachlernen läuft getrennt; ein neuer
