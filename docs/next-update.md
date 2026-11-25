@@ -59,6 +59,10 @@ Prognosefehler.
 - Tatsächliche Wh und tatsächlichen Akkustand unverändert anzeigen. Bei belegter
   Begrenzung beispielsweise **„Ertrag begrenzt – Akku voll“**, bei unklarer
   Grundlage **„Begrenzung unklar“** ergänzen.
+- **Wann und wie lange begrenzt wurde:** beobachteten Beginn, Ende und Dauer
+  je Phase beziehungsweise Tag festhalten. Messlücken als unbekannte Zeit
+  erhalten. Erkennbare Begrenzungszeiten und unbekannten zusätzlichen möglichen
+  Ertrag getrennt darstellen; aus der Dauer allein keine verlorenen Wh ableiten.
 - Aktuelle Ladezustands-, Ladephasen-, Spannungs-/Strom- und Reglergrundlagen
   gemeinsam beurteilen. 100 % SoC oder Float allein messen keine abgeregelten Wh;
   laufende Verbraucher können auch bei vollem Akku Solarleistung abnehmen.
