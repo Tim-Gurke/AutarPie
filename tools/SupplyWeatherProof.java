@@ -10,6 +10,37 @@ public final class SupplyWeatherProof {
     static int checks;
     static void check(boolean ok,String name){if(!ok)throw new AssertionError(name);checks++;System.out.println("PASS "+name);}
     static JSONObject place(double lat,double lon,String name)throws Exception{return new JSONObject().put("latitude",lat).put("longitude",lon).put("name",name);}
+    interface Checked {void run()throws Exception;}
+    static void rejected(Checked action,String name)throws Exception{boolean rejected=false;try{action.run();}catch(IllegalArgumentException expected){rejected=true;}check(rejected,name);}
+    static void confirmations(Repository repo,Path root,JSONObject a,JSONObject b,long now)throws Exception{
+        long d=SupplyWeatherData.DAY,h=SupplyWeatherData.HOUR,from=SupplyWeatherData.day(now)-8*d,to=from+2*d;
+        JSONObject event=new JSONObject().put("id","neutral-stay-event").put("kind","gas").put("type","swap").put("amount",11).put("at",from-d).put("site",a);
+        JSONArray visits=new JSONArray().put(new JSONObject().put("at",from-d).put("until",from).put("site",a)).put(new JSONObject().put("at",to).put("until",now+h).put("site",a));
+        repo.prefs.edit().putString(SuppliesStore.KEY,new JSONObject().put("version",1).put("followGps",false).put("events",new JSONArray().put(event)).toString()).putString("weatherPlace","").putString(SupplyLocations.SITES,visits.toString()).commit();
+        SupplyLocations.configured(repo);String journal=SuppliesStore.read(repo.prefs).getJSONArray("events").toString(),gps=repo.prefs.getString(SupplyLocations.SITES,"[]");
+        JSONObject request=new JSONObject().put("op","confirmStay").put("operationId","neutral-stay-command").put("id","neutral-confirmed-stay").put("from",from).put("to",to).put("site",new JSONObject(b.toString()).put("key","WRONG-CLIENT-KEY"));
+        SuppliesStore.command(repo,request.toString());JSONObject saved=SuppliesStore.read(repo.prefs),stay=saved.getJSONArray("confirmedStays").getJSONObject(0);long revision=saved.getLong("revision");
+        check(saved.getBoolean("stayConfirmationSupported"),"snapshots advertise location confirmation support without changing the journal protocol");
+        check(stay.getLong("from")==from&&stay.getLong("to")==to&&stay.getString("source").equals("user-confirmed"),"a confirmation persists its exact proposed bounds and explicit manual source");
+        check(stay.getJSONObject("site").getString("key").equals(b.getString("key")),"the host validates coordinates and recomputes the selected place key");
+        check(saved.getJSONArray("events").toString().equals(journal)&&repo.prefs.getString(SupplyLocations.SITES,"[]").equals(gps),"confirming a gap never rewrites bottle entries or collected GPS visits");
+        SuppliesStore.command(repo,request.toString());check(SuppliesStore.read(repo.prefs).getLong("revision")==revision&&SuppliesStore.read(repo.prefs).getJSONArray("confirmedStays").length()==1,"repeating an acknowledged operation cannot create a duplicate confirmation");
+        Map<String,SupplyWeatherData.Need> needs=SupplyWeatherData.needs(saved,visits,now);
+        check(needs.get(b.getString("key")).days.equals(new TreeSet<>(Arrays.asList(from,from+d))),"a newly corrected place requests only weather days inside its confirmation");
+        String encoded=repo.prefs.getString(SuppliesStore.KEY,"");LanSyncProof.TestContext reopenedContext=new LanSyncProof.TestContext(root.resolve("confirmed-reopen"));Repository reopened=LanSyncProof.repository(reopenedContext);reopened.prefs.edit().putString(SuppliesStore.KEY,encoded).commit();
+        check(SuppliesStore.read(reopened.prefs).getJSONArray("confirmedStays").toString().equals(saved.getJSONArray("confirmedStays").toString()),"a fresh repository restores confirmations from the committed journal serialization");
+        check(SuppliesStore.read(reopened.prefs).getJSONArray("events").toString().equals(journal),"restoring a confirmation retains all original measured amounts");reopened.db.close();
+        rejected(()->SuppliesStore.command(repo,new JSONObject(request.toString()).put("operationId","neutral-duplicate-id").toString()),"an unrelated command cannot silently replace an existing confirmation identifier");
+        rejected(()->SuppliesStore.command(repo,new JSONObject(request.toString()).put("operationId","neutral-stale-edit").put("baseStay",new JSONObject(stay.toString()).put("from",from-h)).toString()),"a stale correction is rejected before persistence");
+        String beforeInvalid=repo.prefs.getString(SuppliesStore.KEY,"");
+        for(String invalid:new String[]{"bounds","future","long","site","id"}){JSONObject command=new JSONObject(request.toString()).put("id","neutral-invalid-stay").put("operationId","neutral-invalid-"+invalid);if(invalid.equals("bounds"))command.put("to",from);else if(invalid.equals("future"))command.put("to",now+d);else if(invalid.equals("long"))command.put("from",now-1097*d).put("to",now);else if(invalid.equals("site"))command.put("site",place(100,10,"Invalid"));else command.put("id","bad");rejected(()->SuppliesStore.command(repo,command.toString()),"invalid confirmation "+invalid+" is rejected");}
+        check(repo.prefs.getString(SuppliesStore.KEY,"").equals(beforeInvalid),"failed validation cannot partially commit a location confirmation");
+        JSONObject edit=new JSONObject(request.toString()).put("operationId","neutral-valid-edit").put("baseStay",stay).put("site",a).put("from",from+h);SuppliesStore.command(repo,edit.toString());JSONObject corrected=SuppliesStore.read(repo.prefs).getJSONArray("confirmedStays").getJSONObject(0);
+        check(corrected.getLong("from")==from+h&&corrected.getJSONObject("site").getString("key").equals(a.getString("key")),"a matching correction persists changed bounds and selected place");
+        JSONObject deletion=new JSONObject().put("op","deleteStay").put("id",stay.getString("id")).put("operationId","neutral-delete-stay").put("baseStay",corrected);SuppliesStore.command(repo,deletion.toString());revision=SuppliesStore.read(repo.prefs).getLong("revision");SuppliesStore.command(repo,deletion.toString());
+        check(SuppliesStore.read(repo.prefs).getJSONArray("confirmedStays").length()==0&&SuppliesStore.read(repo.prefs).getLong("revision")==revision,"deletion is acknowledged once and its retry remains idempotent");
+        check(SuppliesStore.read(repo.prefs).getJSONArray("events").toString().equals(journal)&&repo.prefs.getString(SupplyLocations.SITES,"[]").equals(gps),"editing and removing confirmations preserve all original GPS and bottle data");
+    }
     static JSONObject response(long at,int count)throws Exception{JSONArray time=new JSONArray(),temp=new JSONArray(),wind=new JSONArray();for(int i=0;i<count;i++){time.put((at+i*3600000L)/1000L);temp.put(i==3?JSONObject.NULL:i);wind.put(i==2?JSONObject.NULL:10);}return new JSONObject().put("hourly",new JSONObject().put("time",time).put("temperature_2m",temp).put("wind_speed_10m",wind));}
     public static void main(String[] args)throws Exception{
         Class.forName("org.sqlite.JDBC");Path root=Path.of(args[0]);LanSyncProof.TestContext context=new LanSyncProof.TestContext(root);Repository repo=LanSyncProof.repository(context);long h=SupplyWeatherData.HOUR,d=SupplyWeatherData.DAY,now=System.currentTimeMillis(),base=SupplyWeatherData.day(now)-3*d;
@@ -53,6 +84,6 @@ public final class SupplyWeatherProof {
         check(recovered.getJSONObject(0).getLong("at")==base,"recovered travel times retain their original timestamps");
         check(SuppliesStore.read(repo.prefs).getJSONArray("events").toString().equals(original),"historical location recovery leaves bottle counts and quantities unchanged");
         Files.writeString(root.resolve("packed-weather.json"),new JSONObject().put("version",2).put("history",rows).toString());
-        repo.db.close();System.out.println("RESULT "+checks+" supply weather checks passed; no APK or radio test");
+        confirmations(repo,root,a,b,now);repo.db.close();System.out.println("RESULT "+checks+" supply weather checks passed; no APK or radio test");
     }
 }

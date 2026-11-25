@@ -1,0 +1,58 @@
+name: Ortsbestätigung und Gasprognose ohne APK prüfen
+on:
+  push:
+    branches: ['prepare/gas-stay-*']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  calculations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verbrauch, Lernen, Ortslücken und bestehende Datenlogik
+        run: |
+          python3 tools/check-public-files.py
+          node --test tools/*.test.cjs
+  native-storage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Produktionsquellen kompilieren und Speicherung prüfen
+        run: |
+          python3 tools/fetch-proof-deps.py "$RUNNER_TEMP/supply-deps"
+          python3 tools/prove-supplies-weather.py --dependencies "$RUNNER_TEMP/supply-deps" --output app/build/reports/stay-storage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Ortsbestaetigung-Speicherung
+          path: app/build/reports/stay-storage/*.log
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bedienung und gespeicherte Lernfaktoren im Browser prüfen
+        env:
+          WATTPIT_CHROMIUM: /usr/bin/google-chrome
+          WATTPIT_SCREENSHOT_DIR: app/build/reports/stay-browser
+          WATTPIT_SUPPLIES_SCREENSHOTS: app/build/reports/stay-browser/supplies
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/stay-browser" playwright@1.51.1 pngjs@7.0.0
+          export NODE_PATH="$RUNNER_TEMP/stay-browser/node_modules"
+          failed=0
+          for check in stay-confirmation supplies learned-model; do
+            node "tools/${check}-smoke.cjs" || failed=1
+          done
+          exit "$failed"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Ortsbestaetigung-Oberflaeche
+          path: app/build/reports/stay-browser/
