@@ -10,13 +10,13 @@ Android 8 oder neuer; das Cockpit benötigt einen aktuellen Android-System-WebVi
 
 ## Ansichten
 
-| Verwendbare Akku-Prognose · dunkel | Verwendbare Akku-Prognose · hell |
+| Gasbedarf und Ortsbestätigung · dunkel | Gasbedarf und Ortsbestätigung · hell |
 | --- | --- |
-| ![AutarPie 3.1.5: grüne Akku-Prognose mit gespeichertem Modell trotz noch abzugleichendem Journal, dunkle Ansicht](docs/images/autarpie-3.1.5-dark.svg) | ![AutarPie 3.1.5: grüne Akku-Prognose mit gespeichertem Modell trotz noch abzugleichendem Journal, helle Ansicht](docs/images/autarpie-3.1.5-light.svg) |
+| ![AutarPie 3.1.6: erwarteter Gasbedarf und rückwirkende Ortsnachfrage, dunkle Ansicht](docs/images/autarpie-3.1.6-dark.svg) | ![AutarPie 3.1.6: erwarteter Gasbedarf und rückwirkende Ortsnachfrage, helle Ansicht](docs/images/autarpie-3.1.6-light.svg) |
 
-![AutarPie 3.1.5: native Zentralansicht auf Android 11](docs/images/autarpie-3.1.5-central.svg)
+![AutarPie 3.1.6: native Zentralansicht auf Android 11](docs/images/autarpie-3.1.6-central.svg)
 
-Die Browseransichten verwenden neutrale Beispielmesswerte aus dem Neustart-/Modelltest und eine ausdrücklich eingestellte grüne Balkenfarbe. Die native Zentralansicht mit pausierter Aufzeichnung wurde mit demselben App-Quellstand im Android-Emulator aufgenommen.
+Die Gasansichten stammen aus dem Browserlauf mit neutralen Beispieldaten: üblicher Durchschnitt 0,66 kg/Tag, letzter vollständiger Verbrauch 1,10 kg/Tag und vorsichtige Vorschau von mindestens 1,10 kg pro Tag bei noch fehlendem damaligem Vergleichswetter. Die rückwirkende Nachfrage erfordert keinen neuen Flaschenwechsel. Die native Zentralansicht ohne aktive Aufzeichnung wurde mit demselben App-Quellstand im Android-Emulator aufgenommen.
 
 ## Ein Cockpit, mehrere Anwendungen
 
@@ -56,6 +56,8 @@ Bis zu drei 608PD erhalten getrennte Profile, private Kennungen und eigene Verbi
 **Bestehende Ortslücken rückwirkend bestätigen:** In der Gasansicht fragt die App „Warst du weiterhin in …?“. Ja bestätigt die vorgeschlagenen fehlenden Zeiten; Nein erlaubt Ortssuche und Zeitkorrektur. Ein neuer Flaschenwechsel ist dafür nicht nötig. Ursprüngliche GPS-Aufzeichnungen und Flaschenwechsel bleiben erhalten. Vorhandenes Ortswetter wird zugeordnet, fehlendes Wetter gezielt ergänzt.
 
 **Gasbedarf früher erkennen:** Üblicher Durchschnitt, letzter vollständiger Flaschenverbrauch und erwarteter Bedarf der nächsten 24 Stunden werden getrennt angezeigt. Bei gleich kalten oder kälteren ganzen Prognosetagen gilt mindestens der letzte vollständige Verbrauch; bei fehlendem Vergleichswetter ausdrücklich als vorsichtige Annahme. Höhere Modellwerte bleiben wirksam. Bedarf für 3/7/14 Tage und Reichweite verwenden dieselbe Regel. Eine zusätzliche Kachel für die nächsten 24 Stunden ist frei wählbar. Neue Vorhersagen verwenden gespeicherte Faktoren.
+
+Der [vollständige Freigabelauf 45561317220](https://github.com/Tim-Gurke/AutarPie/actions/runs/45561317220) ist erfolgreich; alle sieben Jobs sind grün. Geprüft wurden APK-Bau/Lint, 675 Unit-Prüfungen (393 JavaScript, 275 JVM und sieben Veröffentlichungstests), 1173 native Integrationsaussagen, 16 Android-Oberflächenprüfungen und acht Sicherungs-/UID-Wiederherstellungsausführungen auf Android 8/11 sowie 42 verschiedene Browser-Prüfskripte. Die neue Ortsbestätigung funktioniert rückwirkend ohne Flaschenwechsel; der Browser-Neustart verwendet die gespeicherten Faktoren ohne erneutes Lernen. Die vorhandene Updatesignatur und identische App-Dateien im signierten Paket sind geprüft. GPS-/WLAN-/Bluetooth-Verhalten und Laufzeiten am eigenen G5/S20/S10 wurden hier nicht vor Ort gemessen.
 
 **Zuerst die Zentrale, danach alle Anzeigen auf 3.1.6 aktualisieren.** Im eigenständigen Betrieb genügt das eine Handy. Über die vorhandene Installation installieren; Daten, Kopplungen, Farben und Layouts bleiben erhalten. Alte Zentralen liefern weiterhin bisherige Daten, unterstützen die neue Bestätigung aber noch nicht; die Anzeige erklärt den Updatebedarf. [Bedienung und Rechenregel](docs/gas-stay-confirmation.md) · [Update und Prüfgrenzen](docs/changes-3.1.6.md).
 
