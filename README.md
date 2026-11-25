@@ -1,10 +1,10 @@
-# AutarPie 3.1.5
+# AutarPie 3.1.6
 
 ![AutarPie Ressourcen-Kreislauf](app/src/main/assets/brand.svg)
 
 **Das lokale Cockpit für autarkes Leben.** Solar und Stromverteilung, Wohnwagenakku, E-Scooter, Modellbau, Gas und Wasser in einer gemeinsamen App. AutarPie führt **Watt’n’Pit und WohnPit** weiter.
 
-**[AutarPie 3.1.5 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.1.5/AutarPie-v3.1.5.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.1.5.md) · [Vollständige Versionshistorie](CHANGELOG.md)
+**[AutarPie 3.1.6 als APK herunterladen](https://github.com/Tim-Gurke/AutarPie/releases/download/v3.1.6/AutarPie-v3.1.6.apk)** · [Einrichtung und Bedienung](docs/AUTARPIE-3.md) · [Update und Prüfgrenzen](docs/changes-3.1.6.md) · [Vollständige Versionshistorie](CHANGELOG.md)
 
 Android 8 oder neuer; das Cockpit benötigt einen aktuellen Android-System-WebView. Kein Pflichtkonto, keine Werbung. Mess- und Lerndaten werden lokal gespeichert; eine freiwillige verschlüsselte Sicherung kann in einem selbst gewählten lokalen oder unterstützten Online-Ordner abgelegt werden. Der optionale Wetterabruf verwendet Open-Meteo. Der Anlagenverbund überträgt Daten verschlüsselt im lokalen WLAN.
 
@@ -50,6 +50,14 @@ Der SmartSolar-Lastausgang ist E-Scooter, Modellbau oder einem anderen Verbrauch
 Die **optionale Rollerautomatik ist zunächst aus**. Ladeziel, Wohnwagenreserve, Tagesziel, Überschussschwellen und Prognosereserve sind variabel. Ein aktives Anzeigehandy erstellt den zeitlich begrenzten Plan; die Zentrale kontrolliert direkte Abschaltbedingungen. Ein Schaltauftrag ist erst mit der tatsächlichen Geräteantwort bestätigt. Ohne gültigen Plan wird zum Ausschalten angefordert. BMS-Empfang allein beweist noch keinen eingesteckten Ladestecker.
 
 Bis zu drei 608PD erhalten getrennte Profile, private Kennungen und eigene Verbindungen. Suche und Einrichtung laufen am erfassenden Handy; Anzeigen bedienen den Ablauf. Die neue direkte Ersteinrichtung verlangt eine Bestätigung am Lader und muss am eigenen 608PD praktisch geprüft werden. Vorhandene Verbindungen aus der eigenen Bluetooth-Aufzeichnung bleiben erhalten. Unterstützt sind die nachgewiesenen Livefelder und das Beenden von Laden/Powerbank-Betrieb. App-Start ist zunächst auf das beobachtete **3S-LiPo-Profil 4,21 V/Zelle / 0,50 A** mit ausdrücklicher Profilbestätigung begrenzt. Powerbank und andere Profile am Gerät starten. Nicht belegte Temperatur-/USB-/CC-CV-Felder werden nicht erfunden.
+
+## Update 3.1.6
+
+**Bestehende Ortslücken rückwirkend bestätigen:** In der Gasansicht fragt die App „Warst du weiterhin in …?“. Ja bestätigt die vorgeschlagenen fehlenden Zeiten; Nein erlaubt Ortssuche und Zeitkorrektur. Ein neuer Flaschenwechsel ist dafür nicht nötig. Ursprüngliche GPS-Aufzeichnungen und Flaschenwechsel bleiben erhalten. Vorhandenes Ortswetter wird zugeordnet, fehlendes Wetter gezielt ergänzt.
+
+**Gasbedarf früher erkennen:** Üblicher Durchschnitt, letzter vollständiger Flaschenverbrauch und erwarteter Bedarf der nächsten 24 Stunden werden getrennt angezeigt. Bei gleich kalten oder kälteren ganzen Prognosetagen gilt mindestens der letzte vollständige Verbrauch; bei fehlendem Vergleichswetter ausdrücklich als vorsichtige Annahme. Höhere Modellwerte bleiben wirksam. Bedarf für 3/7/14 Tage und Reichweite verwenden dieselbe Regel. Eine zusätzliche Kachel für die nächsten 24 Stunden ist frei wählbar. Neue Vorhersagen verwenden gespeicherte Faktoren.
+
+**Zuerst die Zentrale, danach alle Anzeigen auf 3.1.6 aktualisieren.** Im eigenständigen Betrieb genügt das eine Handy. Über die vorhandene Installation installieren; Daten, Kopplungen, Farben und Layouts bleiben erhalten. Alte Zentralen liefern weiterhin bisherige Daten, unterstützen die neue Bestätigung aber noch nicht; die Anzeige erklärt den Updatebedarf. [Bedienung und Rechenregel](docs/gas-stay-confirmation.md) · [Update und Prüfgrenzen](docs/changes-3.1.6.md).
 
 ## Update 3.1.5
 

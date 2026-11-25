@@ -8,7 +8,7 @@ Das bestehende GitHub-Repository heißt jetzt [`Tim-Gurke/AutarPie`](https://git
 
 ## Aktuelles Update
 
-### In Vorbereitung · Ortsbestätigung und vorsichtiger Gasbedarf
+### 3.1.6 · Rückwirkende Ortsbestätigung und vorsichtiger Gasbedarf
 
 Die Gasansicht fragt bei belegten Ortszeitlücken „Warst du weiterhin in …?“.
 Ja ergänzt nur fehlende Zeiten; Nein erlaubt eine Orts-/Zeitraumkorrektur.
@@ -19,8 +19,8 @@ für die nächsten 24 Stunden werden unterschieden. Bei gleich kalten oder
 kälteren Prognosetagen sowie fehlender Vergleichsgrundlage wird mindestens der
 letzte vollständige Verbrauch für Bedarf und Reichweite angesetzt. Wärmere
 Prognosetage dürfen einen niedrigeren modellierten Bedarf ergeben. Neue
-Wetterprognosen verwenden weiter gespeicherte Faktoren. Noch kein APK-Bau und
-keine Veröffentlichung für diesen neuen Umfang.
+Wetterprognosen verwenden weiter gespeicherte Faktoren. Am 25.11.2026 hat Tim
+den vorbereiteten Umfang ausdrücklich zum Bau und zur Veröffentlichung freigegeben.
 [Bedienung, Rechenregel und Updateweg](docs/gas-stay-confirmation.md).
 
 ### 3.1.5 · Akkubalken verwenden die Bereitschaft des gespeicherten Modells

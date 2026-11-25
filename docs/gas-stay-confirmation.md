@@ -1,7 +1,8 @@
-# Ortsbestätigung und Gasbedarf – vorbereitetes Update
+# Ortsbestätigung und Gasbedarf – AutarPie 3.1.6
 
-Diese Änderungen liegen auf `prepare/gas-stay-confirmation-20261125`. Sie sind
-noch nicht in der veröffentlichten APK 3.1.5 enthalten.
+Ab 3.1.6 lassen sich bestehende Ortslücken rückwirkend bestätigen. Dafür ist
+kein neuer Flaschenwechsel erforderlich. Tim hat den vorbereiteten Umfang am
+25.11.2026 ausdrücklich zum Bau und zur Veröffentlichung freigegeben.
 
 ## Ortslücken mit Ja oder Nein klären
 
@@ -115,7 +116,9 @@ Die Prüfungen kompilieren Produktions-Java ohne APK und verwenden für
 Android-Speicherschnittstellen einen Testadapter. Browserprüfungen verwenden
 die ausgelieferten Oberflächendateien und eine bestätigende simulierte
 Zentrale. Sie ersetzen keinen Funk-, GPS- oder Laufzeittest am G5/S20/S10.
-Ein APK-Bau wurde für diesen neuen Umfang noch nicht gestartet.
+Der vollständige Android-Freigabelauf prüft zusätzlich APK-Bau, Lint, native
+Integration und Android-Oberflächen. Sein Ergebnis wird bei der Veröffentlichung
+im README verlinkt.
 
 Der [abschließende Prüflauf 45526725770](https://github.com/Tim-Gurke/AutarPie/actions/runs/45526725770)
 für Quellstand `11bf3bf35ae83d0568ab1ce7b15d822ef0ecce0f` ist mit **393
