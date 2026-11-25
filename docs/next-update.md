@@ -49,6 +49,45 @@ Versionsnummer oder neue Bau-/Veröffentlichungsfreigabe für diese Auswahl able
   Prognosestände über mindestens **28 Kalendertage** erforderlich. Aufbewahrung,
   Ortszeit und Vergleich derselben Anlage/Ertragsgröße bei der Umsetzung beachten.
 
+### Voller Akku und abgeregelter Ertrag
+
+Der tatsächlich geerntete Ertrag kann durch einen vollen Akku und geringe
+Abnahme begrenzt sein. Wetter-/Anlagenpotenzial und tatsächlich gelieferte
+Energie unterscheiden. Ein solcher Tagesunterschied allein belegt keinen
+Prognosefehler.
+
+- Tatsächliche Wh und tatsächlichen Akkustand unverändert anzeigen. Bei belegter
+  Begrenzung beispielsweise **„Ertrag begrenzt – Akku voll“**, bei unklarer
+  Grundlage **„Begrenzung unklar“** ergänzen.
+- Aktuelle Ladezustands-, Ladephasen-, Spannungs-/Strom- und Reglergrundlagen
+  gemeinsam beurteilen. 100 % SoC oder Float allein messen keine abgeregelten Wh;
+  laufende Verbraucher können auch bei vollem Akku Solarleistung abnehmen.
+- Bei ausreichender zeitlicher Auflösung ursprüngliche Prognose und Messung
+  ausschließlich über dieselben nachgewiesen unbegrenzten Stunden vergleichen.
+  Abgeregelte oder unklare Abschnitte nicht als Minderertrag zum Herunterlernen
+  des Sonnen-/Ertragsmodells verwenden.
+- Ist nur der Tageswert verfügbar, den Tag als **eingeschränkt vergleichbar**
+  markieren. Keine scheinbar belastbare Fehlerquote für den möglichen
+  Solarertrag aus dem begrenzten Tagesertrag ableiten.
+- Ungenutzten möglichen Ertrag höchstens mit eigener belegter Grundlage als
+  Schätzung ausweisen. Die gesamte Differenz zwischen Prognose und Messung ist
+  kein gemessener Verlust durch Abregeln. Eine aus derselben Prognose ergänzte
+  fiktive Ertragsmenge darf diese Prognose nicht selbst bestätigen.
+- Bereits in der Anlagenprognose berücksichtigte Reglerlimits von der
+  zusätzlichen Begrenzung durch den Ladezustand unterscheiden.
+- Auch beim geplanten Gaslernen ist niedriger gemessener PV-Ertrag unter
+  Abregelung kein Beleg für wenig Sonnenwärme. Ortsbezogene Einstrahlung bleibt
+  die fachliche Hauptgrundlage für den Sonnen-Heizeinfluss.
+
+Im Stand 3.1.6 schützt die bestehende Solarkalibrierung ihre Lerngrundlage bereits
+konservativ: native `unrestricted()`-Prüfung und als unbegrenzt belegte
+`yieldParts`, danach passende ursprüngliche Zeitintervall-Prognosen. Das ist
+keine Messung ungenutzter Energie und noch keine fertige Kennzeichnung im
+geplanten 14-Tage-Rückblick.
+
+Herstellergrundlage: [Victron-Handbuch](https://www.victronenergy.com/media/pg/Manual_SmartSolar_MPPT_75-10_up_to_100-20/en/troubleshooting.html),
+Abschnitt 8.5.1 „Battery is full“.
+
 ## Bereits abgeschlossen und weiter zu erhalten
 
 | Thema | Veröffentlichter Stand |
