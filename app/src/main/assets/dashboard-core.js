@@ -69,7 +69,7 @@
     }
   }
   CATALOG.gasDaily.label='Gas · Üblicher Tagesbedarf';CATALOG.gasDaily.digits=2;
-  CATALOG.gasExpectedDaily={...CATALOG.gasDaily,label:'Gas · Bedarf nächste 24 Stunden',resourceField:'expectedDaily',units:['kg'],hint:'Erwarteter Gasbedarf für die nächsten 24 Stunden aus den gespeicherten Verbrauchsfaktoren und verfügbarem aktuellem Ortswetter. Ohne geeignete Wettergrundlage gilt der übliche Durchschnitt; die Detailansicht nennt die Grundlage.'};
+  CATALOG.gasExpectedDaily={...CATALOG.gasDaily,label:'Gas · Bedarf nächste 24 Stunden',resourceField:'expectedDaily',units:['kg'],hint:'Erwarteter Gasbedarf für die nächsten 24 Stunden aus gespeicherten Verbrauchsfaktoren und aktuellem Ortswetter. Bei gleich kaltem oder kälterem Wetter gilt mindestens der letzte vollständige Flaschenverbrauch. Fehlendes Vergleichswetter führt vorsichtshalber ebenfalls zu dieser Untergrenze; die Detailansicht nennt die Grundlage.'};
   const R=typeof module==='object'&&module.exports?require('./roller-core.js'):globalThis.WattRollerCore;
   const M=typeof module==='object'&&module.exports?require('./metrics-core.js'):globalThis.AutarPieMetrics;Object.assign(CATALOG,M.catalog);
   const PHASES = {0:'Aus',1:'Wenig Leistung',2:'Fehler',3:'Bulk',4:'Absorption',5:'Float',6:'Storage',7:'Ausgleich',9:'Invertieren',11:'Stromversorgung',245:'Start',247:'Auto-Ausgleich',252:'Extern gesteuert'};

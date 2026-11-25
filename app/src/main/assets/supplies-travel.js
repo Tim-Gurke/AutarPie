@@ -67,10 +67,11 @@
  }
  function questions(config,now=Date.now()){
   const events=(config.events||[]).filter(e=>e.kind==='gas'&&e.type==='swap'&&finite(e.at)&&e.at<=now).sort((a,b)=>a.at-b.at);if(!events.length)return [];
-  const from=Math.max(events[0].at,now-1096*24*HOUR),to=Math.floor(now/60000)*60000,segments=route(config.events||[],config.sites||[],from,to,events[0].site,config.confirmedStays||[]),known=new Map(places(config).map(s=>[s.key,s])),out=[];let previous=events[0].site?.key,merge=true;
+  const from=Math.max(events[0].at,now-1096*24*HOUR),to=Math.floor(now/60000)*60000,segments=route(config.events||[],config.sites||[],from,to,events[0].site,config.confirmedStays||[]),known=new Map(places(config).map(s=>[s.key,s])),out=[],following=[];let previous=events[0].site?.key,merge=true,next;
+  for(let i=segments.length-1;i>=0;i--){following[i]=next;if(segments[i].site)next=segments[i].site;}
   for(let i=0;i<segments.length;i++){
    const segment=segments[i];if(segment.site){if(segment.site!==previous)merge=false;previous=segment.site;continue;}
-   const next=segments.slice(i+1).find(s=>s.site)?.site,key=previous||next||config.weather?.currentPlace?.key||config.weather?.siteKey,site=known.get(key);if(!site)continue;
+   const key=previous||following[i]||config.weather?.currentPlace?.key||config.weather?.siteKey,site=known.get(key);if(!site)continue;
    const tail=out.at(-1),millis=segment.to-segment.from;
    if(merge&&tail?.site.key===site.key){tail.to=segment.to;tail.unknownMillis+=millis;}else out.push({id:'stay-'+segment.from+'-'+site.key,from:segment.from,to:segment.to,unknownMillis:millis,site});merge=true;
   }
