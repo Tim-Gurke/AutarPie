@@ -71,6 +71,8 @@ final class SuppliesStore {
         }
         if(!operation.isEmpty()){JSONArray kept=new JSONArray();for(int i=Math.max(0,operations.length()-499);i<operations.length();i++)kept.put(operations.getString(i));kept.put(operation);value.put("operations",kept);}
         value.put("revision",value.optLong("revision")+1).put("updated",System.currentTimeMillis());
+        // Capabilities belong to the running host version, not persisted data.
+        value.remove("stayConfirmationSupported");
         if(!repo.prefs.edit().putString(KEY,value.toString()).commit())throw new java.io.IOException("Der Eintrag konnte nicht gespeichert werden.");
         SupplyLocations.configured(repo);SuppliesWeather.refresh(repo,true);
     }

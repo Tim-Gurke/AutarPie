@@ -21,6 +21,7 @@ public final class SupplyWeatherProof {
         JSONObject request=new JSONObject().put("op","confirmStay").put("operationId","neutral-stay-command").put("id","neutral-confirmed-stay").put("from",from).put("to",to).put("site",new JSONObject(b.toString()).put("key","WRONG-CLIENT-KEY"));
         SuppliesStore.command(repo,request.toString());JSONObject saved=SuppliesStore.read(repo.prefs),stay=saved.getJSONArray("confirmedStays").getJSONObject(0);long revision=saved.getLong("revision");
         check(saved.getBoolean("stayConfirmationSupported"),"snapshots advertise location confirmation support without changing the journal protocol");
+        check(!new JSONObject(repo.prefs.getString(SuppliesStore.KEY,"{}")).has("stayConfirmationSupported"),"capability is not persisted as a false promise after a host downgrade");
         check(stay.getLong("from")==from&&stay.getLong("to")==to&&stay.getString("source").equals("user-confirmed"),"a confirmation persists its exact proposed bounds and explicit manual source");
         check(stay.getJSONObject("site").getString("key").equals(b.getString("key")),"the host validates coordinates and recomputes the selected place key");
         check(saved.getJSONArray("events").toString().equals(journal)&&repo.prefs.getString(SupplyLocations.SITES,"[]").equals(gps),"confirming a gap never rewrites bottle entries or collected GPS visits");
