@@ -10,13 +10,44 @@ Behauptung einer bereits implementierten Korrektur oder neuen Veröffentlichung.
 |---|---|---|
 | PV-Eingangsspannung | Echte Spannung des ausgewählten Reglers abrufen, speichern und bis zur Kachel übertragen. Quelle und Datenstand korrekt zeigen; keinen Batterie- oder errechneten Ersatzwert als PV-Spannung ausgeben. | Noch offen. Der Quellstand besitzt bereits einen aktiven Registerabruf und Speicherung. Auslösebedingungen, Aktualität und Kachelzuordnung müssen als gesamte Datenkette geprüft werden. Die Beschriftung „Berechnet“ ist ebenfalls zu prüfen. |
 | Sonneneinfluss beim Gaslernen | Historische Sonneneinstrahlung und vorhandenen PV-Ertrag als ergänzende Grundlage betrachten, einen belegten Einfluss auf den Heizbedarf lernen und in einer Gas-Lernnotiz erklären. Fertige Faktoren speichern und für neue Vorhersagen anwenden. | Noch nicht implementiert. Wetterdaten, Modell und Lernnotiz müssen gemeinsam erweitert werden. Gemessene PV-Wh sind keine feste direkte Heizwärme-/Gasgutschrift. Ein Sonnenfaktor darf erst mit ausreichender Daten- und Prüfgrundlage gelten. |
+| Wetterrückblick: 14 Tage mit gewichtetem Prognosevergleich | Je vergangenem Tag den gewichteten Mittelwert der ursprünglich für genau diesen Zieltag ausgegebenen Prognosen aus den 14 Tagen davor mit dem tatsächlichen Solarertrag vergleichen. Vorlauf 14–8 Tage schwach, 7–4 stärker, letzte drei Tage am stärksten gewichten; tatsächlichen Akkustand erhalten. | Neu vorgemerkt, noch nicht implementiert. Originalprognosen mit Datum speichern, verfügbare Anzahl und Ertragsabweichung zeigen. Die 14 vergangenen Tage der Ansicht und die 14 Vorlauftage je Zieltag sind getrennte Zeiträume. |
 
-Vor dem Bau einmal abstimmen: **beide Punkte im gemeinsamen Update** oder
-**zunächst die PV-Spannung als ausdrücklich gewählter Akutfix**. Einen
+Vor dem Bau einmal abstimmen: **gesammelte Punkte im gemeinsamen Update** oder
+**einen ausdrücklich gewählten Akutfix vorziehen**. Einen
 zurückgestellten Punkt mit Begründung hier erhalten. Tim möchte diese Frage
 **beim Vorbereiten des nächsten Updates**; bis dahin wird weiter gesammelt.
 Noch keine neue
 Versionsnummer oder neue Bau-/Veröffentlichungsfreigabe für diese Auswahl ableiten.
+
+## Präzisierung: Prognosequalität im 14-Tage-Rückblick
+
+- Die Ansicht zeigt **14 vergangene Kalendertage** mit dem bereits verfügbaren
+  tatsächlichen Solarertrag und Akkustand.
+- Für jeden Zieltag D die damals tatsächlich ausgegebenen Ertragsprognosen für
+  **denselben Tag D** aus D−14 bis D−1 heranziehen. Der gewünschte Mittelwert
+  bezieht sich auf diese früheren Prognosestände.
+- **Gewichteter Mittelwert:** D−14 bis D−8 schwach, D−7 bis D−4 stärker,
+  D−3 bis D−1 am stärksten. Positive Gewichte mit dieser verbindlichen
+  Reihenfolge bei der Umsetzung festlegen; konkrete Zahlen sind noch nicht
+  vorgegeben. Mit der Summe der verwendeten Gewichte normalisieren.
+- Einen nachvollziehbaren Prognosestand je Vorlauftag verwenden. Häufiges
+  Aktualisieren an einem Tag darf dessen Gewicht nicht zusätzlich vergrößern.
+  Datum/Zeit der Ausgabe und Zieltag erhalten; nur vor dem Zieltag ausgegebene
+  Prognosen in diesen Vorabvergleich aufnehmen.
+- Je Zieltag **gewichtete damalige Prognose, tatsächlichen Ertrag und Abweichung**
+  in Wh sowie, soweit sinnvoll, Prozent zeigen. Prognosestände und ihr Vorlauf
+  sollen im Detail nachvollziehbar bleiben.
+- Originale Prognosestände dauerhaft speichern und vorhandene Historie nutzen.
+  Der Vergleich bleibt ein Vergleich mit dem damals verfügbaren Wissensstand.
+  Die tatsächlichen Erträge anderer Tage, neu berechnete historische Prognosen
+  und der tatsächliche Ertrag des Zieltags bilden keine Ersatzprognosen.
+- Fehlende Prognosestände offen lassen und beispielsweise **9 von 14** verfügbare
+  Vorlauftage nennen. Mit vorhandenen Gewichten normalisieren; einen Vergleich
+  ohne Grundlage als unbekannt zeigen. Bei Prognose null eine Prozentabweichung
+  nicht durch Division erzeugen.
+- Für den vollständigen Rückblick samt maximalem Vorlauf sind ursprüngliche
+  Prognosestände über mindestens **28 Kalendertage** erforderlich. Aufbewahrung,
+  Ortszeit und Vergleich derselben Anlage/Ertragsgröße bei der Umsetzung beachten.
 
 ## Bereits abgeschlossen und weiter zu erhalten
 
