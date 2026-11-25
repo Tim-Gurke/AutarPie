@@ -72,4 +72,8 @@ als ausgelassen erklären. Zurückgestellte Punkte mit Grund sichtbar in der
 Sammlung erhalten. Eine erteilte Freigabe für den abgestimmten Umfang nicht für
 jeden darin enthaltenen Punkt erneut anfordern.
 
+Tim möchte die konkrete Auswahlfrage erst beim Vorbereiten des nächsten Updates.
+Bis dahin weiter sammeln; aus dieser Abstimmung weder einen sofortigen Akutfix
+noch ein neues Update ableiten.
+
 Aktuelle abgeglichene Übersicht: [Nächstes Update](docs/next-update.md).

@@ -13,7 +13,9 @@ Behauptung einer bereits implementierten Korrektur oder neuen Veröffentlichung.
 
 Vor dem Bau einmal abstimmen: **beide Punkte im gemeinsamen Update** oder
 **zunächst die PV-Spannung als ausdrücklich gewählter Akutfix**. Einen
-zurückgestellten Punkt mit Begründung hier erhalten. Noch keine neue
+zurückgestellten Punkt mit Begründung hier erhalten. Tim möchte diese Frage
+**beim Vorbereiten des nächsten Updates**; bis dahin wird weiter gesammelt.
+Noch keine neue
 Versionsnummer oder neue Bau-/Veröffentlichungsfreigabe für diese Auswahl ableiten.
 
 ## Bereits abgeschlossen und weiter zu erhalten
