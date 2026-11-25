@@ -42,6 +42,14 @@ test('a known equally cold period uses the last rate and warmer weather may redu
 test('missing forecast weather uses the last complete rate as an explicit cautious assumption',()=>{
  const f=fixture();f.weather.forecast=[];const p=C.build(f,now).gas;assert.equal(p.expectedDaily,1.1);assert.equal(p.expectedDailyWeatherCorrected,false);assert.equal(p.expectedDailyFloorReason,'forecast-weather-missing');
 });
+test('the cautious floor comes from the actual preceding bottle size rather than a fixed 1.1 kg assumption',()=>{
+ const f=fixture();f.events[2].amount=6;f.events[3].amount=5;f.weather.forecast=[];const p=C.build(f,now).gas;
+ assert.equal(p.lastDaily,.6);assert.ok(Math.abs(p.expectedDaily-.6)<1e-10);assert.equal(p.stock,5);assert.ok(Math.abs(p.needs[14]-8.4)<1e-10);
+});
+test('a warmer afternoon cannot lower a whole forecast day that is colder on average',()=>{
+ const f=fixture();f.confirmedStays=[confirmation(f)];f.weather.forecast=Array.from({length:24},(_,i)=>({source:'forecast',site:A.key,from:now+i*H,to:now+(i+1)*H,heat:i<8?31:8,windHeat:2}));const model=C.learn(f,now);model.profiles.gas.model={provisional:true,coefficients:[.3,.02]};const p=C.build(f,now,model,{requireLearned:true}).gas;
+ assert.ok(p.expectedDaily>=1.1-1e-10);assert.equal(p.expectedDailyFloorReason,'not-warmer');assert.ok(p.remainingHours<=240+1e-5);
+});
 test('a new weather forecast applies saved factors without changing the learned input key',()=>{
  const f=fixture();f.confirmedStays=[confirmation(f)];const model=C.learn(f,now),key=C.learningKey(f,now),first=C.build(f,now,model,{requireLearned:true}).gas;
  f.weather.forecast[0].heat=1;const next=C.build(f,now,model,{requireLearned:true}).gas;assert.equal(C.learningKey(f,now),key);assert.equal(next.modelPending,false);assert.ok(next.expectedDaily<first.expectedDaily);assert.equal(next.daily,first.daily);

@@ -16,7 +16,7 @@ public final class SupplyWeatherProof {
         long d=SupplyWeatherData.DAY,h=SupplyWeatherData.HOUR,from=SupplyWeatherData.day(now)-8*d,to=from+2*d;
         JSONObject event=new JSONObject().put("id","neutral-stay-event").put("kind","gas").put("type","swap").put("amount",11).put("at",from-d).put("site",a);
         JSONArray visits=new JSONArray().put(new JSONObject().put("at",from-d).put("until",from).put("site",a)).put(new JSONObject().put("at",to).put("until",now+h).put("site",a));
-        repo.prefs.edit().putString(SuppliesStore.KEY,new JSONObject().put("version",1).put("followGps",false).put("events",new JSONArray().put(event)).toString()).putString("weatherPlace","").putString(SupplyLocations.SITES,visits.toString()).commit();
+        repo.prefs.edit().putString(SuppliesStore.KEY,new JSONObject().put("version",1).put("followGps",false).put("events",new JSONArray().put(event)).toString()).remove("weatherPlace").putString(SupplyLocations.SITES,visits.toString()).commit();
         SupplyLocations.configured(repo);String journal=SuppliesStore.read(repo.prefs).getJSONArray("events").toString(),gps=repo.prefs.getString(SupplyLocations.SITES,"[]");
         JSONObject request=new JSONObject().put("op","confirmStay").put("operationId","neutral-stay-command").put("id","neutral-confirmed-stay").put("from",from).put("to",to).put("site",new JSONObject(b.toString()).put("key","WRONG-CLIENT-KEY"));
         SuppliesStore.command(repo,request.toString());JSONObject saved=SuppliesStore.read(repo.prefs),stay=saved.getJSONArray("confirmedStays").getJSONObject(0);long revision=saved.getLong("revision");

@@ -1,5 +1,10 @@
 # Gas und Wasser – WohnPit 2.0.2
 
+Aktuelle Vorbereitung: [Ortslücken mit Ja/Nein bestätigen und den erwarteten
+Gasbedarf bei anhaltender Kälte vorsichtig ansetzen](gas-stay-confirmation.md).
+Noch nicht in der veröffentlichten APK 3.1.5 enthalten. Die folgende Anleitung
+dokumentiert den ursprünglichen Funktionsstand 2.0.2.
+
 WohnPit führt **Watt’n’Pit und die bisherige WohnPit-Zentrale** in einer gemeinsamen App fort. Dieselbe APK bietet alle drei Betriebsarten.
 
 ## Welche Betriebsart macht was?

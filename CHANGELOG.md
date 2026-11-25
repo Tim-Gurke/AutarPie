@@ -8,6 +8,21 @@ Das bestehende GitHub-Repository heißt jetzt [`Tim-Gurke/AutarPie`](https://git
 
 ## Aktuelles Update
 
+### In Vorbereitung · Ortsbestätigung und vorsichtiger Gasbedarf
+
+Die Gasansicht fragt bei belegten Ortszeitlücken „Warst du weiterhin in …?“.
+Ja ergänzt nur fehlende Zeiten; Nein erlaubt eine Orts-/Zeitraumkorrektur.
+Bestätigungen werden getrennt von GPS-Aufzeichnungen und Flaschenwechseln
+gespeichert. Vorhandenes Ortswetter wird zugeordnet, fehlendes gezielt ergänzt.
+Durchschnitt, letzter vollständiger Flaschenverbrauch und erwarteter Bedarf
+für die nächsten 24 Stunden werden unterschieden. Bei gleich kalten oder
+kälteren Prognosetagen sowie fehlender Vergleichsgrundlage wird mindestens der
+letzte vollständige Verbrauch für Bedarf und Reichweite angesetzt. Wärmere
+Prognosetage dürfen einen niedrigeren modellierten Bedarf ergeben. Neue
+Wetterprognosen verwenden weiter gespeicherte Faktoren. Noch kein APK-Bau und
+keine Veröffentlichung für diesen neuen Umfang.
+[Bedienung, Rechenregel und Updateweg](docs/gas-stay-confirmation.md).
+
 ### 3.1.5 · Akkubalken verwenden die Bereitschaft des gespeicherten Modells
 
 Die Wetter-Akkubalken bleiben nach einem Neustart nicht mehr allein deshalb grau, weil das historische Lernjournal noch lädt oder als Zwischenstand vorliegt. Ein passendes gespeichertes Lernmodell liefert die Prognose unmittelbar in der eingestellten Akkufarbe. Bekannte neue Lerngrundlagen halten die Prognose bis zur Speicherbestätigung des neuen Modells weiterhin grau. Fehlende aktuelle Shuntwerte und unvollständige Wettergrundlagen bleiben unbekannt. Beim Anlagenwechsel werden auch ausstehende Modell-Prüfwerte zurückgesetzt. Die Hinweise unterscheiden ein bereits verwendetes Modell vom Hintergrundabgleich des Journals. [Korrektur, Updateweg und Prüfgrenzen](docs/changes-3.1.5.md).
