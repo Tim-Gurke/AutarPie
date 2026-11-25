@@ -52,3 +52,24 @@ Alle Standardbereiche und selbst erstellte Dashboards verwenden denselben Kachel
 ## Dauerhafte Zwischenstände ab 17.11.2026
 
 Nach jedem abgeschlossenen fachlichen Teilschritt und vor langen Prüfungen den Quellstand als Commit auf einem Vorbereitungsbranch dauerhaft auf GitHub sichern. Lokale Arbeitsverzeichnisse und allein lokale Commits genügen nicht. Private Messdaten, Sicherungen, Kopplungs- und Signierschlüssel ausschließen. Nach einem Ausfall zuerst den tatsächlich gesicherten Stand feststellen; frühere Testergebnisse nur für den dazugehörigen Quellstand angeben. Die ausdrückliche Bau-/Veröffentlichungsfreigabe vom 17.11.2026 gilt für den vollständigen Umfang aus Archivkorrektur, neuer Darstellung nur bei Neuinstallation, schnellerem Anzeigeabgleich und freiwilligen automatischen Sicherungen.
+
+
+## Gemeinsame Sammelupdates ab 25.11.2026
+
+Tims Änderungssammlung ist die Grundlage der nächsten Update-Planung. Vor jedem
+neuen Update alle gesammelten Punkte gegen den aktuellen Quellstand und spätere
+Abschlüsse prüfen. Bereits veröffentlichte Lösungen mit Version abhaken;
+tatsächlich noch offene Wünsche und Fehler vollständig nennen. Historische
+Befunde nicht ungeprüft als aktuelle Fehler übernehmen. Praktisch noch offene
+Geräteprüfungen und persönliche Einrichtung getrennt von fehlender Umsetzung führen.
+
+Vor dem APK-Bau den Gesamtumfang einmal mit Tim abstimmen: Welche offenen Punkte
+nehmen wir gemeinsam mit, oder kümmern wir uns ausdrücklich zuerst um den akuten
+Fehler? Standard ist ein gemeinsames Sammelupdate. Ein kleiner Akutfix ist möglich,
+wenn Tim diesen Schwerpunkt wählt. Den Umfang nicht still auf das zuletzt
+besprochene Thema verkleinern und andere Vormerkungen erst nach Veröffentlichung
+als ausgelassen erklären. Zurückgestellte Punkte mit Grund sichtbar in der
+Sammlung erhalten. Eine erteilte Freigabe für den abgestimmten Umfang nicht für
+jeden darin enthaltenen Punkt erneut anfordern.
+
+Aktuelle abgeglichene Übersicht: [Nächstes Update](docs/next-update.md).
