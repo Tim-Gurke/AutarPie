@@ -34,6 +34,7 @@ final class SupplyWeatherData {
         // Journal places remain useful for old stationary cycles and for backfilling uncertain moves.
         for(int i=0;i<events.length();i++){JSONObject event=events.getJSONObject(i);long end=i+1<events.length()?events.getJSONObject(i+1).getLong("at"):now;add(out,event.optJSONObject("site"),Math.max(limit,event.getLong("at")),Math.min(now,end));}
         for(int i=0;i<visits.length();i++){JSONObject visit=visits.getJSONObject(i);long end=i+1<visits.length()?visits.getJSONObject(i+1).getLong("at"):now;if(visit.has("until"))end=Math.min(end,visit.getLong("until"));add(out,visit.optJSONObject("site"),Math.max(limit,visit.getLong("at")),Math.min(now,end));}
+        JSONArray stays=journal.optJSONArray("confirmedStays");if(stays!=null)for(int i=0;i<stays.length();i++){JSONObject stay=stays.getJSONObject(i);add(out,stay.optJSONObject("site"),Math.max(limit,stay.getLong("from")),Math.min(now,stay.getLong("to")));}
         return out;
     }
     private static void add(LinkedHashMap<String,Need> out,JSONObject site,long from,long to)throws Exception{

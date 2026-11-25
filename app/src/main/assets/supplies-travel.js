@@ -30,7 +30,7 @@
   return t.covered/duration>=.9?{heat:t.heat/t.covered,windHeat:t.windCovered/duration>=.9?t.windHeat/t.windCovered:null,coverage:t.covered/duration,windCoverage:t.windCovered/duration,coarseMillis:t.coarse}:null;
  }
  /** Explicit location history supplies transitions. Journal snapshots alone cannot date a move. */
- function route(events,sites,from,to,initialSite){
+ function route(events,sites,from,to,initialSite,confirmedStays=[]){
   if(to<=from)return [];
   const raw=sites.filter(p=>finite(p.at)&&p.at<=to).sort((a,b)=>a.at-b.at),recorded=[];
   for(let i=0;i<raw.length;i++){const point=raw[i];recorded.push({...point,recorded:true});if(finite(point.until)&&point.until>=point.at&&point.until<=(to)&&(!raw[i+1]||point.until<raw[i+1].at))recorded.push({at:point.until,site:null,recorded:true});}
@@ -48,7 +48,33 @@
     append(cursor,evidence,current,current?'':'unknown-location');append(evidence,point.at,null,'unknown-transition');cursor=point.at;site=point.site;evidence=point.at;
    }
   }
-  append(cursor,to,site?.key,site?.key?'':'unknown-location');return out;
+  append(cursor,to,site?.key,site?.key?'':'unknown-location');return applyStays(out,confirmedStays);
+ }
+ // User confirmations fill gaps; original observed locations always win.
+ function applyStays(segments,stays=[]){
+  const valid=stays.filter(s=>s.site?.key&&finite(s.from)&&finite(s.to)&&s.to>s.from);
+  if(!valid.length)return segments;
+  const out=[],append=s=>{const prior=out.at(-1);if(prior&&prior.to===s.from&&prior.site===s.site&&prior.reason===s.reason&&prior.confirmationId===s.confirmationId)prior.to=s.to;else out.push({...s});};
+  for(const segment of segments){
+   if(segment.site){append(segment);continue;}
+   const matching=valid.filter(s=>s.from<segment.to&&s.to>segment.from),cuts=[...new Set([segment.from,segment.to,...matching.flatMap(s=>[Math.max(segment.from,s.from),Math.min(segment.to,s.to)])])].sort((a,b)=>a-b);
+   for(let i=1;i<cuts.length;i++){const from=cuts[i-1],to=cuts[i],stay=matching.filter(s=>s.from<=from&&s.to>=to).sort((a,b)=>(a.updated||0)-(b.updated||0)||valid.indexOf(a)-valid.indexOf(b)).at(-1);append(stay?{from,to,site:stay.site.key,reason:'user-confirmed',confirmationId:stay.id}:{...segment,from,to});}
+  }
+  return out;
+ }
+ function places(config){
+  const found=new Map();for(const s of [...(config.events||[]).map(e=>e.site),...(config.sites||[]).map(e=>e.site),...(config.confirmedStays||[]).map(e=>e.site),config.weather?.place,config.weather?.currentPlace])if(s?.key)found.set(s.key,s);return [...found.values()];
+ }
+ function questions(config,now=Date.now()){
+  const events=(config.events||[]).filter(e=>e.kind==='gas'&&e.type==='swap'&&finite(e.at)&&e.at<=now).sort((a,b)=>a.at-b.at);if(!events.length)return [];
+  const from=Math.max(events[0].at,now-1096*24*HOUR),to=Math.floor(now/60000)*60000,segments=route(config.events||[],config.sites||[],from,to,events[0].site,config.confirmedStays||[]),known=new Map(places(config).map(s=>[s.key,s])),out=[];let previous=events[0].site?.key,merge=true;
+  for(let i=0;i<segments.length;i++){
+   const segment=segments[i];if(segment.site){if(segment.site!==previous)merge=false;previous=segment.site;continue;}
+   const next=segments.slice(i+1).find(s=>s.site)?.site,key=previous||next||config.weather?.currentPlace?.key||config.weather?.siteKey,site=known.get(key);if(!site)continue;
+   const tail=out.at(-1),millis=segment.to-segment.from;
+   if(merge&&tail?.site.key===site.key){tail.to=segment.to;tail.unknownMillis+=millis;}else out.push({id:'stay-'+segment.from+'-'+site.key,from:segment.from,to:segment.to,unknownMillis:millis,site});merge=true;
+  }
+  return out.filter(q=>q.unknownMillis>=15*60000).reverse();
  }
  function across(rows,segments,from,to){
   const canonicalRows=rows[READY]?rows:canonical(rows);let covered=0,heat=0,windCovered=0,windHeat=0,known=0,coarse=0;const places=new Set();
@@ -56,5 +82,5 @@
   const duration=to-from,coverage=duration>0?covered/duration:0;
   return {features:coverage>=.9?{heat:heat/covered,windHeat:windCovered/duration>=.9?windHeat/windCovered:null,coverage,windCoverage:windCovered/duration,coarseMillis:coarse,sites:places.size}:null,coverage,locationCoverage:duration>0?known/duration:0,unknownLocationMillis:Math.max(0,duration-known),missingWeatherMillis:Math.max(0,known-covered),coarseMillis:coarse,sites:places.size};
  }
- return {canonical,features,route,across};
+ return {canonical,features,route,across,applyStays,places,questions};
 });

@@ -541,6 +541,7 @@ public final class DisplayActivity extends Activity {
         @JavascriptInterface public String saveSolarSetup(String json,boolean newSite){return localControl("saveSolarSetup",new JSONArray().put(json).put(newSite));}
         @JavascriptInterface public String saveSolarSite(String json,String place){return localControl("saveSolarSite",new JSONArray().put(json).put(place));}
         @JavascriptInterface public void searchSolarPlaces(String query){files.execute(()->{try{call("onSolarPlaces",new JSONObject().put("query",query).put("places",WeatherClient.search(query)));}catch(Exception e){try{call("onSolarPlaces",new JSONObject().put("query",query).put("error","Ortssuche nicht möglich. Bitte erneut versuchen."));}catch(JSONException ignored){}}});}
+        @JavascriptInterface public void searchSupplyPlaces(String query){files.execute(()->{try{call("onSupplyPlaces",new JSONObject().put("query",query).put("places",WeatherClient.search(query)));}catch(Exception e){try{call("onSupplyPlaces",new JSONObject().put("query",query).put("error","Ortssuche nicht möglich. Bitte erneut versuchen."));}catch(JSONException ignored){}}});}
         @JavascriptInterface public void rememberSolarContext(String key){if(!lan.viewer())solarPlanning.context(key);}
         @JavascriptInterface public void rememberSolarForecasts(String json){if(!lan.viewer())solarPlanning.remember(json);}
         private final java.util.concurrent.atomic.AtomicBoolean analysisBusy=new java.util.concurrent.atomic.AtomicBoolean();

@@ -29,14 +29,14 @@
   const mean=values=>values.length?values.reduce((sum,n)=>sum+n,0)/values.length:null;
   function weatherFeatures(rows,from,to,site){return T.features(rows,from,to,site);}
   function historyRows(weather={}){return weather[PREPARED]||T.canonical(weather.history||[]);}
-  function intervals(events,kind,now,weather,sites=[]){
+  function intervals(events,kind,now,weather,sites=[],confirmedStays=[]){
     const history=kind==='gas'?historyRows(weather):[];
     const journal=events.filter(e=>e.kind===kind&&e.type===(kind==='gas'?'swap':'supply')&&e.at<=now),out=[];
     for(let i=1;i<journal.length;i++){const previous=journal[i-1],next=journal[i],days=(next.at-previous.at)/DAY;if(days<=0||now-next.at>400*DAY||kind==='gas'&&next.empty===false)continue;
       const amount=kind==='gas'?previous.amount:next.amount;
       // A stock correction inside a gas cycle makes its consumed amount unknown.
       if(kind==='gas'&&events.some(e=>e.kind===kind&&e.type==='stock'&&e.at>previous.at&&e.at<next.at))continue;
-      const route=kind==='gas'?T.route(events,sites,previous.at,next.at,previous.site):[],basis=kind==='gas'?T.across(history,route,previous.at,next.at):null;
+      const route=kind==='gas'?T.route(events,sites,previous.at,next.at,previous.site,confirmedStays):[],basis=kind==='gas'?T.across(history,route,previous.at,next.at):null;
       out.push({from:previous.at,to:next.at,days,amount,rate:amount/days,features:basis?.features||null,weather:basis?{...basis,route}:null});
     }
     return {journal,rows:out.slice(-24)};
@@ -103,12 +103,12 @@
     return {...status,state,title,detail,baseline};
   }
   function learningKey(input={},now=Date.now()){
-    const config=normalize(input),text=JSON.stringify([1,Math.floor(now/DAY),config.events.filter(e=>e.at<=now).map(e=>[e.id,e.order,e.kind,e.type,e.at,e.amount,e.empty,e.site?.key]),(config.sites||[]).map(s=>[s.at,s.until,s.site?.key]),(config.weather?.history||[]).filter(r=>['archive','recent'].includes(r.source)).map(r=>[r.site,r.from,r.to,r.source,r.heat,r.windHeat,r.hours,r.resolution])]);
+    const config=normalize(input),basis=[1,Math.floor(now/DAY),config.events.filter(e=>e.at<=now).map(e=>[e.id,e.order,e.kind,e.type,e.at,e.amount,e.empty,e.site?.key]),(config.sites||[]).map(s=>[s.at,s.until,s.site?.key]),(config.weather?.history||[]).filter(r=>['archive','recent'].includes(r.source)).map(r=>[r.site,r.from,r.to,r.source,r.heat,r.windHeat,r.hours,r.resolution])];if(config.confirmedStays?.length)basis.push(config.confirmedStays.map(s=>[s.id,s.from,s.to,s.site?.key,s.updated]));const text=JSON.stringify(basis);
     let a=2166136261,b=3339675911;for(let i=0;i<text.length;i++){a=Math.imul(a^text.charCodeAt(i),16777619);b=Math.imul(b^text.charCodeAt(i),2246822519);}return 'supply-factors-v1:'+(a>>>0).toString(16)+':'+(b>>>0).toString(16)+':'+text.length;
   }
   function learn(input={},now=Date.now()){
     const config=normalize(input),weather={...(config.weather||{})},profiles={};weather[PREPARED]=historyRows(weather);
-    for(const kind of ['water','gas']){const {journal,rows}=intervals(config.events,kind,now,weather,config.sites||[]),days=rows.reduce((s,r)=>s+r.days,0),amount=rows.reduce((s,r)=>s+r.amount,0);
+    for(const kind of ['water','gas']){const {journal,rows}=intervals(config.events,kind,now,weather,config.sites||[],config.confirmedStays||[]),days=rows.reduce((s,r)=>s+r.days,0),amount=rows.reduce((s,r)=>s+r.amount,0);
       profiles[kind]={journal,rows,daily:days>0?amount/days:null,model:kind==='gas'?weatherModel(rows):null};}
     return {version:1,at:now,inputKey:learningKey(config,now),profiles};
   }
@@ -117,12 +117,13 @@
     const ready=learned?.inputKey===learningKey(config,now),factors=ready?learned:options.requireLearned?null:learn(config,now);
     for(const kind of ['water','gas']){
       const {journal,rows,daily,model}=factors?.profiles[kind]||{journal:config.events.filter(e=>e.kind===kind&&e.type===(kind==='gas'?'swap':'supply')&&e.at<=now),rows:[],daily:null,model:null};
-      const profile={kind,daily,model,containerSize:kind==='gas'?config.defaults.gas:config.defaults.waterContainer,intervals:rows.length,intervalHours:mean(rows.map(r=>r.days*24)),lastAt:journal.at(-1)?.at??null,stock:null,remainingHours:null,rangeHours:null,nextSupplyAt:null,needs:{},weatherCorrected:false,historyWeatherCorrected:false,forecastWeatherCorrected:false,rangeWeatherCorrected:false};
+      const profile={kind,daily,model,lastDaily:rows.at(-1)?.rate??null,expectedDaily:null,expectedDailyWeatherCorrected:false,containerSize:kind==='gas'?config.defaults.gas:config.defaults.waterContainer,intervals:rows.length,intervalHours:mean(rows.map(r=>r.days*24)),lastAt:journal.at(-1)?.at??null,stock:null,remainingHours:null,rangeHours:null,nextSupplyAt:null,needs:{},weatherCorrected:false,historyWeatherCorrected:false,forecastWeatherCorrected:false,rangeWeatherCorrected:false};
       if(profile.lastAt!==null&&finite(profile.intervalHours))profile.nextSupplyAt=profile.lastAt+profile.intervalHours*HOUR;
       const anchors=config.events.filter(e=>e.kind===kind&&e.at<=now&&(e.type==='stock'||kind==='gas'&&e.type==='swap')),anchor=anchors.at(-1),site=weather.siteKey||anchor?.site?.key;
-      if(anchor){let stock=anchor.amount;if(finite(daily)&&daily>0){const route=kind==='gas'?T.route(config.events,config.sites||[],anchor.at,now,anchor.site):null;const used=consumption(profile,weather,anchor.at,now,anchor.site?.key,false,route);stock-=used.amount;profile.historyWeatherCorrected=used.weather;}else if(now-anchor.at>HOUR)stock=null;
+      if(anchor){let stock=anchor.amount;if(finite(daily)&&daily>0){const route=kind==='gas'?T.route(config.events,config.sites||[],anchor.at,now,anchor.site,config.confirmedStays||[]):null;const used=consumption(profile,weather,anchor.at,now,anchor.site?.key,false,route);stock-=used.amount;profile.historyWeatherCorrected=used.weather;}else if(now-anchor.at>HOUR)stock=null;
         if(stock!==null){if(kind==='water')for(const e of journal)if(e.at>anchor.at||e.at===anchor.at&&e.order>anchor.order)stock+=e.amount;profile.stock=Math.max(0,stock);profile.stockEstimated=now>anchor.at;}}
       if(finite(daily)&&daily>0){
+        const expected=consumption(profile,weather,now,now+DAY,site,true);profile.expectedDaily=expected.amount;profile.expectedDailyWeatherCorrected=expected.weather;
         for(const horizon of [3,7,14]){const need=consumption(profile,weather,now,now+horizon*DAY,site,true);profile.needs[horizon]=need.amount;profile.forecastWeatherCorrected=profile.forecastWeatherCorrected||need.weather;}
         if(profile.stock!==null){let remaining=profile.stock,hours=0;while(remaining>0&&hours<24*1096){const rate=rateAt(profile,weather,now+hours*HOUR,now+(hours+1)*HOUR,site,now);if(rate.rate<=0)break;profile.rangeWeatherCorrected=profile.rangeWeatherCorrected||rate.weather;const used=rate.rate/24;if(remaining<=used){hours+=remaining/used;remaining=0;break;}remaining-=used;hours++;}if(remaining<=0){profile.remainingHours=Math.round(hours*1e6)/1e6;profile.emptyAt=now+hours*HOUR;}
           const deviation=Math.max((rows.length<3||model?.provisional)?.5:.25,Math.min(.8,Math.sqrt(mean(rows.map(r=>(r.rate-daily)**2))||0)/daily));if(finite(profile.remainingHours))profile.rangeHours=[profile.remainingHours/(1+deviation),profile.remainingHours/Math.max(.2,1-deviation)];

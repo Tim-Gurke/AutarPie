@@ -2,11 +2,12 @@
   'use strict';
   const C=window.WattSuppliesCore,$=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const names={water:'Wasser',gas:'Gas'},unit=kind=>kind==='water'?'L':'kg',number=n=>typeof n==='number'&&Number.isFinite(n)?n.toLocaleString('de-DE',{maximumFractionDigits:1}):'—';
+  const numberGas=n=>typeof n==='number'&&Number.isFinite(n)?n.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
   const local=t=>{const date=new Date(t);return new Date(t-date.getTimezoneOffset()*60000).toISOString().slice(0,16);};
   const stamp=t=>t?new Date(t).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'Noch kein Eintrag';
   const id=()=>globalThis.crypto?.randomUUID?.()||'supply-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10);
   window.WattSupplies=class{
-    constructor(a){this.a=a;this.error='';this.renderKey='';if(window.WattLearnedModel)this.modelStore=new window.WattLearnedModel.Store('supplies',a.native,()=>{this.calculationKey='';this.renderKey='';this.render();});$('suppliesWater').onclick=()=>this.edit('water','supply');$('suppliesGas').onclick=()=>this.edit('gas','swap');$('suppliesSettings').onclick=()=>this.settings();$('suppliesRefresh').onclick=()=>this.refresh();}
+    constructor(a){this.a=a;this.error='';this.renderKey='';if(window.WattLearnedModel)this.modelStore=new window.WattLearnedModel.Store('supplies',a.native,()=>{this.calculationKey='';this.renderKey='';this.render();});$('suppliesWater').onclick=()=>this.edit('water','supply');$('suppliesGas').onclick=()=>this.edit('gas','swap');$('suppliesSettings').onclick=()=>this.settings();$('suppliesRefresh').onclick=()=>this.refresh();window.onSupplyPlaces=result=>this.staySearchResults(result);}
     read(){
       try{
         const raw=this.a.native?JSON.parse(this.a.native.suppliesSnapshot?.()||'{}'):JSON.parse(localStorage.getItem('wattpit-supplies-preview')||'{"version":1,"protocol":1}');
@@ -20,15 +21,18 @@
       let learned=null;
       if(this.modelStore){this.modelStore.select(JSON.stringify([1,window.WattLearnedModel.owner(snapshot)]));const now=Date.now(),revision=C.learningKey(config,now);this.modelStore.update(revision,(cancelled,done)=>{const model=C.learn(config,now);if(!cancelled())done(model);});learned=this.modelStore.value;}
       this.connected=connected;const key=JSON.stringify([document.documentElement.dataset.theme,config.revision,this.modelStore?.value?.revision,config.updated,config.events,config.sites,config.defaults,this.a.getSupplyUnits?.(),config.weather?.location,config.weather?.updated,config.weather?.pending,config.weather?.error,config.weather?.siteKey,config.weather?.history,config.weather?.timezone,config.weather?.enabled,config.weather?.forecast,this.a.getValueColor?.('waterStock'),this.a.getValueColor?.('gasStock'),Math.floor(Date.now()/60000)]);
-      if(key!==this.calculationKey){this.analysis=C.build(config,Date.now(),learned,{requireLearned:!!this.modelStore});this.calculationKey=key;}
+      const stayKey=JSON.stringify([key,config.confirmedStays,config.stayConfirmationSupported]);
+      if(stayKey!==this.calculationKey){this.analysis=C.build(config,Date.now(),learned,{requireLearned:!!this.modelStore});this.locationQuestions=window.WattSupplyTravel.questions(config);this.calculationKey=stayKey;}
       snapshot.suppliesAnalysis=this.analysis;
-      const renderKey=key+'|'+connected+'|'+this.supported+'|'+this.error;if(renderKey===this.renderKey)return;this.renderKey=renderKey;
+      const renderKey=stayKey+'|'+connected+'|'+this.supported+'|'+this.error+'|'+!!this.staySaving;if(renderKey===this.renderKey)return;this.renderKey=renderKey;
       for(const kind of ['water','gas']){
         const profile=this.analysis[kind],el=$('supplies-'+kind),range=C.duration(profile.remainingHours),estimated=profile.stockEstimated?'ca. ':'',needUnit=this.a.getSupplyUnits?.()[kind]||C.quantityUnits(kind)[0];
         el.style.setProperty('--supply-color',this.a.getValueColor?.(kind+'Stock')||(kind==='water'?'#4c65e0':'#c2c200'));
         el.style.setProperty('--supply-text',this.a.getValueTextColor?.(kind+'Stock')||'var(--text)');
         el.innerHTML=`<div class="supply-heading"><span class="supply-symbol" aria-hidden="true">${this.a.icon(kind)}</span><h2>${names[kind]}</h2><span class="supply-badge">Geschätzt</span></div><div class="supply-range">${esc(range)}</div><p class="muted">${profile.stock===null?'Restvorrat unbekannt':estimated+number(profile.stock)+' '+unit(kind)+' verbleibend'}${profile.rangeHours?'<br>Schätzbereich: '+esc(C.duration(profile.rangeHours[0]))+' bis '+esc(C.duration(profile.rangeHours[1])):''}</p><dl class="supply-facts"><div><dt>Üblicher Tagesbedarf</dt><dd>${number(profile.daily)} ${unit(kind)}/Tag</dd></div><div><dt>Bedarf für 3 / 7 / 14 Tage</dt><dd data-supply-needs="${kind}">${[3,7,14].map(d=>number(C.quantity(profile.needs[d],kind,needUnit,profile.containerSize))).join(' / ')} ${esc(needUnit)}</dd><dd class="supply-unit-setting">${this.needUnitControl(kind,profile,needUnit)}</dd></div><div><dt>${kind==='water'?'Letzte Beschaffung':'Letzter Flaschenwechsel'}</dt><dd>${esc(stamp(profile.lastAt))}</dd></div><div><dt>Üblicher Abstand</dt><dd>${esc(C.duration(profile.intervalHours))}</dd></div>${kind==='water'&&profile.nextSupplyAt?'<div><dt>Nächste Beschaffung nach Rhythmus</dt><dd>'+esc(stamp(profile.nextSupplyAt))+'</dd></div>':''}</dl><p class="muted supply-basis">${esc(profile.basis)}</p>${kind==='gas'?this.weatherStatus(profile):''}<div class="form-actions"><button class="secondary" data-stock="${kind}">Bekannten Restvorrat eintragen</button></div>`;
       }
+      const gasFacts=$('supplies-gas').querySelector('.supply-facts');if(gasFacts){const p=this.analysis.gas,daily=gasFacts.querySelector('dd');if(daily)daily.textContent=numberGas(p.daily)+' kg/Tag';gasFacts.insertAdjacentHTML('afterbegin',`<div><dt>Erwarteter Bedarf · nächste 24 Stunden</dt><dd>${numberGas(p.expectedDaily)} kg</dd><dd class="muted">${p.expectedDailyWeatherCorrected?(p.model?.provisional?'Wetter vorläufig berücksichtigt':'Wetter berücksichtigt'):'Schätzung aus dem bisherigen Durchschnitt · ohne Wetterkorrektur'}</dd></div><div><dt>Letzter abgeschlossener Flaschenabschnitt</dt><dd>${numberGas(p.lastDaily)} kg/Tag</dd></div>`);}
+      $('supplies-gas').insertAdjacentHTML('beforeend',this.stayQuestionsHtml());this.bindStayActions();
       document.querySelectorAll('[data-stock]').forEach(b=>b.onclick=()=>this.edit(b.dataset.stock,'stock'));
       document.querySelectorAll('[data-supply-unit]').forEach(select=>select.onchange=()=>{this.a.setSupplyUnit(select.dataset.supplyUnit,select.value);this.renderKey='';this.render();});
       const weather=config.weather||{},hasPlace=!!snapshot.settings?.weatherPlace?.name;
@@ -41,6 +45,35 @@
     }
     needUnitControl(kind,profile,selected){
       return `<label class="supply-unit-choice">Bedarf anzeigen in<select data-supply-unit="${kind}" aria-label="Einheit für ${names[kind]}bedarf">${C.quantityUnits(kind).map(unit=>`<option value="${unit}" ${unit===selected?'selected':''}>${unit}</option>`).join('')}</select></label><small class="muted">${esc(C.containerHint(kind,profile.containerSize))}</small>`;
+    }
+    stayQuestionsHtml(){
+      const question=this.locationQuestions?.[0],stays=this.config.confirmedStays||[],supported=!this.a.native||this.config.stayConfirmationSupported===true,disabled=!supported||!this.connected||this.staySaving;
+      const prompt=question?`<div class="supply-stay-question" role="group" aria-label="Ortslücke bestätigen"><strong>Warst du weiterhin in ${esc(question.site.name||'diesem Ort')}?</strong><p>${esc(stamp(question.from))} – ${esc(stamp(question.to))}</p><p class="muted">Für ${number(question.unknownMillis/3600000)} Stunden in diesem Zeitraum fehlt die Ortszuordnung. Deine Bestätigung ergänzt nur diese Lücken.</p><div class="form-actions"><button class="primary" data-stay-yes ${disabled?'disabled':''}>Ja, weiterhin hier</button><button class="quiet" data-stay-no ${disabled?'disabled':''}>Nein, korrigieren</button></div><p id="stayQuestionError" class="form-error" role="alert">${esc(this.stayError||'')}</p>${!supported?'<p class="muted">Für die Ortsbestätigung bitte Zentrale und Anzeige aktualisieren.</p>':!this.connected?'<p class="muted">Zum Bestätigen die Zentrale verbinden.</p>':''}${this.locationQuestions.length>1?'<p class="muted">Danach sind noch '+(this.locationQuestions.length-1)+' weitere Lückenbereiche zu prüfen.</p>':''}</div>`:'';
+      return prompt+(stays.length?`<details class="supply-confirmed-stays"><summary>${stays.length} bestätigte Aufenthalte</summary>${stays.map(s=>`<article><strong>${esc(s.site?.name||'Bestätigter Ort')}</strong><p>${esc(stamp(s.from))} – ${esc(stamp(s.to))}</p><button class="quiet" data-stay-edit="${esc(s.id)}" ${disabled?'disabled':''}>Korrigieren</button><button class="quiet" data-stay-delete="${esc(s.id)}" ${disabled?'disabled':''}>Bestätigung entfernen</button></article>`).join('')}</details>`:'');
+    }
+    bindStayActions(){
+      document.querySelector('[data-stay-yes]')?.addEventListener('click',()=>this.confirmStay({...this.locationQuestions[0],id:id()}));
+      document.querySelector('[data-stay-no]')?.addEventListener('click',()=>this.editStay(this.locationQuestions[0]));
+      document.querySelectorAll('[data-stay-edit]').forEach(b=>b.onclick=()=>{const s=this.config.confirmedStays.find(s=>s.id===b.dataset.stayEdit);this.editStay(s,s);});
+      document.querySelectorAll('[data-stay-delete]').forEach(b=>b.onclick=()=>this.deleteStay(this.config.confirmedStays.find(s=>s.id===b.dataset.stayDelete)));
+    }
+    async confirmStay(stay,original){
+      if(this.staySaving)return;this.staySaving=true;this.stayError='';this.renderKey='';this.render();
+      try{await this.save({op:'confirmStay',operationId:stay.operationId||id(),id:stay.id,from:stay.from,to:stay.to,site:stay.site,...(original?{baseStay:original}:{})},()=>{this.a.closeModal();this.a.toast('Aufenthalt bestätigt · vorhandenes Ortswetter wird zugeordnet.');});}finally{this.staySaving=false;this.renderKey='';this.render();}
+    }
+    editStay(question,original){
+      const places=window.WattSupplyTravel.places(this.config),draft={id:original?.id||id(),operationId:id(),from:question.from,to:question.to,site:original?.site||null,places};this.stayDraft=draft;
+      this.a.openModal('Aufenthalt korrigieren',`<div id="stayEditor"><p>Wo warst du während der fehlenden Ortszeiten? Bekannte GPS-Aufenthalte bleiben erhalten.</p><label class="form-field">Von<input id="stayFrom" type="datetime-local" value="${local(draft.from)}"></label><label class="form-field">Bis<input id="stayTo" type="datetime-local" value="${local(draft.to)}"></label><label class="form-field">Aufenthaltsort<select id="stayPlace"><option value="">Bitte Ort wählen</option>${places.map(p=>`<option value="${esc(p.key)}" ${draft.site?.key===p.key?'selected':''}>${esc(p.name||p.key)}</option>`).join('')}</select></label><div class="weather-search"><input id="stayQuery" type="search" maxlength="120" placeholder="Anderen Ort oder Postleitzahl suchen" aria-label="Aufenthaltsort suchen"><button class="quiet" id="staySearch">Suchen</button></div><div id="stayResults" role="status"></div><p id="supplyError" class="form-error" role="alert"></p><div class="form-actions"><button class="quiet" id="stayCancel">Abbrechen</button><button class="primary" id="supplySave">Aufenthalt bestätigen</button></div></div>`);
+      $('stayPlace').onchange=()=>{draft.site=places.find(p=>p.key===$('stayPlace').value)||null;};$('stayCancel').onclick=()=>this.a.closeModal();
+      const search=()=>{const query=$('stayQuery').value.trim();if(query.length<2){$('supplyError').textContent='Bitte einen Ort oder eine Postleitzahl eingeben.';return;}if(!this.a.native?.searchSupplyPlaces){$('supplyError').textContent='Für die Ortssuche bitte die Android-App aktualisieren.';return;}this.stayQuery=query;$('stayResults').textContent='Suche …';this.a.native.searchSupplyPlaces(query);};$('staySearch').onclick=search;$('stayQuery').onkeydown=e=>{if(e.key==='Enter')search();};
+      $('supplySave').onclick=()=>{const from=new Date($('stayFrom').value).getTime(),to=new Date($('stayTo').value).getTime();if(!draft.site||!Number.isFinite(from)||!Number.isFinite(to)||to<=from||from<946684800000||to>Date.now()+300000||to-from>1096*C.DAY){$('supplyError').textContent='Bitte einen Ort und einen gültigen vergangenen Zeitraum wählen.';return;}this.confirmStay({...draft,from,to},original);};
+    }
+    staySearchResults(result){
+      if(!$('stayEditor')||result.query!==this.stayQuery)return;$('stayResults').textContent=result.error||'';
+      for(const input of result.places||[]){if(!Number.isFinite(input.latitude)||!Number.isFinite(input.longitude))continue;const place={...input,key:Math.round(input.latitude*1000)+':'+Math.round(input.longitude*1000)},button=document.createElement('button');button.className='weather-place';button.textContent=place.name;button.onclick=()=>{this.stayDraft.site=place;if(!this.stayDraft.places.some(p=>p.key===place.key)){this.stayDraft.places.push(place);const option=document.createElement('option');option.value=place.key;option.textContent=place.name;$('stayPlace').append(option);}$('stayPlace').value=place.key;$('stayResults').textContent='Ort gewählt.';};$('stayResults').append(button);}
+    }
+    deleteStay(stay){
+      this.a.openModal('Aufenthaltsbestätigung entfernen?',`<p>${esc(stay.site?.name)} · ${esc(stamp(stay.from))} – ${esc(stamp(stay.to))}</p><p>Nur diese Bestätigung entfernen? Ursprüngliche Orts- und Verbrauchseinträge bleiben erhalten. Nicht anderweitig belegte Zeiten werden wieder als offen behandelt.</p><p id="supplyError" class="form-error" role="alert"></p><div class="form-actions"><button id="stayKeep" class="quiet">Behalten</button><button id="supplySave" class="primary">Entfernen</button></div>`);$('stayKeep').onclick=()=>this.a.closeModal();$('supplySave').onclick=()=>this.save({op:'deleteStay',id:stay.id,operationId:id(),baseStay:stay},()=>this.a.closeModal());
     }
     weatherStatus(profile){
       if(profile.modelPending)return '<div class="supply-weather" data-state="loading"><strong>Verbrauchsmodell wird geladen</strong><p>Gespeicherte Faktoren werden geprüft oder im Hintergrund ergänzt.</p></div>';
@@ -63,11 +96,13 @@
         if(this.a.native){const error=await this.a.native.saveSupplies(JSON.stringify(command));if(error)throw Error(error);}
         else{
           const config=this.read();if(command.op==='defaults')config.defaults={water:command.water,gas:command.gas,waterContainer:command.waterContainer??config.defaults.waterContainer};
+          else if(command.op==='deleteStay')config.confirmedStays=(config.confirmedStays||[]).filter(s=>s.id!==command.id);
+          else if(command.op==='confirmStay'){const stays=config.confirmedStays||[],at=stays.findIndex(s=>s.id===command.id),stay={id:command.id,from:command.from,to:command.to,site:command.site,source:'user-confirmed',updated:Date.now()};if(at<0)stays.push(stay);else stays[at]=stay;config.confirmedStays=stays;}
           else if(command.op==='delete')config.events=config.events.filter(e=>e.id!==command.id);
           else{const existing=config.events.findIndex(e=>e.id===command.event.id);if(existing>=0)config.events[existing]=command.event;else config.events.push({...command.event,order:(config.revision||0)+1});}C.normalize(config);config.revision=(config.revision||0)+1;if(command.op==='defaults'&&command.followGps!==undefined)config.followGps=command.followGps;localStorage.setItem('wattpit-supplies-preview',JSON.stringify(config));
         }
         this.renderKey='';this.a.poll();this.render();this.a.repaint();done?.();this.a.toast(this.a.native?'Eintrag gespeichert.':'Beispieleintrag gespeichert.');
-      }catch(e){const el=$('supplyError');if(el)el.textContent=e.message;else this.a.toast(e.message);}finally{if(button?.isConnected)button.disabled=false;}
+      }catch(e){if(command.op==='confirmStay'||command.op==='deleteStay')this.stayError=e.message;const el=$('supplyError')||$('stayQuestionError');if(el)el.textContent=e.message;else this.a.toast(e.message);}finally{if(button?.isConnected)button.disabled=false;}
     }
     edit(kind,type,original){
       const config=this.read(),place=config.weather?.currentPlace||this.a.getSnapshot().settings?.weatherPlace||{},event=original?{...original}:{id:id(),kind,type,amount:type==='stock'?0:config.defaults[kind],at:Date.now(),empty:true,note:'',site:place},title=type==='stock'?'Bekannten '+names[kind]+'vorrat eintragen':kind==='gas'?'Gasflasche gewechselt':'Wasser geholt';
