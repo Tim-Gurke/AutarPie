@@ -117,11 +117,11 @@ die ausgelieferten Oberflächendateien und eine bestätigende simulierte
 Zentrale. Sie ersetzen keinen Funk-, GPS- oder Laufzeittest am G5/S20/S10.
 Ein APK-Bau wurde für diesen neuen Umfang noch nicht gestartet.
 
-Der [Prüflauf 45526508644](https://github.com/Tim-Gurke/AutarPie/actions/runs/45526508644)
-ist mit 393 JavaScript-Prüfungen, 45 Aussagen zur nativen Speicherung und
-Wetterzuordnung sowie den drei Browserabläufen für Ortsbestätigung,
-Gas-/Wasserbedienung und gespeicherte Lernmodelle erfolgreich. Eine zusätzliche
-Speicherprüfung im abschließenden Stand stellt sicher, dass die unterstützten
-Aktionen zur laufenden Zentralenversion gehören und nicht bei einer späteren
-Rückkehr zu einer alten Version fälschlich aus gespeicherten Daten übernommen
-werden.
+Der [abschließende Prüflauf 45526725770](https://github.com/Tim-Gurke/AutarPie/actions/runs/45526725770)
+für Quellstand `11bf3bf35ae83d0568ab1ce7b15d822ef0ecce0f` ist mit **393
+JavaScript-Prüfungen**, **46 Aussagen zur nativen Speicherung und Wetterzuordnung**
+sowie den **drei Browserabläufen** für Ortsbestätigung, Gas-/Wasserbedienung und
+gespeicherte Lernmodelle erfolgreich. Die Speicherprüfung bestätigt auch, dass
+die unterstützten Aktionen zur laufenden Zentralenversion gehören und nicht
+bei einer späteren Rückkehr zu einer alten Version fälschlich aus gespeicherten
+Daten übernommen werden. Alle drei Prüfjobs sind grün; keiner baut eine APK.
