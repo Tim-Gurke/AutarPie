@@ -17,7 +17,7 @@ bleiben zur Sammlung.
 | Sonneneinfluss beim Gaslernen | Historische Sonneneinstrahlung und vorhandenen PV-Ertrag als ergänzende Grundlage betrachten, einen belegten Einfluss auf den Heizbedarf lernen und in einer Gas-Lernnotiz erklären. Fertige Faktoren speichern und für neue Vorhersagen anwenden. | Noch nicht implementiert. Wetterdaten, Modell und Lernnotiz müssen gemeinsam erweitert werden. Gemessene PV-Wh sind keine feste direkte Heizwärme-/Gasgutschrift. Ein Sonnenfaktor darf erst mit ausreichender Daten- und Prüfgrundlage gelten. |
 | Wetterrückblick: 14 Tage mit gewichtetem Prognosevergleich | Je vergangenem Tag den gewichteten Mittelwert der ursprünglich für genau diesen Zieltag ausgegebenen Prognosen aus den 14 Tagen davor mit dem tatsächlichen Solarertrag vergleichen. Vorlauf 14–8 Tage schwach, 7–4 stärker, letzte drei Tage am stärksten gewichten; tatsächlichen Akkustand erhalten. | Neu vorgemerkt, noch nicht implementiert. Originalprognosen mit Datum speichern, verfügbare Anzahl und Ertragsabweichung zeigen. Die 14 vergangenen Tage der Ansicht und die 14 Vorlauftage je Zieltag sind getrennte Zeiträume. |
 | Mehrere Wettermodelle für Wetter und Ertrag | Vorhersagen verschiedener Wetterzentren für denselben Ort und Zeitraum getrennt abrufen; Wettergrößen und daraus berechnete Solarerträge zu einem nachvollziehbaren Mittelwert mit Modellspanne zusammenführen. | Neu am 27.11.2026 gesammelt, noch nicht implementiert. Vorschlag: DWD ICON, ECMWF IFS und NOAA GFS über die bestehende Open-Meteo-Schnittstelle. Modellhorizonte, Datenstand, Ausfälle und vorhandene Lernfaktoren berücksichtigen. |
-| 608PD automatisch als Sondernutzung und externe Ladequelle | Vorhandene Bluetooth-/Journalwerte je Lader für beide Energierichtungen automatisch übernehmen: Wohnwagen → Modellbauakku als Sonderverbrauch; externe Energie → 608PD → Wohnwagenakku als externe Ladung. Nutzung, Energie, passende Lernfaktoren und Tagesbilanz ohne erneute manuelle Erfassung verbinden. | Am 27.11.2026 gesammelt und um Rückladung präzisiert, noch nicht implementiert. Geräteprofile, Journal und Energiepfad „Powerbank → 608PD → Wohnwagenakku“ existieren. Automatische Bilanzverknüpfung fehlt; Quellenanteil, Nettoakkuwert und Verbrauch nicht doppelt zählen. |
+| 608PD automatisch als Sondernutzung und externe Ladequelle | Vorhandene Bluetooth-/Journalwerte je Lader für beide Energierichtungen automatisch übernehmen: Wohnwagen → Modellbauakku als Sonderverbrauch; externe Energie → 608PD → Wohnwagenakku als externe Ladung. Schnellwahl „Modellbauakku laden“ / „Wohnwagenakku laden“ direkt beim Lader vorsehen, da derselbe Lader beide Aufgaben übernimmt. Nutzung, Energie, passende Lernfaktoren und Tagesbilanz ohne erneute manuelle Erfassung verbinden. | Am 27.11.2026 gesammelt und um Rückladung präzisiert, noch nicht implementiert. Geräteprofile, Journal und Energiepfad „Powerbank → 608PD → Wohnwagenakku“ existieren. Automatische Bilanzverknüpfung fehlt; Quellenanteil, Nettoakkuwert und Verbrauch nicht doppelt zählen. |
 
 Vor dem Bau einmal abstimmen: **gesammelte Punkte im gemeinsamen Update** oder
 **einen ausdrücklich gewählten Akutfix vorziehen**. Einen
@@ -312,6 +312,59 @@ Die Richtung richtet sich nach dem tatsächlich gewählten Energiepfad:
   rückwirkend einem bestimmten Lader zuschreiben. Rohdaten und vorhandene
   Profile bleiben erhalten; Neustart und erneute Replikation erzeugen keine
   zweiten Buchungen.
+
+### Schnellwahl für einen Lader mit wechselnder Verwendung
+
+**Präzisierung von Tim am 27.11.2026:** Er verwendet zunächst denselben
+physischen 608PD sowohl für Modellbauakkus als auch für das Laden des
+Wohnwagenakkus. Dafür eine direkt erreichbare Schnellwahl vorsehen und prüfen,
+ob sich die Verwendung künftig zuverlässig automatisch erkennen lässt.
+
+- Auf der Laderkarte eine klar beschriftete, mit einem Tipp erreichbare Auswahl
+  **„Modellbauakku laden“** / **„Wohnwagenakku laden“** vorsehen. Zugeordneten
+  Lader und aktuell gespeicherte Richtung sichtbar lassen; Bedeutung nicht
+  ausschließlich durch Farbe vermitteln. Kein wiederholter Weg durch die
+  vollständige Geräteeinrichtung.
+- Dieselbe physische Gerätekennung, private Verbindung und das bestehende Journal
+  weiterverwenden. Weder erneut koppeln noch zwei konkurrierende physische
+  Geräteprofile für dieselbe Adresse anlegen. Die bisherige Option „Andere
+  Anwendung“ und bewusste bestehende Einstellungen bei der Erweiterung erhalten.
+- Auswahl gerätebezogen dauerhaft speichern. Beim Umschließen passend umstellen;
+  solange dieselbe Aufgabe bleibt, ist keine erneute Auswahl pro Ladung nötig.
+  Vom Anzeigehandy gilt die neue Auswahl erst nach Speicherbestätigung der
+  Zentrale als gespeichert. Fehler oder unerreichbare Zentrale sichtbar
+  behandeln, keine erfolgreiche Umstellung vortäuschen.
+- Die Schnellwahl ändert die fachliche Zuordnung für folgende beobachtete
+  Energieabschnitte. Sie betätigt keinen physischen Umschalter, startet oder
+  beendet keine Ladung und setzt kein Ladeprogramm am 608PD. Dafür bleiben
+  die tatsächliche Verkabelung und die getrennten Bedienfunktionen maßgeblich.
+- Umschaltzeitpunkt und Herkunft speichern; eine laufende Beobachtung am
+  Rollenwechsel nachvollziehbar teilen. Bereits aufgezeichnete Vorgänge behalten
+  ihren damaligen Energiepfad. Unsichere Übergangszeiten oder fehlende
+  Messabschnitte nicht willkürlich einer der Richtungen zuschreiben.
+- Automatische Erkennung als gesonderten Prüfpunkt behandeln: feststellen, ob
+  zusätzliche tatsächlich verfügbare, verifizierte Geräteinformationen die
+  beiden Verwendungen eindeutig unterscheiden. Der derzeit ausgelesene Zustand
+  „Laden“, Spannung und Zellenzahl reichen allgemein nicht aus, um Modellbauakku,
+  Wohnwagenakku und Herkunft der Versorgung eindeutig zu bestimmen. Auch der
+  Shunt-Nettofluss kann durch gleichzeitigen Solarertrag und Verbraucher
+  überlagert sein.
+- Ohne belegbar zuverlässige Unterscheidung keine automatische Buchungsrichtung
+  versprechen oder die manuelle Wahl unbemerkt überschreiben. Die explizit gewählte
+  Zuordnung ist maßgeblich und sichtbar; eindeutige Widersprüche als unklar melden.
+  Falls später eine Erkennung umgesetzt wird, deren Grundlage und Ausfälle
+  nachvollziehbar machen und die manuelle Schnellwahl weiterhin erhalten.
+- Unabhängig von dieser Auswahl sollen danach Vorgangserkennung, beobachtete
+  Energie und deren passende Verbuchung automatisch laufen. Es bleibt keine
+  zusätzliche Pflicht zur manuellen Eingabe derselben Wh pro Vorgang.
+
+**Zusätzlicher Prüfbedarf:** Ein Lader mit wechselnder Aufgabe; ein Tipp ohne
+erneute Kopplung; persistierte Auswahl nach App-Neustart; bestätigte Übernahme
+Zentrale/Anzeige sowie Fehlerfall; Rollenwechsel während eines beobachteten
+Vorgangs mit unveränderter Vergangenheit; keine Lade-/Stopp-/Profilbefehle durch
+die Schnellwahl; unklare und widersprüchliche Erkennungsgrundlagen; keine
+Doppelbuchung zwischen Verbrauch und externer Ladung. Schnellwahl und mögliche
+Erkennung sind noch nicht implementiert oder an Hardware getestet.
 
 ### Prüfbedarf bei Umsetzung
 
