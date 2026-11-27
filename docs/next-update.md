@@ -4,6 +4,9 @@ Abgleich am 25.11.2026 mit dem veröffentlichten Stand **3.1.6**
 (`fff10877c42f90e667105b87b31ae58504221b27`). Dies ist die Planung, keine
 Behauptung einer bereits implementierten Korrektur oder neuen Veröffentlichung.
 
+Ergänzung am **27.11.2026**: mehrere Wettermodelle für Wetter und Solarertrag
+mit nachvollziehbarem Mittelwert und Modellspanne, weiterhin zur Sammlung.
+
 ## Offene Entwicklungspunkte
 
 | Punkt | Gewünschtes Ergebnis | Stand |
@@ -11,6 +14,8 @@ Behauptung einer bereits implementierten Korrektur oder neuen Veröffentlichung.
 | PV-Eingangsspannung | Echte Spannung des ausgewählten Reglers abrufen, speichern und bis zur Kachel übertragen. Quelle und Datenstand korrekt zeigen; keinen Batterie- oder errechneten Ersatzwert als PV-Spannung ausgeben. | Noch offen. Der Quellstand besitzt bereits einen aktiven Registerabruf und Speicherung. Auslösebedingungen, Aktualität und Kachelzuordnung müssen als gesamte Datenkette geprüft werden. Die Beschriftung „Berechnet“ ist ebenfalls zu prüfen. |
 | Sonneneinfluss beim Gaslernen | Historische Sonneneinstrahlung und vorhandenen PV-Ertrag als ergänzende Grundlage betrachten, einen belegten Einfluss auf den Heizbedarf lernen und in einer Gas-Lernnotiz erklären. Fertige Faktoren speichern und für neue Vorhersagen anwenden. | Noch nicht implementiert. Wetterdaten, Modell und Lernnotiz müssen gemeinsam erweitert werden. Gemessene PV-Wh sind keine feste direkte Heizwärme-/Gasgutschrift. Ein Sonnenfaktor darf erst mit ausreichender Daten- und Prüfgrundlage gelten. |
 | Wetterrückblick: 14 Tage mit gewichtetem Prognosevergleich | Je vergangenem Tag den gewichteten Mittelwert der ursprünglich für genau diesen Zieltag ausgegebenen Prognosen aus den 14 Tagen davor mit dem tatsächlichen Solarertrag vergleichen. Vorlauf 14–8 Tage schwach, 7–4 stärker, letzte drei Tage am stärksten gewichten; tatsächlichen Akkustand erhalten. | Neu vorgemerkt, noch nicht implementiert. Originalprognosen mit Datum speichern, verfügbare Anzahl und Ertragsabweichung zeigen. Die 14 vergangenen Tage der Ansicht und die 14 Vorlauftage je Zieltag sind getrennte Zeiträume. |
+
+| Mehrere Wettermodelle für Wetter und Ertrag | Vorhersagen verschiedener Wetterzentren für denselben Ort und Zeitraum getrennt abrufen; Wettergrößen und daraus berechnete Solarerträge zu einem nachvollziehbaren Mittelwert mit Modellspanne zusammenführen. | Neu am 27.11.2026 gesammelt, noch nicht implementiert. Vorschlag: DWD ICON, ECMWF IFS und NOAA GFS über die bestehende Open-Meteo-Schnittstelle. Modellhorizonte, Datenstand, Ausfälle und vorhandene Lernfaktoren berücksichtigen. |
 
 Vor dem Bau einmal abstimmen: **gesammelte Punkte im gemeinsamen Update** oder
 **einen ausdrücklich gewählten Akutfix vorziehen**. Einen
@@ -91,6 +96,78 @@ geplanten 14-Tage-Rückblick.
 
 Herstellergrundlage: [Victron-Handbuch](https://www.victronenergy.com/media/pg/Manual_SmartSolar_MPPT_75-10_up_to_100-20/en/troubleshooting.html),
 Abschnitt 8.5.1 „Battery is full“.
+
+## Mehrere Wettermodelle für Wetter und Solarertrag · 27.11.2026
+
+Tim möchte weitere Wetterdienste beziehungsweise Vorhersagegrundlagen einbeziehen
+und daraus einen Mittelwert für Wetter und Ertragsprognose erhalten. Dies ist
+ein zusätzlicher gesammelter Entwicklungspunkt; kein neuer APK-Bau ist beauftragt.
+
+**Geprüfte technische Grundlage:** Der bisherige `WeatherClient` verwendet
+Open-Meteo ohne explizite Modellauswahl. Open-Meteos automatische Best-Match-Auswahl
+verbindet bereits regionale und globale Grundlagen je Verfügbarkeit. Sie ersetzt
+aber keinen ausdrücklich nachvollziehbaren Vergleich getrennter Modellprognosen.
+Über dieselbe Schnittstelle lassen sich auch einzelne Modelle verschiedener
+Wetterzentren abrufen. Vorschlag für den Einstieg: DWD ICON, ECMWF IFS und
+NOAA GFS. Ein Modell mehrfach über verschiedene Dienste abzurufen erzeugt keine
+zusätzliche unabhängige Stimme. Auch verschiedene Modellfamilien sind nicht
+vollständig statistisch unabhängig.
+
+**Vorgeschlagene Umsetzung:**
+
+- Gleichen Ort, gleiche Anlage, Größen, Einheiten, Zeitzone und Gültigkeitsintervalle
+  vergleichen. Temperatur, Wind und Einstrahlung numerisch verarbeiten; Wettercodes
+  nicht arithmetisch mitteln. Ein Wettersymbol aus den fachlich passenden Größen
+  beziehungsweise einer nachvollziehbaren Kategorienentscheidung ableiten.
+- Für jedes geeignete Modell den Solarertrag mit derselben Anlagenkonfiguration
+  und den bereits gespeicherten Kalibrierfaktoren berechnen. Regler- und Anlagenlimits
+  pro Modell berücksichtigen, danach vergleichbare Ertragswerte mitteln. Das
+  Mitteln von Wetter und anschließende Begrenzen liefert bei nichtlinearen
+  Begrenzungen nicht zwingend denselben Ertragsmittelwert.
+- Zunächst gleiche Gewichte je Modellfamilie für vorhandene geeignete Werte
+  vorschlagen. Einen nach Ort, Vorlauf und Zielgröße erlernten Gewichtsvorteil erst
+  übernehmen, wenn er an zurückgehaltenen tatsächlichen Vergleichsdaten belastbar
+  besser abschneidet. Keine pauschale Überlegenheitsgarantie des Mittelwerts.
+- Mittelwert, Anzahl nutzbarer Modelle und deren Spanne nachvollziehbar anzeigen.
+  Eine Min-/Max-Modellspanne ist kein statistisch kalibriertes Vertrauensintervall.
+  Große Unterschiede als unsichere Vorhersage erkennbar machen.
+- Nur für den jeweiligen Vorhersagezeitpunkt tatsächlich vorhandene Modellwerte
+  verwenden und Gewichte darauf normalisieren. Fehlende oder abgelaufene Werte
+  nicht als null zählen. Bei nur einer brauchbaren Quelle deren eingeschränkte
+  Grundlage zeigen. Ohne aktuelle Grundlagen letzten gespeicherten Stand mit
+  Alter/Fehlerstatus erhalten; keine Live-Aktualität vortäuschen.
+- Vorhersagelängen sind verschieden: ICON global ungefähr 7,5 Tage, regionale
+  ICON-Modelle kürzer; ECMWF IFS bis 15, GFS bis 16 Tage laut geprüfter
+  Dokumentation. Deshalb nicht für sämtliche 16 Tage drei Modelle behaupten.
+  Teilweise abgedeckte Tage nicht unbemerkt als vollständigen Tagesertrag mitteln.
+  Konkrete Varianten, verfügbare Felder und API-Bedingungen vor Umsetzung prüfen.
+- Ursprüngliche Einzelprognosen sowie den damals verwendeten gemeinsamen
+  Prognosewert dauerhaft mit Ausgabe-/Abrufzeit, Modellherkunft, Gültigkeitszeitraum,
+  Ort und Gewichtung speichern. Für den geplanten 14-Tage-Rückblick gilt der
+  damalige ausgegebene Gesamtwert; Einzelmodelle bleiben nachvollziehbar.
+  Modellgewichtung und Gewichtung früherer Vorhersagetage sind getrennte Schritte.
+- Modellgüte nur an passenden tatsächlichen Grundlagen bewerten. Durch vollen
+  Akku oder sonstige Begrenzung verfälschte Ertragsabschnitte nicht als Beleg
+  schlechterer Wetterprognosen heranziehen. Keine nachträglich neu berechneten
+  historischen Prognosen zum eigenen Gütenachweis verwenden.
+- Zentrale erfasst, speichert und synchronisiert die begrenzten Wettergrundlagen;
+  Anzeigehandy/eigenständiger Betrieb berechnet Mischung, Ertrag und gegebenenfalls
+  Gewichte. Cache zuerst anzeigen, Hintergrundabrufe begrenzen; kein Neulernen
+  aller Rohdaten bei jedem Modellabruf. Bestehende Gas-Untergrenze, Ortszuordnung,
+  Rohdaten und Nutzereinstellungen erhalten.
+
+**Prüfbedarf bei Umsetzung:** Normalisierung/Nullwerte, fehlende Modelle oder
+Variablen, veraltete Läufe, unterschiedliche Horizonte und Tagesabdeckung,
+Zeitumstellung, doppelte Modellfamilien, Ertragsbegrenzung vor Mittelwert,
+kategorische Wettercodes, persistierte ursprüngliche Prognosen und Wiederanlauf
+ohne vollständigen neuen Lernlauf. Es wurden hierfür noch keine App-Funktionstests
+oder Hardwaretests ausgeführt.
+
+Geprüfte Schnittstellenunterlagen:
+[Open-Meteo / Modellauswahl](https://open-meteo.com/en/docs),
+[DWD ICON](https://open-meteo.com/en/docs/dwd-api),
+[ECMWF](https://open-meteo.com/en/docs/ecmwf-api),
+[NOAA GFS](https://open-meteo.com/en/docs/gfs-api).
 
 ## Bereits abgeschlossen und weiter zu erhalten
 
