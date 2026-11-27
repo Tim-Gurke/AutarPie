@@ -5,8 +5,9 @@ Abgleich am 25.11.2026 mit dem veröffentlichten Stand **3.1.6**
 Behauptung einer bereits implementierten Korrektur oder neuen Veröffentlichung.
 
 Ergänzungen am **27.11.2026**: mehrere Wettermodelle für Wetter und Solarertrag
-mit nachvollziehbarem Mittelwert und Modellspanne sowie 608PD-Lader automatisch
-als Sondernutzung lernen. Beide Punkte bleiben zur Sammlung.
+mit nachvollziehbarem Mittelwert und Modellspanne sowie automatische 608PD-Erfassung
+als Sonderverbrauch und als externe Ladequelle in den Wohnwagenakku. Beide Punkte
+bleiben zur Sammlung.
 
 ## Offene Entwicklungspunkte
 
@@ -16,7 +17,7 @@ als Sondernutzung lernen. Beide Punkte bleiben zur Sammlung.
 | Sonneneinfluss beim Gaslernen | Historische Sonneneinstrahlung und vorhandenen PV-Ertrag als ergänzende Grundlage betrachten, einen belegten Einfluss auf den Heizbedarf lernen und in einer Gas-Lernnotiz erklären. Fertige Faktoren speichern und für neue Vorhersagen anwenden. | Noch nicht implementiert. Wetterdaten, Modell und Lernnotiz müssen gemeinsam erweitert werden. Gemessene PV-Wh sind keine feste direkte Heizwärme-/Gasgutschrift. Ein Sonnenfaktor darf erst mit ausreichender Daten- und Prüfgrundlage gelten. |
 | Wetterrückblick: 14 Tage mit gewichtetem Prognosevergleich | Je vergangenem Tag den gewichteten Mittelwert der ursprünglich für genau diesen Zieltag ausgegebenen Prognosen aus den 14 Tagen davor mit dem tatsächlichen Solarertrag vergleichen. Vorlauf 14–8 Tage schwach, 7–4 stärker, letzte drei Tage am stärksten gewichten; tatsächlichen Akkustand erhalten. | Neu vorgemerkt, noch nicht implementiert. Originalprognosen mit Datum speichern, verfügbare Anzahl und Ertragsabweichung zeigen. Die 14 vergangenen Tage der Ansicht und die 14 Vorlauftage je Zieltag sind getrennte Zeiträume. |
 | Mehrere Wettermodelle für Wetter und Ertrag | Vorhersagen verschiedener Wetterzentren für denselben Ort und Zeitraum getrennt abrufen; Wettergrößen und daraus berechnete Solarerträge zu einem nachvollziehbaren Mittelwert mit Modellspanne zusammenführen. | Neu am 27.11.2026 gesammelt, noch nicht implementiert. Vorschlag: DWD ICON, ECMWF IFS und NOAA GFS über die bestehende Open-Meteo-Schnittstelle. Modellhorizonte, Datenstand, Ausfälle und vorhandene Lernfaktoren berücksichtigen. |
-| 608PD automatisch als Sondernutzung lernen | Vorhandene Bluetooth-/Journalwerte je Lader automatisch für Nutzungserkennung, Ladeenergie, übliche Häufigkeit und die Prognose „Mit Extras“ verwenden; keine erneute manuelle Erfassung derselben Ladungen. | Neu am 27.11.2026 gesammelt, noch nicht implementiert. Geräteprofile und Journal existieren; automatische Zuordnung und Lernen fehlen. Akkuseitenenergie, geschätzten Wohnwagenbedarf und externe Energiequellen korrekt trennen. |
+| 608PD automatisch als Sondernutzung und externe Ladequelle | Vorhandene Bluetooth-/Journalwerte je Lader für beide Energierichtungen automatisch übernehmen: Wohnwagen → Modellbauakku als Sonderverbrauch; externe Energie → 608PD → Wohnwagenakku als externe Ladung. Nutzung, Energie, passende Lernfaktoren und Tagesbilanz ohne erneute manuelle Erfassung verbinden. | Am 27.11.2026 gesammelt und um Rückladung präzisiert, noch nicht implementiert. Geräteprofile, Journal und Energiepfad „Powerbank → 608PD → Wohnwagenakku“ existieren. Automatische Bilanzverknüpfung fehlt; Quellenanteil, Nettoakkuwert und Verbrauch nicht doppelt zählen. |
 
 Vor dem Bau einmal abstimmen: **gesammelte Punkte im gemeinsamen Update** oder
 **einen ausdrücklich gewählten Akutfix vorziehen**. Einen
@@ -246,6 +247,72 @@ Lösung dieses Wunsches. Die automatische Verbindung ist noch nicht implementier
   doppelten Bedarf erzeugen. Automatisch angelegte Zuordnung und Lernbasis
   verständlich im Lader-/Extrasbereich anzeigen.
 
+### Externe Energie über den 608PD in den Wohnwagenakku
+
+**Präzisierung von Tim am 27.11.2026:** Wenn er anderweitig Energie beschafft
+und über einen Modellbaulader in die Wohnwagenbatterie lädt, soll dieser
+Vorgang automatisch aufgezeichnet und als Energiezufuhr verbucht werden.
+Das ist ausdrücklich Teil derselben automatischen 608PD-Anbindung.
+
+Die Richtung richtet sich nach dem tatsächlich gewählten Energiepfad:
+
+| Energiepfad | Buchung |
+|---|---|
+| Wohnwagenversorgung → 608PD → Modellbauakku | Sonderverbrauch am Wohnwagen; Akkuseitenenergie und gegebenenfalls geschätzte Eingangsverluste getrennt. |
+| Externer Energiespeicher / externe Versorgung → 608PD → Wohnwagenakku | Externe Batterieladung mit eigener Quellenzuordnung und beobachteter gelieferter Energie. |
+
+- Die Auswahl **Modellbau → Einrichten → Energiepfad → „Powerbank → 608PD →
+  Wohnwagenakku“** ist im vorhandenen Geräteprofil bereits vorgesehen
+  (`role=house-source`). Das vorhandene Journal speichert die Rolle zu jedem
+  Messpunkt; ein beobachteter Rollenwechsel beendet beziehungsweise trennt den
+  zugehörigen Vorgang. Diese Grundlagen weiterverwenden.
+- Pro beobachtetem Rückladevorgang Lader, Quelle/Energiepfad, Beginn, Ende,
+  Messabdeckung und gelieferte Wh automatisch speichern beziehungsweise auf der
+  Anzeige aus den gespeicherten Rohdaten ableiten. Tageswerte als beispielsweise
+  **„Externe Ladung · 608PD“** ausweisen; diese Energie nicht als Dach-/Mobilsolarertrag
+  oder als Sonderverbrauch buchen.
+- Wenn der Wohnwagenakku an der Akkuseite des 608PD geladen wird, ist dessen
+  Akkuseitenleistung die gemeldete elektrische Abgabe in diesen Ladepfad.
+  Dafür aus geeigneten Spannung-/Stromintervallen die beobachteten gelieferten Wh
+  verwenden. Nicht erneut den Wirkungsgradaufschlag des umgekehrten Modellbau-
+  Ladefalls auf diese abgegebene Energiemenge anwenden. Verbrauch des externen
+  Speichers und etwaige Leitungs-/Speicherverluste sind damit nicht separat gemessen.
+- Die Beschaffung oder Aufladung einer externen Powerbank allein erzeugt noch
+  keine verbuchte Wohnwagenladung. Maßgeblich ist der tatsächlich beobachtete
+  Energiefluss in den Wohnwagen-Ladepfad. Eine erst geplante Rückladung bleibt
+  eine kenntliche Planungsannahme und verändert keine historischen Messwerte.
+- Beide Geräte können im Betriebszustand „Laden“ sein: Die Betriebsart oder die
+  Akkuspannung allein unterscheiden Modellbauakku und Wohnwagenakku nicht sicher.
+  Den tatsächlichen Energiepfad bei geänderter Verwendung richtig zuordnen.
+  Frühere Vorgänge behalten ihre damalige Zuordnung; nicht rückwirkend mit der
+  heutigen Profilrolle umdeuten. Unklare Richtung bleibt unbekannt.
+- Der SmartShunt meldet den Nettofluss des Wohnwagenakkus. Sofern der zusätzliche
+  Ladepfad dort korrekt erfasst ist, steckt sein Einfluss bereits im Messwert und
+  Ladezustand. Den Quellenanteil separat nachweisen, aber denselben Zufluss nicht
+  nochmals auf SoC, Akkuenergie oder die gemessene Akkubilanz aufaddieren.
+- Laufende Verbraucher können einen Teil der extern zugeführten Energie sofort
+  nutzen. Gelieferte Wh des Laders und Netto-Wh am Wohnwagenakku müssen deshalb
+  nicht identisch sein. Bei vollständigen, auf dieselbe Systemgrenze normierten
+  Grundlagen gilt: Verbrauch = Solarzufuhr + externe Zufuhr − Netto-Akkuladung.
+  Fehlt eine Grundlage, daraus keinen vollständigen Verbrauch erfinden.
+- Neutrales Beispiel: Der 608PD liefert 200 Wh, andere Verbraucher benötigen
+  gleichzeitig 50 Wh. Dann sind 200 Wh externe Zufuhr und etwa 150 Wh Netto-
+  Akkuladung möglich. Nicht zusätzlich 200 Wh auf die bereits gemessenen
+  150 Wh aufschlagen und daraus 350 Wh Akkuzuwachs behaupten.
+- Die zusätzliche Quelle bei Verbrauchslernen, Energieherkunft und korrigierten
+  Tagesauswertungen berücksichtigen. Eine Akkuzunahme durch externe Ladung darf
+  weder als zusätzlicher Solarertrag noch als geringerer normaler Verbrauch
+  gelernt werden. Bei fehlender Zuordnung betroffene Lernintervalle offen lassen.
+- Für Prognosen den aktuellen tatsächlichen SmartShunt-Ladezustand als Grundlage
+  verwenden. Künftige extern beschaffte Energie nicht allein aus früheren
+  Rückladungen als sicher verfügbar einplanen. Eine ausdrücklich geplante Menge
+  bleibt eine Annahme mit eigener Herkunft.
+- Nachgelieferte Daten und unterbrochene Verbindungen nur gezielt ergänzen.
+  Beobachtete Teilenergie erhalten, fehlende Wh nicht aus dem späteren SoC
+  rückwirkend einem bestimmten Lader zuschreiben. Rohdaten und vorhandene
+  Profile bleiben erhalten; Neustart und erneute Replikation erzeugen keine
+  zweiten Buchungen.
+
 ### Prüfbedarf bei Umsetzung
 
 Mehrere parallele Lader und stabile Herkunft; unveränderte Gerätekennungen bei
@@ -255,6 +322,11 @@ Zählerrücksetzung; nachgelieferte Messdaten; keine Doppelungen beim Wiederanla
 oder manuellen Korrekturen; getrennte Häufigkeit und Ladeenergie; gezielte
 Grundverbrauchsbereinigung; unveränderte Rohdaten, Profile und Journale;
 wiederverwendeter Lernstand und unveränderte Zentrale/Anzeige-Aufgabenteilung.
+Zusätzlich: explizite externe Quellenbuchung und Tagesaggregation; Quellenwechsel
+am selben Lader mit erhaltener Historienrolle; gleichzeitiger Solarertrag, Verbrauch
+und externe Ladung; Brutto-Zufuhr versus Shunt-Nettofluss; keine SoC-Doppelzählung;
+keine erfundene Erhöhung des Solarertrags; korrektes Beispiel 200 Wh Zufuhr und
+50 Wh Verbrauch; Teilenergie bei Messlücken; geplante versus beobachtete Zuführung.
 
 Der Stand ist ein konkretisierter Sammelpunkt. Für diese Verbindung wurden
 noch kein Produktivcode geändert, keine Funktions-/Hardwaretests ausgeführt und
