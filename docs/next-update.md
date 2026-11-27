@@ -4,8 +4,9 @@ Abgleich am 25.11.2026 mit dem veröffentlichten Stand **3.1.6**
 (`fff10877c42f90e667105b87b31ae58504221b27`). Dies ist die Planung, keine
 Behauptung einer bereits implementierten Korrektur oder neuen Veröffentlichung.
 
-Ergänzung am **27.11.2026**: mehrere Wettermodelle für Wetter und Solarertrag
-mit nachvollziehbarem Mittelwert und Modellspanne, weiterhin zur Sammlung.
+Ergänzungen am **27.11.2026**: mehrere Wettermodelle für Wetter und Solarertrag
+mit nachvollziehbarem Mittelwert und Modellspanne sowie 608PD-Lader automatisch
+als Sondernutzung lernen. Beide Punkte bleiben zur Sammlung.
 
 ## Offene Entwicklungspunkte
 
@@ -15,6 +16,7 @@ mit nachvollziehbarem Mittelwert und Modellspanne, weiterhin zur Sammlung.
 | Sonneneinfluss beim Gaslernen | Historische Sonneneinstrahlung und vorhandenen PV-Ertrag als ergänzende Grundlage betrachten, einen belegten Einfluss auf den Heizbedarf lernen und in einer Gas-Lernnotiz erklären. Fertige Faktoren speichern und für neue Vorhersagen anwenden. | Noch nicht implementiert. Wetterdaten, Modell und Lernnotiz müssen gemeinsam erweitert werden. Gemessene PV-Wh sind keine feste direkte Heizwärme-/Gasgutschrift. Ein Sonnenfaktor darf erst mit ausreichender Daten- und Prüfgrundlage gelten. |
 | Wetterrückblick: 14 Tage mit gewichtetem Prognosevergleich | Je vergangenem Tag den gewichteten Mittelwert der ursprünglich für genau diesen Zieltag ausgegebenen Prognosen aus den 14 Tagen davor mit dem tatsächlichen Solarertrag vergleichen. Vorlauf 14–8 Tage schwach, 7–4 stärker, letzte drei Tage am stärksten gewichten; tatsächlichen Akkustand erhalten. | Neu vorgemerkt, noch nicht implementiert. Originalprognosen mit Datum speichern, verfügbare Anzahl und Ertragsabweichung zeigen. Die 14 vergangenen Tage der Ansicht und die 14 Vorlauftage je Zieltag sind getrennte Zeiträume. |
 | Mehrere Wettermodelle für Wetter und Ertrag | Vorhersagen verschiedener Wetterzentren für denselben Ort und Zeitraum getrennt abrufen; Wettergrößen und daraus berechnete Solarerträge zu einem nachvollziehbaren Mittelwert mit Modellspanne zusammenführen. | Neu am 27.11.2026 gesammelt, noch nicht implementiert. Vorschlag: DWD ICON, ECMWF IFS und NOAA GFS über die bestehende Open-Meteo-Schnittstelle. Modellhorizonte, Datenstand, Ausfälle und vorhandene Lernfaktoren berücksichtigen. |
+| 608PD automatisch als Sondernutzung lernen | Vorhandene Bluetooth-/Journalwerte je Lader automatisch für Nutzungserkennung, Ladeenergie, übliche Häufigkeit und die Prognose „Mit Extras“ verwenden; keine erneute manuelle Erfassung derselben Ladungen. | Neu am 27.11.2026 gesammelt, noch nicht implementiert. Geräteprofile und Journal existieren; automatische Zuordnung und Lernen fehlen. Akkuseitenenergie, geschätzten Wohnwagenbedarf und externe Energiequellen korrekt trennen. |
 
 Vor dem Bau einmal abstimmen: **gesammelte Punkte im gemeinsamen Update** oder
 **einen ausdrücklich gewählten Akutfix vorziehen**. Einen
@@ -167,6 +169,96 @@ Geprüfte Schnittstellenunterlagen:
 [DWD ICON](https://open-meteo.com/en/docs/dwd-api),
 [ECMWF](https://open-meteo.com/en/docs/ecmwf-api),
 [NOAA GFS](https://open-meteo.com/en/docs/gfs-api).
+
+## 608PD automatisch als Sondernutzung lernen · 27.11.2026
+
+Tim weist auf den vorhandenen direkten Bluetooth-Zugriff auf seine Modellbaulader
+hin. Er erwartet wie beim Roller automatische Erkennung und Lernen statt
+erneuter manueller Eingabe derselben Ladeenergie. Der bisherige manuelle
+Sondernutzungseintrag ist dafür nur ein vorhandener Umweg, keine vollständige
+Lösung dieses Wunsches. Die automatische Verbindung ist noch nicht implementiert.
+
+### Geprüfter vorhandener Stand
+
+- `EnergyProtocol.ChargerSample` decodiert Betriebsart, Akkuspannung, Akkustrom,
+  Laufzeit, Kapazitätszähler und Zellen. Daraus entsteht keine unabhängig gemessene
+  USB-/Wohnwagen-Eingangsenergie.
+- `ChargerJournal` speichert Grundlagen getrennt nach Quelle und physischem Lader.
+  Aktive Messungen werden ungefähr alle fünf Sekunden und Zustandswechsel sofort
+  gespeichert. Die Auswertung auf Anzeige/eigenständigem Handy erkennt Vorgänge
+  und integriert geeignete Spannung-/Stromabschnitte als `batteryWh`.
+  Fehlender Beginn, fehlendes Ende, Zählerrücksetzung und Messlücken bleiben erkennbar.
+- Das allgemeine Sondernutzungslernen in `special-use-core.js` nutzt für
+  Nicht-Roller derzeit die manuell erfassten `config.events`. Es übernimmt keine
+  608PD-Journalvorgänge automatisch. `SpecialUses.windows()` und der entsprechende
+  Verbrauchslernpfad in `SolarPlanning` kennen dafür ebenfalls noch keine
+  automatisch aus den Laderjournalen abgeleiteten Nutzungsfenster.
+
+### Gewünschte Verbindung der vorhandenen Funktionen
+
+- Je eingerichteten physischen 608PD eine stabile Zuordnung zur Sondernutzung
+  bereitstellen, aus vorhandenen Geräteprofilen und Journalgrundlagen ableiten.
+  Umbenennen und wechselnde Auswahl erzeugen keine neuen Verbraucher. Geräte-
+  und Anlagenherkunft erhalten; mehrere Lader getrennt lernen. Bewusst gewählte
+  Einstellungen und vorhandene manuelle Nutzungseinträge bei Migration erhalten.
+- Beginn, laufende Nutzung, Ende und beobachtete Energie automatisch aus
+  passenden Betriebszuständen übernehmen. Derselbe Vorgang darf nach Neustart,
+  erneutem Abgleich oder nachgelieferten Rohdaten nicht doppelt zählen.
+  Nachgelieferte Werte korrigieren gezielt den bestehenden Vorgang.
+- Bedarf je ausreichend beobachteter Ladung und tatsächliche übliche Häufigkeit
+  getrennt lernen, vorhandene Rollermechanismen nach fachlicher Eignung
+  wiederverwenden. Nicht ganztägigen Bluetooth-Empfang als Voraussetzung für
+  jede einzelne verwertbare Ladung verlangen.
+- Fehlende Zeitabschnitte sind keine Nullnutzung. Für eine verlässliche Häufigkeit
+  braucht es ausreichend belegte Beobachtungs-/Versorgungszeiten, einschließlich
+  belegter Nichtnutzung. Ein ausgeschalteter oder nicht erreichbarer Lader allein
+  belegt keinen verbrauchsfreien Tag. Bis zur ausreichenden Grundlage
+  Energie je Ladung und noch unbekannte Häufigkeit getrennt anzeigen; eine
+  freiwillige Annahme bleibt ausdrücklich eine Annahme.
+- `608PD-Akkuseite` und `Wohnwagenversorgung` unterscheiden. Ladeenergie des
+  angeschlossenen Modellbauakkus automatisch messen beziehungsweise aus passenden
+  Messintervallen integrieren. Für den Wohnwagenbedarf Wandlungsverluste und
+  gegebenenfalls Leerlaufanteil berücksichtigen: nur mit geeigneter unabhängiger
+  Eingangsgrundlage als gemessen bezeichnen, sonst eine nachvollziehbare
+  konfigurierbare Schätzung verwenden. Kein pauschaler fester Wirkungsgrad als
+  Messwert; die gesamte Shuntleistung allein isoliert keinen Laderwirkungsgrad.
+- Den wirklichen Energiepfad beachten. Nur vom Wohnwagen versorgte Ladevorgänge
+  sind dort Sonderverbrauch. Externe Versorgung und `house-source` beziehungsweise
+  Powerbank → 608PD → Wohnwagenakku als Quelle einordnen. Powerbank-/Entlademodus
+  und unbekannte Richtung nicht automatisch zum Wohnwagenverbrauch addieren.
+  Vorhandene Profilzuordnungen nutzen; unklarer Energiepfad bleibt offen.
+- Geeignete bekannte Ladefenster beim normalen Verbrauchslernen berücksichtigen,
+  damit dieselben Ladungen nicht zugleich als Grundbedarf und zusätzlich unter
+  „Mit Extras“ eingeplant werden. Ausschluss/Zuordnung auf betroffene Zeitfenster
+  begrenzen, benachbarte normale Messgrundlagen erhalten. Der tatsächlich am Shunt
+  gemessene Gesamtverbrauch wird dadurch weder überschrieben noch nochmals erhöht.
+- Aus gespeicherten Faktoren die übliche zusätzliche Nutzung für „Mit Extras“
+  ableiten. Konkrete geplante Nutzung oder eine nachvollziehbare laufende Ladung
+  für den betreffenden Zeitraum anstelle desselben pauschalen Ansatzes verwenden.
+  Nicht aus Akkuspannung allein ein exaktes Ladeziel oder eine Restladeenergie
+  erfinden; fehlendes Ziel beziehungsweise unzureichende Beobachtung kennzeichnen.
+- Fertige Faktoren mit Herkunft, Qualität und Eingangsrevision dauerhaft speichern
+  und inkrementell ergänzen. Neue Rohpakete müssen nicht sämtliche alten Ladungen
+  erneut auswerten. Zentrale bleibt Sammler und Synchronisationsgerät; Auswertung,
+  Lernen und Prognose auf Anzeigehandys/eigenständig.
+- Manuelle Sondernutzung bleibt als Ergänzung/Korrektur möglich. Eine bestehende
+  manuelle Eintragung und derselbe automatisch erkannte Vorgang dürfen keinen
+  doppelten Bedarf erzeugen. Automatisch angelegte Zuordnung und Lernbasis
+  verständlich im Lader-/Extrasbereich anzeigen.
+
+### Prüfbedarf bei Umsetzung
+
+Mehrere parallele Lader und stabile Herkunft; unveränderte Gerätekennungen bei
+Umbenennen; Laden/Powerbank/externe Wohnwagenladung; gemessene Akkuseite versus
+geschätzter Eingang; unklare Quelle; begonnene, beendete und lückenhafte Vorgänge;
+Zählerrücksetzung; nachgelieferte Messdaten; keine Doppelungen beim Wiederanlauf
+oder manuellen Korrekturen; getrennte Häufigkeit und Ladeenergie; gezielte
+Grundverbrauchsbereinigung; unveränderte Rohdaten, Profile und Journale;
+wiederverwendeter Lernstand und unveränderte Zentrale/Anzeige-Aufgabenteilung.
+
+Der Stand ist ein konkretisierter Sammelpunkt. Für diese Verbindung wurden
+noch kein Produktivcode geändert, keine Funktions-/Hardwaretests ausgeführt und
+keine neue APK gebaut.
 
 ## Bereits abgeschlossen und weiter zu erhalten
 
