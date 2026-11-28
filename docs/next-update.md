@@ -24,9 +24,9 @@ Kachel um Temperatur und weitere Wettergrößen ergänzen.
 | Wetterrückblick: 14 Tage mit gewichtetem Prognosevergleich | Je vergangenem Tag den gewichteten Mittelwert der ursprünglich für genau diesen Zieltag ausgegebenen Prognosen aus den 14 Tagen davor mit dem tatsächlichen Solarertrag vergleichen. Vorlauf 14–8 Tage schwach, 7–4 stärker, letzte drei Tage am stärksten gewichten; tatsächlichen Akkustand erhalten. | Neu vorgemerkt, noch nicht implementiert. Originalprognosen mit Datum speichern, verfügbare Anzahl und Ertragsabweichung zeigen. Die 14 vergangenen Tage der Ansicht und die 14 Vorlauftage je Zieltag sind getrennte Zeiträume. |
 | Mehrere Wettermodelle für Wetter und Ertrag | Vorhersagen verschiedener Wetterzentren für denselben Ort und Zeitraum getrennt abrufen; Wettergrößen und daraus berechnete Solarerträge zu einem nachvollziehbaren Mittelwert mit Modellspanne zusammenführen. | Neu am 27.11.2026 gesammelt, noch nicht implementiert. Vorschlag: DWD ICON, ECMWF IFS und NOAA GFS über die bestehende Open-Meteo-Schnittstelle. Modellhorizonte, Datenstand, Ausfälle und vorhandene Lernfaktoren berücksichtigen. |
 | 608PD automatisch als Sondernutzung und externe Ladequelle | Vorhandene Bluetooth-/Journalwerte je Lader für beide Energierichtungen automatisch übernehmen: Wohnwagen → Modellbauakku als Sonderverbrauch; externe Energie → 608PD → Wohnwagenakku als externe Ladung. Schnellwahl „Modellbauakku laden“ / „Wohnwagenakku laden“ direkt beim Lader vorsehen, da derselbe Lader beide Aufgaben übernimmt. Nutzung, Energie, passende Lernfaktoren und Tagesbilanz ohne erneute manuelle Erfassung verbinden. | Am 27.11.2026 gesammelt und um Rückladung präzisiert, noch nicht implementiert. Geräteprofile, Journal und Energiepfad „Powerbank → 608PD → Wohnwagenakku“ existieren. Automatische Bilanzverknüpfung fehlt; Quellenanteil, Nettoakkuwert und Verbrauch nicht doppelt zählen. |
-| Langfristtrend: Kalenderwochen, Diagramme, Bewölkung und Modellmix | Zusätzliche frei platzierbare Wettertrend-Kachel neben der Tageswetter-Kachel, mit wischbaren Wochen und Detailaufruf. Vorschau nach ISO-Kalenderwochen Montag–Sonntag mit KW-Nummer und Datum; alle Werte grafisch mit beschrifteten, vergleichbaren Skalen darstellen. Bewölkung mit passenden Symbolen und Messgröße ergänzen; mehrere geeignete Modelle als Mittel und erkennbare Spanne berücksichtigen. | Neu am 28.11.2026 gesammelt, noch nicht implementiert. Betrifft die gezeigte EC46-Langfristansicht. Teilwochen, fehlende Daten, tatsächliche Modellhorizonte und erhöhte Unsicherheit kenntlich halten. |
+| Langfristtrend: Kalenderwochen, Diagramme, Bewölkung und Modellmix | Zusätzliche frei platzierbare Wettertrend-Kachel neben der Tageswetter-Kachel, mit wischbaren Wochen und Detailaufruf. Vorschau nach ISO-Kalenderwochen Montag–Sonntag mit KW-Nummer und Datum; ausgewählte Werte grafisch mit beschrifteten, vergleichbaren Skalen darstellen; Inhalte ebenso wie bei der Tageskachel einzeln wählen und getrennt speichern. Bewölkung mit passenden Symbolen und Messgröße ergänzen; mehrere geeignete Modelle als Mittel und erkennbare Spanne berücksichtigen. | Neu am 28.11.2026 gesammelt, noch nicht implementiert. Betrifft die gezeigte EC46-Langfristansicht. Teilwochen, fehlende Daten, tatsächliche Modellhorizonte und erhöhte Unsicherheit kenntlich halten. |
 | 608PD-Journal: Aufruf und sichtbarer Inhalt | Das gespeicherte Lade-/Powerbankjournal zuverlässig und gut auffindbar öffnen; je Vorgang zeigen, welcher Lader welches Ziel/Akku wann und mit welcher Energiemenge geladen hat. Bei Ladezustand, fehlenden Einträgen, Offlinebetrieb oder Fehlern immer verständliche Rückmeldung; gespeicherte Historie auch ohne aktuellen Bluetooth-Empfang anzeigen. | Neue Praxisrückmeldung am 28.11.2026: Der Aufruf am Vortag zeigte laut Tim nichts. Einstieg und Leseweg sind im Code vorhanden; konkrete Ursache am Gerät noch nicht belegt. Als Fehlerbehebung prüfen, nicht als bereits repariert darstellen. |
-| Tageswetter-Kachel: Temperatur und vollständigeres Wetter | In der vorhandenen Tageswetter-/Solarvorschau Temperaturminimum/-maximum direkt je Tag anzeigen; Wetterzustand/Bewölkung, Niederschlag und Wind ergänzen. Sonnenstunden, Solarertrag und Akkubalken erhalten; weitere Details beim Antippen, übersichtliche anpassbare Darstellung. | Neu am 28.11.2026 gesammelt, noch nicht implementiert. Temperatur, Temperaturminimum und -maximum werden bereits abgerufen und im Tagescache gespeichert, fehlen aber in der kompakten Tageskachel. Weitere Wettergrößen benötigen passende Datenfelder und deren durchgängige Übernahme. |
+| Tageswetter-Kachel: Temperatur und vollständigeres Wetter | In der vorhandenen Tageswetter-/Solarvorschau Temperaturminimum/-maximum direkt je Tag anzeigen; Wetterzustand/Bewölkung, Niederschlag und Wind ergänzen. Sonnenstunden, Solarertrag und Akkubalken erhalten; weitere Details beim Antippen, übersichtliche Darstellung mit einzeln wählbarem Temperaturmittel, Minimum, Maximum und weiteren Wetterbestandteilen je Kachel. | Neu am 28.11.2026 gesammelt, noch nicht implementiert. Temperatur, Temperaturminimum und -maximum werden bereits abgerufen und im Tagescache gespeichert, fehlen aber in der kompakten Tageskachel. Weitere Wettergrößen benötigen passende Datenfelder und deren durchgängige Übernahme. |
 
 Vor dem Bau einmal abstimmen: **gesammelte Punkte im gemeinsamen Update** oder
 **einen ausdrücklich gewählten Akutfix vorziehen**. Einen
@@ -539,6 +539,9 @@ auf dem Dashboard sichtbar ist.
 - Ort, Quellen/Modellanzahl soweit sinnvoll, Datenstand und erhöhte Unsicherheit
   auch kompakt nachvollziehbar lassen. Fehlende, teilweise oder alte Werte
   entsprechend kennzeichnen; eine leere Kachel ist keine ausreichende Rückmeldung.
+- Die unter „Einzeln wählbare Inhalte in Tages- und Wochenvorschau“ präzisierte
+  Auswahl gilt auch für die Wochenkachel. Tages- und Wochenkonfiguration dürfen
+  unterschiedlich sein; Datenverfügbarkeit und korrekte Wochenaggregation beachten.
 - Große Ansicht und Kachel teilen den vorhandenen Wetter-/Trendcache und die
   berechnete Wochenaggregation. Platzieren/Öffnen darf nicht alle Grundlagen
   erneut lernen oder pro Kachel einen eigenen gleichartigen Netzabruf starten.
@@ -736,6 +739,54 @@ Vorhersagehorizont ungefragt zu verkürzen.
   und Details konsistent nutzen. Die zusätzliche Darstellung löst keine
   vollständige Neuberechnung aller Lernmodelle bei jedem Öffnen aus.
   Tatsächliche Historie und Prognose weiterhin unterscheiden.
+
+### Einzeln wählbare Inhalte in Tages- und Wochenvorschau
+
+Tim präzisiert am 28.11.2026: In beiden Vorschauen soll er selbst auswählen
+können, ob er Temperatur, Temperaturminimum/-maximum, Niederschlag und weitere
+Wetterangaben sehen möchte. Die Auswahl ist ausdrücklich Teil der geplanten
+Erweiterung, keine Behauptung über den derzeit veröffentlichten Funktionsumfang.
+
+- Über den gemeinsamen Kacheleditor beziehungsweise **Wetterkachel bearbeiten**
+  einzelne Anzeigeoptionen anbieten: **Temperaturmittel**, **Temperaturminimum**
+  und **Temperaturmaximum** jeweils getrennt; Wetter-/Bewölkungssymbole und
+  Bewölkungsgrad; Niederschlagsmenge und gegebenenfalls Wahrscheinlichkeit;
+  Windgeschwindigkeit und Böen; Sonnenstunden sowie vorhandene passende
+  Solar-/Akku-/Extrasangaben. Nicht zu einem untrennbaren „Alles oder nichts“
+  bündeln.
+- So sind nur ein Temperaturwert, nur Min/Max oder alle drei Angaben möglich.
+  Die zugehörigen grafischen Elemente/Skalen sollen der Auswahl folgen.
+  Einzelne Werte bleiben in Details zugänglich, soweit passende Daten vorliegen.
+- Auswahl **je Kachelinstanz beziehungsweise Vorschau** dauerhaft gerätelokal
+  speichern. Tages- und Wochenansicht sowie unterschiedliche eigene Dashboards
+  können bewusst verschiedene Inhalte zeigen. Eine Auswahländerung darf nicht
+  still andere Wetterkacheln oder die Darstellung auf einem anderen Handy ändern.
+- Bestehende eigene Layouts und bewusste Einstellungen bei Migration erhalten.
+  Komponentenwahl in die vorhandene Sicherung/gezielte Übernahme der Darstellung
+  aufnehmen; Größen- und Farbwahl bleiben erhalten.
+- Nur tatsächlich unterstützte Angaben anbieten beziehungsweise bei fehlenden
+  Grundlagen mit verständlichem Hinweis offen lassen. Eine angekreuzte Option
+  erzeugt keine Wetterdaten. Nicht verfügbare Bewölkung, Wahrscheinlichkeit oder
+  Wochenextreme nicht mit null oder erfundenen Werten ersetzen.
+- Für Wochen die Bedeutung präzise beschriften: Temperaturmittel aus den
+  abgedeckten Tagesgrundlagen; Minimum/Maximum nur aus geeigneten tatsächlich
+  verfügbaren Tages-/Intervallwerten, nicht aus einem einzigen Wochenmittel
+  erfinden. Temperatur-Extrema sind kein statistisches Unsicherheitsband.
+  Regeln für Teilwochen, Niederschlagsmittel/-summe und Modellabdeckung gelten weiter.
+- Eine Niederschlagswahrscheinlichkeit für einen Tag nicht ungeprüft als
+  Wahrscheinlichkeit für die gesamte Kalenderwoche ausgeben. Unterschiedliche
+  Wind-/Böen- und Niederschlagsgrößen samt Einheit verständlich benennen.
+- Auswahl betrifft die Darstellung. Erforderliche Grundlagen für Prognosen und
+  Lernen nicht beim Ausblenden löschen oder ihre Rechenbedeutung verändern.
+  Keine zusätzlichen kompletten Netz-/Lernläufe beim einfachen Umschalten.
+- Auch bei reduzierter Anzeige bleiben Datenstand, fehlende/alte Grundlagen und
+  erhöhte Unsicherheit der Langfristvorschau nachvollziehbar. Ausgewählte Inhalte
+  müssen sich an Kachelbreite und Schriftgröße ohne Überlagerung anpassen.
+
+Zusätzlich prüfen: alle sinnvollen Kombinationen für Mittel/Min/Max; unabhängige
+Tages-/Wochen- und Dashboardauswahl; Speicherung/Wiederanlauf und Sicherung;
+fehlende Felder oder reine Wochenmittel; unveränderte Daten-/Lernbasis;
+kleine Kachel, große Schrift, Farb-/Layoutbestand und zugängliche Bearbeitung.
 
 ### Prüfbedarf und Stand
 
