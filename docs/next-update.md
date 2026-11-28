@@ -11,7 +11,9 @@ bleiben zur Sammlung.
 
 Ergänzungen am **28.11.2026**: grafischer Langfristtrend mit Bewölkung,
 Modellmix und echten Kalenderwochen von Montag bis Sonntag, zusätzlich als frei
-platzierbare Wochenkachel; außerdem den ergebnislosen 608PD-Journalaufruf prüfen.
+platzierbare Wochenkachel; außerdem den ergebnislosen 608PD-Journalaufruf prüfen,
+Ladeziel/Zeit/Menge darin nachvollziehbar machen und die vorhandene Tageswetter-
+Kachel um Temperatur und weitere Wettergrößen ergänzen.
 
 ## Offene Entwicklungspunkte
 
@@ -23,7 +25,8 @@ platzierbare Wochenkachel; außerdem den ergebnislosen 608PD-Journalaufruf prüf
 | Mehrere Wettermodelle für Wetter und Ertrag | Vorhersagen verschiedener Wetterzentren für denselben Ort und Zeitraum getrennt abrufen; Wettergrößen und daraus berechnete Solarerträge zu einem nachvollziehbaren Mittelwert mit Modellspanne zusammenführen. | Neu am 27.11.2026 gesammelt, noch nicht implementiert. Vorschlag: DWD ICON, ECMWF IFS und NOAA GFS über die bestehende Open-Meteo-Schnittstelle. Modellhorizonte, Datenstand, Ausfälle und vorhandene Lernfaktoren berücksichtigen. |
 | 608PD automatisch als Sondernutzung und externe Ladequelle | Vorhandene Bluetooth-/Journalwerte je Lader für beide Energierichtungen automatisch übernehmen: Wohnwagen → Modellbauakku als Sonderverbrauch; externe Energie → 608PD → Wohnwagenakku als externe Ladung. Schnellwahl „Modellbauakku laden“ / „Wohnwagenakku laden“ direkt beim Lader vorsehen, da derselbe Lader beide Aufgaben übernimmt. Nutzung, Energie, passende Lernfaktoren und Tagesbilanz ohne erneute manuelle Erfassung verbinden. | Am 27.11.2026 gesammelt und um Rückladung präzisiert, noch nicht implementiert. Geräteprofile, Journal und Energiepfad „Powerbank → 608PD → Wohnwagenakku“ existieren. Automatische Bilanzverknüpfung fehlt; Quellenanteil, Nettoakkuwert und Verbrauch nicht doppelt zählen. |
 | Langfristtrend: Kalenderwochen, Diagramme, Bewölkung und Modellmix | Zusätzliche frei platzierbare Wettertrend-Kachel neben der Tageswetter-Kachel, mit wischbaren Wochen und Detailaufruf. Vorschau nach ISO-Kalenderwochen Montag–Sonntag mit KW-Nummer und Datum; alle Werte grafisch mit beschrifteten, vergleichbaren Skalen darstellen. Bewölkung mit passenden Symbolen und Messgröße ergänzen; mehrere geeignete Modelle als Mittel und erkennbare Spanne berücksichtigen. | Neu am 28.11.2026 gesammelt, noch nicht implementiert. Betrifft die gezeigte EC46-Langfristansicht. Teilwochen, fehlende Daten, tatsächliche Modellhorizonte und erhöhte Unsicherheit kenntlich halten. |
-| 608PD-Journal: Aufruf und sichtbarer Inhalt | Das gespeicherte Lade-/Powerbankjournal zuverlässig und gut auffindbar öffnen. Bei Ladezustand, fehlenden Einträgen, Offlinebetrieb oder Fehlern immer verständliche Rückmeldung; gespeicherte Historie auch ohne aktuellen Bluetooth-Empfang anzeigen. | Neue Praxisrückmeldung am 28.11.2026: Der Aufruf am Vortag zeigte laut Tim nichts. Einstieg und Leseweg sind im Code vorhanden; konkrete Ursache am Gerät noch nicht belegt. Als Fehlerbehebung prüfen, nicht als bereits repariert darstellen. |
+| 608PD-Journal: Aufruf und sichtbarer Inhalt | Das gespeicherte Lade-/Powerbankjournal zuverlässig und gut auffindbar öffnen; je Vorgang zeigen, welcher Lader welches Ziel/Akku wann und mit welcher Energiemenge geladen hat. Bei Ladezustand, fehlenden Einträgen, Offlinebetrieb oder Fehlern immer verständliche Rückmeldung; gespeicherte Historie auch ohne aktuellen Bluetooth-Empfang anzeigen. | Neue Praxisrückmeldung am 28.11.2026: Der Aufruf am Vortag zeigte laut Tim nichts. Einstieg und Leseweg sind im Code vorhanden; konkrete Ursache am Gerät noch nicht belegt. Als Fehlerbehebung prüfen, nicht als bereits repariert darstellen. |
+| Tageswetter-Kachel: Temperatur und vollständigeres Wetter | In der vorhandenen Tageswetter-/Solarvorschau Temperaturminimum/-maximum direkt je Tag anzeigen; Wetterzustand/Bewölkung, Niederschlag und Wind ergänzen. Sonnenstunden, Solarertrag und Akkubalken erhalten; weitere Details beim Antippen, übersichtliche anpassbare Darstellung. | Neu am 28.11.2026 gesammelt, noch nicht implementiert. Temperatur, Temperaturminimum und -maximum werden bereits abgerufen und im Tagescache gespeichert, fehlen aber in der kompakten Tageskachel. Weitere Wettergrößen benötigen passende Datenfelder und deren durchgängige Übernahme. |
 
 Vor dem Bau einmal abstimmen: **gesammelte Punkte im gemeinsamen Update** oder
 **einen ausdrücklich gewählten Akutfix vorziehen**. Einen
@@ -622,6 +625,47 @@ Fehlerursache am Gerät erfinden.
   nachvollziehbar lassen; keine fehlenden Vorgänge erfinden und keine
   doppelten Buchungen beim erneuten Einlesen erzeugen.
 
+### Je Vorgang: Was wurde wann und wie viel geladen?
+
+Tim präzisiert am 28.11.2026, dass er die tatsächlich geladenen Ziele und Mengen
+nachvollziehen möchte. Ein funktionierender Journalzugang allein genügt dafür
+nicht; der Inhalt muss pro Vorgang unmittelbar verständlich sein.
+
+- Pro Eintrag **Ladername**, **Ladeziel beziehungsweise Verwendung**, Datum,
+  Beginn/Ende oder letzter beobachteter Zeitpunkt, beobachtete Dauer und
+  nachgeladene Energie in **Wh** zeigen. Vorhandenen Gerätezähler in **mAh**
+  ergänzend verständlich beschriften; dieser Wert ist keine automatisch bekannte
+  Nennkapazität des angeschlossenen Akkus.
+- Ziel/Verwendung eindeutig als **Modellbauakku laden**, **Wohnwagenakku laden**
+  oder **Powerbank / Entladen** samt passendem Energiepfad einordnen. Quelle,
+  Ziel und gespeicherte damalige Zuordnung erhalten. Quelle/Sonderverbrauch,
+  Messseite und gegebenenfalls geschätzte Eingangsverluste weiter unterscheiden.
+- Eine **eigene Akkubezeichnung** als optionale Zuordnung zum Vorgang ermöglichen,
+  falls ein bestimmter Modellbauakku wiedererkannt werden soll. Der aktuelle
+  Decoder liefert Laderzustand und Akku-Messwerte, aber keine verifizierte
+  eindeutige Kennung des angeschlossenen Akkupacks. Ladername, gleiche Spannung
+  oder gleiche Zellenzahl dürfen nicht als sichere Pack-Identität ausgegeben werden.
+- Für die reine automatische Mengen-/Zeiterfassung keine zusätzliche manuelle
+  Eingabe derselben Ladung verlangen. Eigene Bezeichnung/Zuordnung ist eine
+  Ergänzung, keine Voraussetzung für das Erhalten beobachteter Werte. Unbekanntes
+  Ladeziel offen benennen statt einen konkreten Akku zu erfinden.
+- Zugeordnete Bezeichnungen und Korrekturen dauerhaft mit nachvollziehbarem Bezug
+  zum Vorgang speichern, in der Darstellung und Sicherung erhalten und nicht mit
+  einem neuen aktuellen Profilnamen rückwirkend alle alten Ziele umbenennen.
+  Originalmesswerte und belegte Energie unverändert erhalten.
+- Fehlender Beginn, unbekanntes Ende und Messlücken sichtbar lassen. Beobachtete
+  Teilenergie als solche zeigen; laufende oder nur teilweise aufgezeichnete
+  Ladungen nicht als vollständig abgeschlossen ausgeben.
+- Nach Lader und Zeitraum filtern; passende Summen für die ausgewählte Ansicht
+  können ergänzt werden. Gegensätzliche Energierichtungen getrennt ausweisen
+  statt Verbrauch und externe Ladung als unbeschriftete Menge zusammenzurechnen.
+
+Diese Präzisierung ergänzt die bereits gesammelte Reparatur des Journalaufrufs
+und die automatische 608PD-Verbuchung; sie ist noch nicht implementiert.
+Zusätzlich prüfen: klare Ziel-/Laderunterscheidung, optionale Akkubezeichnung,
+unbekannte Pack-Identität, historische Zuordnung und Korrekturen, Wh/mAh-Einheiten,
+zeitlich unvollständige Einträge und getrennte Summen beider Richtungen.
+
 ### Prüfbedarf und Stand
 
 Den echten Einstieg Ende-zu-Ende mit bestätigendem Datenpartner prüfen,
@@ -634,6 +678,73 @@ und Viewer-/Standalone-Verhalten getrennt prüfen.
 Bisher sind Quellpfad und mögliche Prüfpunkte untersucht. Es gibt noch keine
 reproduzierte konkrete Ursache am Gerät und keine veröffentlichte Reparatur
 für diese neue Rückmeldung; keine entsprechenden Laufzeit-/Hardwaretests behaupten.
+
+## Tageswetter-Kachel: Temperatur und vollständigeres Wetter · 28.11.2026
+
+Tim möchte in der bestehenden Tageswetter-/Solarvorschau, die er als
+14-Tage-Wetterkachel bezeichnet, neben Sonneneinstrahlung auch Temperaturen und
+weitere Wetterinformationen auf einen Blick sehen. Die neue Wochenkachel ersetzt
+diese Erweiterung der vorhandenen Tageskachel nicht.
+
+### Geprüfter vorhandener Stand
+
+`WeatherClient` fordert für die reguläre Vorschau bereits
+`temperature_2m_mean`, `temperature_2m_min` und `temperature_2m_max` an.
+`timeline()` speichert sie in den Tagesgrundlagen als `temperature`,
+`temperatureMin` und `temperatureMax`, einschließlich gültiger negativer
+Temperaturen und ausdrücklich fehlender Werte.
+
+Die kompakte Tageskarte in `solar-ui.js` zeigt derzeit Datum, Wettersymbol,
+Sonnenstunden und Solar-/Akku-/Extrasbalken, aber keine Temperaturzeile.
+Die reguläre Abfrage unterstützt im aktuellen Stand bis zu 16 Tage; die
+Bezeichnung im Gespräch ist kein Auftrag, einen vorhandenen längeren
+Vorhersagehorizont ungefragt zu verkürzen.
+
+### Gewünschte Darstellung und Datenweg
+
+- **Temperaturminimum und -maximum in °C direkt je Tageskarte** sichtbar machen,
+  beispielsweise „−2 / 5 °C“ als neutrales Darstellungsbeispiel. Vorhandener
+  Tagesmittelwert kann in Details ergänzt werden. Damit die Temperaturen erkennbar
+  sind, soll dafür kein zusätzlicher Umweg über Einstellungen oder Tagesdetails
+  erforderlich sein.
+- Wetterzustand mit passenden Sonne-/Wolken-/Regen-/Schneesymbolen erhalten
+  beziehungsweise ergänzen. Bewölkungsgrad, sofern verfügbar, mit eigener
+  Prozentangabe/Skala nachvollziehbar machen. Aus Sonnenstunden oder Einstrahlung
+  allein keine genaue Bewölkung erfinden.
+- **Niederschlag** mit Menge in mm/Tag und gegebenenfalls separat benannter
+  Wahrscheinlichkeit in % ergänzen; Menge und Wahrscheinlichkeit nicht
+  austauschbar verwenden.
+- **Wind** mit Geschwindigkeit und, sofern verfügbar, Böen samt Einheit
+  ergänzen. Hauptangaben übersichtlich halten, weitere Einzelwerte in der
+  Tagesdetailansicht zugänglich machen.
+- Sonnenstunden, erwarteten Solarertrag, tatsächlichen beziehungsweise
+  prognostizierten Akkustand und „Mit Extras“ erhalten. Neue Wetterzeilen dürfen
+  eigene bestehende Kachelgrößen, Layouts oder Farben nicht ungefragt ersetzen.
+- Für schmale Kacheln und große Schrift eine lesbare kompakte Darstellung
+  vorsehen; über den vorhandenen Editor passende sichtbare Bestandteile
+  einstellbar machen. Tageskarten bleiben horizontal wischbar und antippbar.
+  Werte und Symbole dürfen sich nicht überlagern.
+- Vorhandene Temperaturgrundlagen wiederverwenden. Zusätzlich erforderliche
+  Niederschlags-/Bewölkungs-/Windfelder anhand des tatsächlichen API-Angebots
+  abrufen, validieren, speichern und bis auf Anzeigehandys übertragen. Ein
+  angeforderter Wert allein ist noch kein gespeicherter oder angezeigter Wert.
+  Wetterort, Zeitgrenzen und Datenstand der übrigen Vorschau beibehalten.
+- Fehlende Größen als unbekannt behandeln, gültige null und negative Temperaturen
+  korrekt zeigen. Wetterwerte verschiedener Zeitstände/Orte nicht unbemerkt
+  vermischen. Alte gespeicherte Werte eindeutig kennzeichnen.
+- Gemeinsame Tagesgrundlagen mit Modellmix, Gas-Wetterbedarf, Wochenaggregation
+  und Details konsistent nutzen. Die zusätzliche Darstellung löst keine
+  vollständige Neuberechnung aller Lernmodelle bei jedem Öffnen aus.
+  Tatsächliche Historie und Prognose weiterhin unterscheiden.
+
+### Prüfbedarf und Stand
+
+Negative/null/fehlende Temperaturen; Min/Max und Mittelwert; erhaltene Energie-
+und Akkubalken; Regenmenge versus Wahrscheinlichkeit; Wind und Böen; fehlende
+Bewölkung; Datenweg Zentrale → Anzeige und eigenständig; unveränderter Wetterort
+und vorhandener Horizont; gespeicherte Daten/Offlinefall; Wetterkachel in eigenen
+Dashboards, schmale/breite Ansicht, große Schrift, Komponentenwahl und bestehende
+Farben/Layouts. Noch keine Umsetzung, neue APK oder entsprechende Geräteprüfung.
 
 ## Bereits abgeschlossen und weiter zu erhalten
 
