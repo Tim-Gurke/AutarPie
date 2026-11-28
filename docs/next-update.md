@@ -15,6 +15,9 @@ platzierbare Wochenkachel; außerdem den ergebnislosen 608PD-Journalaufruf prüf
 Ladeziel/Zeit/Menge darin nachvollziehbar machen und die vorhandene Tageswetter-
 Kachel um Temperatur und weitere Wettergrößen ergänzen.
 
+Weitere Praxisbestätigung am **28.11.2026**: aktives VPN verhindert bei Tim den
+Zugriff auf AutarPie; lokale Netzführung und Diagnose als eigenen Punkt aufnehmen.
+
 ## Offene Entwicklungspunkte
 
 | Punkt | Gewünschtes Ergebnis | Stand |
@@ -27,6 +30,7 @@ Kachel um Temperatur und weitere Wettergrößen ergänzen.
 | Langfristtrend: Kalenderwochen, Diagramme, Bewölkung und Modellmix | Zusätzliche frei platzierbare Wettertrend-Kachel neben der Tageswetter-Kachel, mit wischbaren Wochen und Detailaufruf. Vorschau nach ISO-Kalenderwochen Montag–Sonntag mit KW-Nummer und Datum; ausgewählte Werte grafisch mit beschrifteten, vergleichbaren Skalen darstellen; Inhalte ebenso wie bei der Tageskachel einzeln wählen und getrennt speichern. Bewölkung mit passenden Symbolen und Messgröße ergänzen; mehrere geeignete Modelle als Mittel und erkennbare Spanne berücksichtigen. | Neu am 28.11.2026 gesammelt, noch nicht implementiert. Betrifft die gezeigte EC46-Langfristansicht. Teilwochen, fehlende Daten, tatsächliche Modellhorizonte und erhöhte Unsicherheit kenntlich halten. |
 | 608PD-Journal: Aufruf und sichtbarer Inhalt | Das gespeicherte Lade-/Powerbankjournal zuverlässig und gut auffindbar öffnen; je Vorgang zeigen, welcher Lader welches Ziel/Akku wann und mit welcher Energiemenge geladen hat. Bei Ladezustand, fehlenden Einträgen, Offlinebetrieb oder Fehlern immer verständliche Rückmeldung; gespeicherte Historie auch ohne aktuellen Bluetooth-Empfang anzeigen. | Neue Praxisrückmeldung am 28.11.2026: Der Aufruf am Vortag zeigte laut Tim nichts. Einstieg und Leseweg sind im Code vorhanden; konkrete Ursache am Gerät noch nicht belegt. Als Fehlerbehebung prüfen, nicht als bereits repariert darstellen. |
 | Tageswetter-Kachel: Temperatur und vollständigeres Wetter | In der vorhandenen Tageswetter-/Solarvorschau Temperaturminimum/-maximum direkt je Tag anzeigen; Wetterzustand/Bewölkung, Niederschlag und Wind ergänzen. Sonnenstunden, Solarertrag und Akkubalken erhalten; weitere Details beim Antippen, übersichtliche Darstellung mit einzeln wählbarem Temperaturmittel, Minimum, Maximum und weiteren Wetterbestandteilen je Kachel. | Neu am 28.11.2026 gesammelt, noch nicht implementiert. Temperatur, Temperaturminimum und -maximum werden bereits abgerufen und im Tagescache gespeichert, fehlen aber in der kompakten Tageskachel. Weitere Wettergrößen benötigen passende Datenfelder und deren durchgängige Übernahme. |
+| VPN und lokaler Zugriff auf die Zentrale | Lokale Zentrale möglichst über das passende physische WLAN-/Hotspot-Netz erreichen, ohne Internetverkehr pauschal am VPN vorbeizuführen. VPN-Adressen nicht mit echten LAN-Adressen verwechseln; bei Sperren verständliche Diagnose und Hinweise anbieten. | Neue Praxisbestätigung am 28.11.2026: Tim bestätigt die Abhängigkeit des Zugriffs vom VPN. Technischer Ansatz in der App möglich, aber von Android-/VPN-Richtlinien und verfügbaren Netzen abhängig. Noch keine Umsetzung oder allgemeine Kompatibilitätszusage. |
 
 Vor dem Bau einmal abstimmen: **gesammelte Punkte im gemeinsamen Update** oder
 **einen ausdrücklich gewählten Akutfix vorziehen**. Einen
@@ -823,6 +827,93 @@ Bewölkung; Datenweg Zentrale → Anzeige und eigenständig; unveränderter Wett
 und vorhandener Horizont; gespeicherte Daten/Offlinefall; Wetterkachel in eigenen
 Dashboards, schmale/breite Ansicht, große Schrift, Komponentenwahl und bestehende
 Farben/Layouts. Noch keine Umsetzung, neue APK oder entsprechende Geräteprüfung.
+
+## VPN und lokaler Zugriff auf die Zentrale · 28.11.2026
+
+Tim bestätigt am 28.11.2026 nach dem Gegencheck, dass der Zugriff tatsächlich
+am aktiven VPN hängt, und fragt nach einer Lösung innerhalb von AutarPie.
+Das ist eine bestätigte Nutzerbeobachtung der Abhängigkeit, noch kein Nachweis
+einer bestimmten VPN-App, Android-Richtlinie oder internen Routingursache.
+
+### Geprüfter technischer Stand
+
+- `LanSync.addresses()` sammelt derzeit passende private IPv4-Adressen aller
+  aktiven, nicht als Loopback markierten Schnittstellen. Eine gezielte Trennung
+  anhand von Android-Netzwerkfähigkeiten zwischen physischem LAN und VPN ist in
+  diesem Pfad nicht vorhanden.
+- `LanSync.request()` verwendet unverbundene gewöhnliche `Socket`-Instanzen und
+  verbindet diese mit gespeicherten beziehungsweise gefundenen lokalen Gegenstellen.
+  Im gelesenen Pfad erfolgt keine explizite Bindung an ein physisches `Network`.
+- Android bietet `Network.bindSocket()` beziehungsweise eine netzgebundene
+  `SocketFactory`. Damit können einzelne Verbindungen einen gezielten Netzweg
+  verwenden, ohne alle Verbindungen des Prozesses umzubinden.
+- Das gilt unter den Regeln des aktiven VPNs: Der VPN-Dienst muss ein Umgehen
+  zulassen; bei „Verbindungen ohne VPN blockieren“ sind entsprechende Verbindungen
+  weiterhin gesperrt. AutarPie kann weder die Konfiguration einer fremden
+  VPN-App selbst ändern noch deren Richtlinien durch eine eigene Einstellung
+  garantiert außer Kraft setzen.
+
+### Gewünschte Verbesserung und Grenzen
+
+- Eine geeignete automatische lokale Netzführung prüfen, gegebenenfalls mit
+  verständlicher Option **„Lokale Zentrale über WLAN/Hotspot bevorzugen“**.
+  Im aktuellen veröffentlichten Stand keinen bereits vorhandenen solchen
+  Schalter behaupten. Einen erfolgreichen Zugriff mit jedem VPN nicht versprechen.
+- Für den verschlüsselten lokalen Anlagenverbund das tatsächlich geeignete
+  erreichbare Netz beziehungsweise die passende lokale Route zur gekoppelten
+  Gegenstelle bestimmen. VPN- und Mobilfunkadressen nicht allein wegen eines
+  privaten IPv4-Präfixes als Wohnwagen-LAN behandeln. Bestehende echte LAN-
+  Verbindungen und direkte Nutzung ohne VPN erhalten.
+- Wenn ein passendes zugängliches physisches Android-`Network` vorliegt und die
+  Richtlinien es zulassen, ausschließlich die betreffenden LAN-Sockets **vor dem
+  Verbinden** daran binden. Keine globale Prozessbindung, die zusätzlich Wetter-
+  oder andere Internetabfragen am VPN vorbeiführt. Vorhandene Kopplungsprüfung,
+  Verschlüsselung, Quellenzuordnung und Befehlsbestätigung erhalten.
+- **Hotspot-Anbieter und WLAN-Teilnehmer getrennt prüfen:** Bei Tim kann das S20
+  selbst den Hotspot bereitstellen, während das G5 die Zentrale ist. Das
+  Hotspot-Netz ist nicht pauschal mit einem gewöhnlichen WLAN-Client-`Network`
+  gleichzusetzen. Fehlendes `TRANSPORT_WIFI` im zugänglichen Netzwerkangebot
+  darf deshalb nicht ungeprüft „kein lokales Netz“ bedeuten. Tatsächlich nutzbare
+  Wege und Einschränkungen auf den beteiligten Android-Versionen prüfen.
+- Netzwerk-/VPN-Wechsel und geänderte Hotspot-Adressen ohne Löschen der Kopplung
+  behandeln. Betroffene Verbindungen gezielt erneuern, gespeicherte Messwerte
+  und Historie mit ihrem Stand weiter anzeigen. Fehler- oder Übergangszeiten
+  sind keine aktuellen Livewerte.
+- Aktives VPN und tatsächlich beobachtete Verbindungsfehler nachvollziehbar
+  anzeigen. Eine bloß erkannte VPN-Verbindung beweist noch keine Blockade.
+  Bei fehlendem geeigneten Netz, verweigerter Bindung oder fortbestehender
+  Sperre konkrete Hinweise geben; keine dauerhaft leere Ansicht oder
+  fälschliche Erfolgsanzeige.
+- Wenn Android beziehungsweise das VPN den lokalen Zugriff sperrt, auf eine
+  erlaubte Konfiguration in der VPN-App verweisen: lokale Netzwerkfreigabe
+  oder eine passende App-Ausnahme, soweit angeboten. Androids Einstellung
+  „Verbindungen ohne VPN blockieren“ kann auch Ausnahmen weiterhin verhindern.
+  Die genaue Anleitung hängt von der tatsächlich verwendeten VPN-App ab.
+- Keine automatische Abschaltung/Ersetzung des fremden VPNs, keine pauschale
+  Ausnahme des gesamten Internetverkehrs und kein eigener VPN-Dienst als
+  vermeintlicher universeller Ausweg. Bluetooth-Erfassung bleibt ein anderer
+  Datenweg und wird durch eine lokale Routingkorrektur nicht neu eingerichtet.
+- Die mögliche Verbindung zum ebenfalls gemeldeten leeren Journalaufruf prüfen.
+  Aus dem VPN-Gegencheck nicht ohne erneuten Ende-zu-Ende-Test ableiten, dass
+  damit der separate Journalfehler bereits behoben oder bewiesen sei.
+
+### Prüfbedarf und Stand
+
+VPN aus/an; geeignetes physisches Netz mit erlaubtem Bypass; VPN ohne Bypass;
+Android-Sperre für Verkehr außerhalb des VPNs; VPN mit LAN-Freigabe oder
+App-Ausnahme; kein physisches Netz; konkurrierende private VPN-/LAN-Adressen;
+WLAN-Client und Hotspot-Anbieter als Anzeige/Zentrale; Netzwechsel während
+Abruf oder Steuerauftrag; Timeout und gespeicherter Offline-Stand; unveränderte
+Internetroute, Kopplung und Rohdaten. Konkreten VPN-Anbieter und reale Geräte
+für eine spätere praktische Kompatibilitätsprüfung berücksichtigen.
+
+Es wurden Quellpfad und Android-Dokumentation geprüft. Noch kein Produktivcode
+für diese Verbesserung geändert, keine entsprechende APK gebaut und keine
+VPN-/Hardwaretests am G5/S20/S10 durchgeführt.
+
+Primärquellen:
+[Android: VPN, Bypass und blockierte Verbindungen](https://developer.android.com/develop/connectivity/vpn),
+[Android: Network.bindSocket / SocketFactory](https://developer.android.com/reference/android/net/Network).
 
 ## Bereits abgeschlossen und weiter zu erhalten
 
