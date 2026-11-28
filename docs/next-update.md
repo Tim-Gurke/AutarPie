@@ -9,6 +9,9 @@ mit nachvollziehbarem Mittelwert und Modellspanne sowie automatische 608PD-Erfas
 als Sonderverbrauch und als externe Ladequelle in den Wohnwagenakku. Beide Punkte
 bleiben zur Sammlung.
 
+Ergänzungen am **28.11.2026**: grafischer Langfristtrend mit Bewölkung,
+Modellmix und echten Kalenderwochen von Montag bis Sonntag.
+
 ## Offene Entwicklungspunkte
 
 | Punkt | Gewünschtes Ergebnis | Stand |
@@ -18,6 +21,7 @@ bleiben zur Sammlung.
 | Wetterrückblick: 14 Tage mit gewichtetem Prognosevergleich | Je vergangenem Tag den gewichteten Mittelwert der ursprünglich für genau diesen Zieltag ausgegebenen Prognosen aus den 14 Tagen davor mit dem tatsächlichen Solarertrag vergleichen. Vorlauf 14–8 Tage schwach, 7–4 stärker, letzte drei Tage am stärksten gewichten; tatsächlichen Akkustand erhalten. | Neu vorgemerkt, noch nicht implementiert. Originalprognosen mit Datum speichern, verfügbare Anzahl und Ertragsabweichung zeigen. Die 14 vergangenen Tage der Ansicht und die 14 Vorlauftage je Zieltag sind getrennte Zeiträume. |
 | Mehrere Wettermodelle für Wetter und Ertrag | Vorhersagen verschiedener Wetterzentren für denselben Ort und Zeitraum getrennt abrufen; Wettergrößen und daraus berechnete Solarerträge zu einem nachvollziehbaren Mittelwert mit Modellspanne zusammenführen. | Neu am 27.11.2026 gesammelt, noch nicht implementiert. Vorschlag: DWD ICON, ECMWF IFS und NOAA GFS über die bestehende Open-Meteo-Schnittstelle. Modellhorizonte, Datenstand, Ausfälle und vorhandene Lernfaktoren berücksichtigen. |
 | 608PD automatisch als Sondernutzung und externe Ladequelle | Vorhandene Bluetooth-/Journalwerte je Lader für beide Energierichtungen automatisch übernehmen: Wohnwagen → Modellbauakku als Sonderverbrauch; externe Energie → 608PD → Wohnwagenakku als externe Ladung. Schnellwahl „Modellbauakku laden“ / „Wohnwagenakku laden“ direkt beim Lader vorsehen, da derselbe Lader beide Aufgaben übernimmt. Nutzung, Energie, passende Lernfaktoren und Tagesbilanz ohne erneute manuelle Erfassung verbinden. | Am 27.11.2026 gesammelt und um Rückladung präzisiert, noch nicht implementiert. Geräteprofile, Journal und Energiepfad „Powerbank → 608PD → Wohnwagenakku“ existieren. Automatische Bilanzverknüpfung fehlt; Quellenanteil, Nettoakkuwert und Verbrauch nicht doppelt zählen. |
+| Langfristtrend: Kalenderwochen, Diagramme, Bewölkung und Modellmix | Vorschau nach ISO-Kalenderwochen Montag–Sonntag mit KW-Nummer und Datum; alle Werte grafisch mit beschrifteten, vergleichbaren Skalen darstellen. Bewölkung mit passenden Symbolen und Messgröße ergänzen; mehrere geeignete Modelle als Mittel und erkennbare Spanne berücksichtigen. | Neu am 28.11.2026 gesammelt, noch nicht implementiert. Betrifft die gezeigte EC46-Langfristansicht. Teilwochen, fehlende Daten, tatsächliche Modellhorizonte und erhöhte Unsicherheit kenntlich halten. |
 
 Vor dem Bau einmal abstimmen: **gesammelte Punkte im gemeinsamen Update** oder
 **einen ausdrücklich gewählten Akutfix vorziehen**. Einen
@@ -104,6 +108,11 @@ Abschnitt 8.5.1 „Battery is full“.
 Tim möchte weitere Wetterdienste beziehungsweise Vorhersagegrundlagen einbeziehen
 und daraus einen Mittelwert für Wetter und Ertragsprognose erhalten. Dies ist
 ein zusätzlicher gesammelter Entwicklungspunkt; kein neuer APK-Bau ist beauftragt.
+
+Am 28.11.2026 ergänzt Tim den Wunsch ausdrücklich auch für die Langfristtrend-
+Ansicht. Die unten beschriebene Darstellung nach Kalenderwochen übernimmt
+geeignete zusätzliche Modelle je tatsächlich verfügbarem Horizont und Messgröße.
+Kurzfristmodelle nicht künstlich auf 46 Tage verlängern.
 
 **Geprüfte technische Grundlage:** Der bisherige `WeatherClient` verwendet
 Open-Meteo ohne explizite Modellauswahl. Open-Meteos automatische Best-Match-Auswahl
@@ -384,6 +393,134 @@ keine erfundene Erhöhung des Solarertrags; korrektes Beispiel 200 Wh Zufuhr und
 Der Stand ist ein konkretisierter Sammelpunkt. Für diese Verbindung wurden
 noch kein Produktivcode geändert, keine Funktions-/Hardwaretests ausgeführt und
 keine neue APK gebaut.
+
+## Langfristtrend: Kalenderwochen, Diagramme, Bewölkung und Modellmix · 28.11.2026
+
+Tim möchte die gezeigte Ansicht **„Langfristtrend · erhöhte Unsicherheit“**
+übersichtlicher gestalten: zu sämtlichen angegebenen Werten Diagramme,
+gut lesbare Skalen und zusätzlich Bewölkungssymbole. Während der Abstimmung
+ergänzt er einen Mix verschiedener Wettermodelle und eine Orientierung an
+Kalenderwochen Montag–Sonntag statt rollierender Sieben-Tage-Zeiträume ab heute.
+Alle drei Wünsche gehören gemeinsam zu diesem neuen Sammelpunkt.
+
+### Geprüfter Ausgangspunkt
+
+Die gezeigte 3.1.6-Ansicht listet Wochenmittel für Temperatur, Niederschlag
+und Einstrahlung als Text. `WeatherClient.trend()` ruft aktuell für den gewählten
+Ort bis zu 46 Tage aus `ecmwf_ec46_ensemble_mean` ab, mit den drei Tagesgrößen
+`temperature_2m_mean`, `precipitation_sum` und `shortwave_radiation_sum`.
+Die Darstellung liegt in `app/src/main/assets/update-ui.js`.
+
+EC46-Ensemblemittel ist bereits das Mittel verschiedener Ensemblemitglieder
+dieser Modellfamilie, noch kein Vergleich mehrerer unterschiedlicher
+Wettermodellfamilien. Die geprüfte Open-Meteo-Dokumentation bietet auch
+Bewölkungsgrößen an; konkrete Parameter, Modell-/Variablenverfügbarkeit und
+Antwortform vor Umsetzung prüfen. Der bisherige Trendabruf fordert diese
+Bewölkungsdaten noch nicht an.
+
+### Kalenderwochen und Orientierung
+
+- Einheitliche **ISO-Kalenderwochen Montag 00:00 bis zum folgenden Montag
+  00:00 exklusiv** am Vorhersageort. Sichtbarer Datumsbereich Montag–Sonntag;
+  beispielsweise **„KW 49 · 30.11.–06.12.“**. Einheit und Ortzeitbezug auf allen
+  Übersichten und Detailansichten beibehalten.
+- KW-Nummer und **ISO-Wochenjahr** korrekt berechnen. Eine Woche am Jahreswechsel
+  nicht am 1. Januar künstlich teilen. Kalenderdatum/Jahr und Wochenjahr können
+  voneinander abweichen; KW 53 unterstützen.
+- Für die laufende Kalenderwoche den verbleibenden verfügbaren Prognoseteil
+  zeigen und mit Datum/Anzahl abgedeckter Tage als **Teilwoche** kenntlich machen.
+  Vergangene Wochentage nicht als Null oder als nachträgliche Vorhersagen ergänzen.
+  Der sichtbare Rahmen bleibt die Kalenderwoche Montag–Sonntag.
+- Eine am Modellhorizont angeschnittene letzte Kalenderwoche ebenfalls als
+  Teilwoche kennzeichnen. Der Kalenderwochenbezug verlängert den tatsächlichen
+  Vorhersagehorizont nicht; je Starttag können mehr Wochenabschnitte als bei
+  rollierenden Sieben-Tage-Blöcken entstehen.
+- Grafiken, Wochenkarten, Bewölkungsangaben und Modellvergleiche verwenden
+  dieselben Wochenintervalle. Mittelwerte auf tatsächlich vorhandene Daten
+  beziehen, Abdeckung nennen; Teilwochen nicht als vollständige Wochen ausgeben.
+
+### Grafische Darstellung aller Werte
+
+- **Temperatur:** gut lesbares Linien-/Punktdiagramm über die Kalenderwochen,
+  Skala in **°C**, sichtbare Null-/Frostlinie und korrekt dargestellte negative Werte.
+- **Niederschlag:** Balkendiagramm mit Skala in **mm/Tag** für den gezeigten
+  durchschnittlichen Tagesniederschlag. Eine etwaige Wochensumme eindeutig anders
+  beschriften; Mittelwert und Summe bei Teilwochen nicht verwechseln.
+- **Sonneneinstrahlung:** Balken-/Verlaufsdarstellung in **MJ/m²/Tag**, passend zum
+  bisherigen Wochenmittel der Tagesstrahlungsmenge. Eine optionale Umrechnung
+  separat und korrekt als Einstrahlung pro Fläche beschriften; nicht ungeprüft
+  als tatsächlichen Anlagen-/Akkuertrag in Wh ausgeben.
+- **Bewölkung:** verständliche Sonne-/Wolken-Symbole sowie, soweit verfügbar, eine
+  Bewölkungsskala **0–100 %** mit Zahlenwert und nachvollziehbarem Wochenbezug.
+  Aus tatsächlichen gelieferten beziehungsweise fachlich aggregierten
+  Bewölkungsgrundlagen ableiten. Weder Niederschlagsmenge noch niedrige winterliche
+  Einstrahlung allein belegen einen konkreten Bewölkungsgrad. Bei fehlender
+  Grundlage offen kennzeichnen und keine fiktive sichere Sonne/Wolke einsetzen.
+- Für jede Messgröße eine **über alle sichtbaren Wochen gemeinsame Skala**
+  verwenden. Nicht jede Wochenkarte auf ihren eigenen Höchstwert normieren.
+  Verschiedene Einheiten auf getrennten Skalen; Temperatur nicht als beliebigen
+  Prozentbalken darstellen. Niederschlag und Strahlung sinnvoll bei null beginnen.
+- Zahlenwerte erhalten, Wochen beschriften und Legenden/Einheiten sichtbar machen.
+  Die Übersicht soll Unterschiede auf einen Blick zeigen; Antippen kann
+  Quellen, genaue Werte und Abdeckung ergänzen. Lücken nicht unbemerkt als
+  durchgehende Mess-/Prognoselinie oder als null zeichnen.
+- Vorhandene Farben und bewusste Anpassungen beachten, klare Symbole und Text
+  ergänzen. Gute Kontraste, schmale Handyansicht, Hoch-/Querformat und vergrößerte
+  Schrift prüfen; keine überlagerten Achsen oder Beschriftungen.
+  Bereits gespeicherte Daten sofort darstellen. Die Visualisierung darf keine
+  erneuten Lernläufe oder zusätzliche große Abrufe bei jedem Öffnen verursachen.
+
+### Modellmix auch in dieser Ansicht
+
+- Den bestehenden Wunsch nach mehreren Wettermodellen ausdrücklich auf den
+  Langfristtrend erweitern. Nur geeignete Modelle, die für den jeweiligen Ort,
+  Zeitraum und die jeweilige Wettergröße tatsächlich Daten liefern, kombinieren.
+  Die bisherigen DWD-/ECMWF-/NOAA-Kurzfristvorschläge decken nicht pauschal
+  alle 46 Tage ab; geeignete länger reichende Ensemble-/Langfristmodelle prüfen.
+- Auf denselben Zeitraum, Ort und physikalische Größe normieren. Absolute
+  Temperatur oder Niederschlag nicht mit klimatologischen Anomalien mitteln.
+  Unterschiedliche Zeitauflösung und teilweise Wochenabdeckung berücksichtigen.
+- Zunächst nachvollziehbare Gewichte je Modellfamilie vorschlagen. Viele Mitglieder
+  eines Ensembles dürfen derselben Familie nicht automatisch mehr Gewicht als
+  einer anderen geben. Abhängigkeiten und Herkunft sichtbar halten; Varianten
+  desselben Modells nicht als unabhängige Wetterdienste zählen.
+- **Gemeinsamen Prognosewert und erkennbare Modellspanne** zeigen, etwa als
+  Band um einen Temperaturverlauf oder als Spanne an einem Balken.
+  Modellanzahl und tatsächlich verwendete Quellen je Kalenderwoche beziehungsweise
+  Messgröße nachvollziehbar machen. Bei unterschiedlicher Abdeckung nur
+  vergleichbare Zeitintervalle vergleichen.
+- Wenn später im Horizont nur ein Modell vorliegt, ausdrücklich **„1 Modell“**
+  anzeigen. Fehlende Modelle nicht als null werten und aus fehlender Vergleichs-
+  spanne keine vermeintlich sichere Prognose ableiten. Gewichte auf verfügbare
+  geeignete Werte normieren; keine Kurzfristwerte künstlich fortschreiben.
+- Streuung verschiedener Modelle und Ensembleunsicherheit unterscheiden.
+  Eine Min-/Max-Spanne ist kein kalibriertes Vertrauensintervall. Vorhandene
+  belastbare Ensembleinformationen können ergänzt werden; keine erfundenen
+  Wahrscheinlichkeiten oder präzisen Tageszustände aus einem Wochenmittel.
+- Ursprüngliche Einzel-/Gesamtprognosen und verwendete Gewichte/Herkunft erhalten,
+  wie im bereits gesammelten Modellmix vorgesehen. Der Hinweis **„Langfristtrend ·
+  erhöhte Unsicherheit“**, Quelle, Datenstand und wöchentlicher Orientierungscharakter
+  bleiben erkennbar. Keine sichere Tages- oder Akkuvorhersage daraus ableiten.
+- Dies ist die länger reichende **Vorschau**; sie ersetzt weder den geplanten
+  14-Tage-Rückblick mit Prognosegüte noch dessen Gewichtung früherer Ausgabetage.
+
+### Prüfbedarf bei Umsetzung
+
+Montag-/Sonntag-Grenzen, laufende und letzte Teilwoche, lokale Zeit/Zeitzonenwechsel
+und Sommerzeit, ISO-Wochenjahr/KW 53 und Jahreswechsel; unveränderter echter
+Vorhersagehorizont; korrekte Wochenmittel und Einheiten bei fehlenden Daten;
+negative/konstante/null Werte; gemeinsame Skalen; nicht erfundene Bewölkung;
+Modellhorizonte und Variablenabdeckung; gleiche Familie mit vielen Mitgliedern;
+nur ein Modell, große Modellunterschiede und fehlende Quellen; Erhalt vorhandener
+Werte und Unsicherheit; dunkles/helles Design, große Schrift und schmale Ansichten.
+
+Dieser Stand dokumentiert die Wünsche und den geprüften Datenzugriff. Es wurden
+für die Erweiterung noch keine App-Diagramme implementiert, keine neue APK
+gebaut und keine entsprechenden Funktions-/Hardwaretests durchgeführt.
+
+Geprüfte Hersteller-/Schnittstellenunterlagen:
+[Open-Meteo Seasonal / EC46](https://open-meteo.com/en/docs/seasonal-forecast-api),
+[Open-Meteo Ensemble-Modelle und Horizonte](https://open-meteo.com/en/docs/ensemble-api).
 
 ## Bereits abgeschlossen und weiter zu erhalten
 
