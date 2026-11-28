@@ -10,7 +10,8 @@ als Sonderverbrauch und als externe Ladequelle in den Wohnwagenakku. Beide Punkt
 bleiben zur Sammlung.
 
 Ergänzungen am **28.11.2026**: grafischer Langfristtrend mit Bewölkung,
-Modellmix und echten Kalenderwochen von Montag bis Sonntag.
+Modellmix und echten Kalenderwochen von Montag bis Sonntag, zusätzlich als frei
+platzierbare Wochenkachel; außerdem den ergebnislosen 608PD-Journalaufruf prüfen.
 
 ## Offene Entwicklungspunkte
 
@@ -21,7 +22,8 @@ Modellmix und echten Kalenderwochen von Montag bis Sonntag.
 | Wetterrückblick: 14 Tage mit gewichtetem Prognosevergleich | Je vergangenem Tag den gewichteten Mittelwert der ursprünglich für genau diesen Zieltag ausgegebenen Prognosen aus den 14 Tagen davor mit dem tatsächlichen Solarertrag vergleichen. Vorlauf 14–8 Tage schwach, 7–4 stärker, letzte drei Tage am stärksten gewichten; tatsächlichen Akkustand erhalten. | Neu vorgemerkt, noch nicht implementiert. Originalprognosen mit Datum speichern, verfügbare Anzahl und Ertragsabweichung zeigen. Die 14 vergangenen Tage der Ansicht und die 14 Vorlauftage je Zieltag sind getrennte Zeiträume. |
 | Mehrere Wettermodelle für Wetter und Ertrag | Vorhersagen verschiedener Wetterzentren für denselben Ort und Zeitraum getrennt abrufen; Wettergrößen und daraus berechnete Solarerträge zu einem nachvollziehbaren Mittelwert mit Modellspanne zusammenführen. | Neu am 27.11.2026 gesammelt, noch nicht implementiert. Vorschlag: DWD ICON, ECMWF IFS und NOAA GFS über die bestehende Open-Meteo-Schnittstelle. Modellhorizonte, Datenstand, Ausfälle und vorhandene Lernfaktoren berücksichtigen. |
 | 608PD automatisch als Sondernutzung und externe Ladequelle | Vorhandene Bluetooth-/Journalwerte je Lader für beide Energierichtungen automatisch übernehmen: Wohnwagen → Modellbauakku als Sonderverbrauch; externe Energie → 608PD → Wohnwagenakku als externe Ladung. Schnellwahl „Modellbauakku laden“ / „Wohnwagenakku laden“ direkt beim Lader vorsehen, da derselbe Lader beide Aufgaben übernimmt. Nutzung, Energie, passende Lernfaktoren und Tagesbilanz ohne erneute manuelle Erfassung verbinden. | Am 27.11.2026 gesammelt und um Rückladung präzisiert, noch nicht implementiert. Geräteprofile, Journal und Energiepfad „Powerbank → 608PD → Wohnwagenakku“ existieren. Automatische Bilanzverknüpfung fehlt; Quellenanteil, Nettoakkuwert und Verbrauch nicht doppelt zählen. |
-| Langfristtrend: Kalenderwochen, Diagramme, Bewölkung und Modellmix | Vorschau nach ISO-Kalenderwochen Montag–Sonntag mit KW-Nummer und Datum; alle Werte grafisch mit beschrifteten, vergleichbaren Skalen darstellen. Bewölkung mit passenden Symbolen und Messgröße ergänzen; mehrere geeignete Modelle als Mittel und erkennbare Spanne berücksichtigen. | Neu am 28.11.2026 gesammelt, noch nicht implementiert. Betrifft die gezeigte EC46-Langfristansicht. Teilwochen, fehlende Daten, tatsächliche Modellhorizonte und erhöhte Unsicherheit kenntlich halten. |
+| Langfristtrend: Kalenderwochen, Diagramme, Bewölkung und Modellmix | Zusätzliche frei platzierbare Wettertrend-Kachel neben der Tageswetter-Kachel, mit wischbaren Wochen und Detailaufruf. Vorschau nach ISO-Kalenderwochen Montag–Sonntag mit KW-Nummer und Datum; alle Werte grafisch mit beschrifteten, vergleichbaren Skalen darstellen. Bewölkung mit passenden Symbolen und Messgröße ergänzen; mehrere geeignete Modelle als Mittel und erkennbare Spanne berücksichtigen. | Neu am 28.11.2026 gesammelt, noch nicht implementiert. Betrifft die gezeigte EC46-Langfristansicht. Teilwochen, fehlende Daten, tatsächliche Modellhorizonte und erhöhte Unsicherheit kenntlich halten. |
+| 608PD-Journal: Aufruf und sichtbarer Inhalt | Das gespeicherte Lade-/Powerbankjournal zuverlässig und gut auffindbar öffnen. Bei Ladezustand, fehlenden Einträgen, Offlinebetrieb oder Fehlern immer verständliche Rückmeldung; gespeicherte Historie auch ohne aktuellen Bluetooth-Empfang anzeigen. | Neue Praxisrückmeldung am 28.11.2026: Der Aufruf am Vortag zeigte laut Tim nichts. Einstieg und Leseweg sind im Code vorhanden; konkrete Ursache am Gerät noch nicht belegt. Als Fehlerbehebung prüfen, nicht als bereits repariert darstellen. |
 
 Vor dem Bau einmal abstimmen: **gesammelte Punkte im gemeinsamen Update** oder
 **einen ausdrücklich gewählten Akutfix vorziehen**. Einen
@@ -504,6 +506,45 @@ Bewölkungsdaten noch nicht an.
 - Dies ist die länger reichende **Vorschau**; sie ersetzt weder den geplanten
   14-Tage-Rückblick mit Prognosegüte noch dessen Gewichtung früherer Ausgabetage.
 
+### Zusätzliche Wettertrend-Kachel mit Wochenansicht
+
+Tim möchte die Wochenvorschau zusätzlich als Kachel wie die vorhandene
+Tageswetter-/Solarvorschau, damit sie ohne Umweg über die große Trendansicht
+auf dem Dashboard sichtbar ist.
+
+- Eine eigene frei wählbare **„Wettertrend · Wochen“**-Kachel im gemeinsamen
+  Kacheleditor vorsehen. In Standardbereichen und eigenen Dashboards platzierbar,
+  verschiebbar und in der Größe einstellbar, mit den vorhandenen Layouts je Gerät
+  und Ausrichtung. Bestehende Layouts nicht ungefragt verändern.
+- Tageswetter-Kachel und Wochenkachel **gleichzeitig** nutzbar halten. Die neue
+  Kachel ersetzt weder die Tagesvorschau noch den Rückblick. Getrennte
+  Darstellungscontainer/Elementkennungen verwenden, damit nicht dieselben
+  DOM-Inhalte zwischen zwei Kacheln verschoben und dabei unsichtbar werden.
+- Analog zur Tagesvorschau horizontal wischbare **Wochenkarten** mit KW-Nummer,
+  Datumsbereich Montag–Sonntag, passenden Sonne-/Wolken-Symbolen und kompakten
+  grafischen Angaben für Temperatur, Niederschlag und Einstrahlung. Bewölkung
+  samt Skala anzeigen, sofern geeignete Grundlagen vorhanden sind.
+- Dieselben Wochenintervalle, Teilwochenkennzeichen, Werte, Modellgewichte und
+  Datenstände wie in der großen Langfristansicht verwenden. Die dort vereinbarten
+  Skalen-, Einheiten- und Unsicherheitsregeln gelten unverändert. Keine neue
+  scheinbar sichere langfristige Akkuvorhersage allein aus der optischen
+  Ähnlichkeit mit der Tageskachel ableiten.
+- Tippen auf eine Woche öffnet deren Details mit Diagrammen, Zahlen, Quellen,
+  Modellspanne und Abdeckung. Wischen, Antippen und Kachelbearbeitung dürfen sich
+  nicht gegenseitig auslösen. Schmale/breite Kacheln und vergrößerte Schrift
+  ohne abgeschnittene Beschriftungen oder überlagerte Skalen behandeln.
+- Ort, Quellen/Modellanzahl soweit sinnvoll, Datenstand und erhöhte Unsicherheit
+  auch kompakt nachvollziehbar lassen. Fehlende, teilweise oder alte Werte
+  entsprechend kennzeichnen; eine leere Kachel ist keine ausreichende Rückmeldung.
+- Große Ansicht und Kachel teilen den vorhandenen Wetter-/Trendcache und die
+  berechnete Wochenaggregation. Platzieren/Öffnen darf nicht alle Grundlagen
+  erneut lernen oder pro Kachel einen eigenen gleichartigen Netzabruf starten.
+  Erforderliche Trendaktivierung und fehlenden Wetterort nachvollziehbar behandeln;
+  vorhandene Daten sofort anzeigen, notwendige Ergänzungen im Hintergrund.
+- In die spätere Prüfung zusätzlich aufnehmen: beide Wetterkacheln nebeneinander,
+  eigenes Dashboard, Wechsel der Bereiche/Ausrichtung, gespeicherte Größe/Position,
+  Entfernen und erneutes Hinzufügen, Tages-/Wochendetails und Cache-/Offlinefälle.
+
 ### Prüfbedarf bei Umsetzung
 
 Montag-/Sonntag-Grenzen, laufende und letzte Teilwoche, lokale Zeit/Zeitzonenwechsel
@@ -521,6 +562,78 @@ gebaut und keine entsprechenden Funktions-/Hardwaretests durchgeführt.
 Geprüfte Hersteller-/Schnittstellenunterlagen:
 [Open-Meteo Seasonal / EC46](https://open-meteo.com/en/docs/seasonal-forecast-api),
 [Open-Meteo Ensemble-Modelle und Horizonte](https://open-meteo.com/en/docs/ensemble-api).
+
+## 608PD-Journal: Aufruf und sichtbarer Inhalt · 28.11.2026
+
+**Neue Praxisrückmeldung:** Tim berichtet am 28.11.2026, dass beim Betätigen
+des Journalzugangs am Vortag nichts angezeigt wurde. Ob kein Dialog erschien,
+ein Dialog leer blieb oder ein Datenabruf nicht fertig wurde, ist aus dieser
+Rückmeldung noch nicht eindeutig. Keine Datenlosigkeit oder bestimmte
+Fehlerursache am Gerät erfinden.
+
+### Geprüfter vorhandener Weg
+
+- `autarpie-energy.js` legt unter **Modellbau** eine Karte
+  **„Lade- & Powerbankjournal“** mit **„Journal öffnen“** an. Der Handler ruft
+  `openJournal()` auf und erstellt Filter für Lader sowie 7/30/90 Tage.
+- `renderJournal()` fragt `chargerJournal` über `app.read` mit dem Bereich
+  `608pd-journal` ab; `autarpie-history-ready` soll die Ansicht aktualisieren.
+  `app.js` stellt im geprüften Quellstand `read:historyRead` bereit, und die
+  Lesebrücke kennt den Methodennamen `chargerJournal`.
+- Bereits vorgesehene Anzeigezustände sind Datenabgleich, Fehler und keine
+  aufgezeichneten Vorgänge. Es gibt aber einen stillen Rücksprung, wenn die
+  Journalansicht beziehungsweise `app.read` fehlt. Die Fokus-/Anfrageverwaltung
+  kann Anfragen außerhalb ihres zulässigen Bereichs zunächst nur aus dem Cache
+  beantworten. Diese Pfade sind konkrete Prüfpunkte, keine nachgewiesene
+  Erklärung für Tims Gerät.
+- Das bestehende Journal speichert unabhängig vom aktuellen Liveempfang
+  Rohdaten. Ein nicht erreichbarer oder gerade nicht ladender 608PD ist kein
+  Grund, bereits gespeicherte Vorgänge unsichtbar zu machen.
+
+### Gewünschtes Ergebnis und Diagnose
+
+- Den Journalzugang im Modellbaubereich beziehungsweise beim betrachteten Lader
+  gut sichtbar und mit einem Tipp erreichbar halten. Gewählten Lader erkennen
+  lassen; **„Alle Lader“** und Zeitraumwechsel zuverlässig anbieten. Frühere
+  Vorgänge entfernter Profile bleiben über das vorhandene Journal auffindbar.
+- Der Aufruf muss **sofort sichtbare Rückmeldung** geben. Unterscheiden:
+  Abruf läuft; vorhandene gespeicherte Vorgänge; für diesen Filter keine
+  Vorgänge; Zentrale nicht erreichbar mit letztem gespeicherten Stand;
+  tatsächlich noch keine lokalen Journalgrundlagen; konkrete Fehler.
+- Ein legitimes leeres Ergebnis ausdrücklich erklären, statt nur eine leere
+  Fläche oder einen scheinbar wirkungslosen Knopf stehen zu lassen.
+  Eine fehlende Brücke/Funktion beziehungsweise inkompatible Zentralenversion
+  benötigt einen verständlichen Hinweis, keinen stillen Rücksprung.
+- Den gesamten Weg prüfen: tatsächlicher Klick/Handler, Dialogaufbau,
+  JavaScript-Ausnahmen, Sichtbarkeit, Lesebrückenfokus und Priorität, Anfrage-
+  warteschlange/Timeout, native Journalabfrage, Anlagen-/Laderzuordnung,
+  gezielter LAN-Abgleich und Rückmeldung an die sichtbare Ansicht.
+  Ein geöffnetes Journal darf nicht dauerhaft hinter alten Detailabfragen hängen.
+- Vorhandene gespeicherte Daten zuerst anzeigen und ihren Stand kennzeichnen.
+  Bei Bedarf gezielt den gewählten Zeitraum abgleichen. Ein unbeendeter Abruf
+  muss eine konkrete Meldung und erneute Abrufmöglichkeit erhalten; Historie,
+  Filterwahl und vorhandene Einträge dabei bewahren.
+- Mehrere Lader, alte/wechselnde Profile und unterschiedliche Zeiträume
+  berücksichtigen. Der aktuell gewählte neue Lader kann berechtigt keine
+  Vorgänge haben; das darf nicht die gesamte Historie wie verloren erscheinen
+  lassen. Beginn und Grenzen der tatsächlichen Aufzeichnung klar benennen.
+- Die bereits gesammelte Unterscheidung **Sonderverbrauch / externe Ladung**
+  auch im Journal zeigen. Messseite, beobachtete Wh, Beginn/Ende und Lücken
+  nachvollziehbar lassen; keine fehlenden Vorgänge erfinden und keine
+  doppelten Buchungen beim erneuten Einlesen erzeugen.
+
+### Prüfbedarf und Stand
+
+Den echten Einstieg Ende-zu-Ende mit bestätigendem Datenpartner prüfen,
+zusätzlich leere Historie, ausgewählter Lader ohne Vorgänge, „Alle Lader“,
+vorhandene Historie ohne Live-Bluetooth, offline mit/ohne Cache, alte Zentrale,
+verzögerte Antwort, Fehler/Timeout, Fokuswechsel, Schließen/Wiederöffnen und
+Wechsel zwischen Modellbaubereich und eigenem Dashboard. Native Rohdatenerhalt
+und Viewer-/Standalone-Verhalten getrennt prüfen.
+
+Bisher sind Quellpfad und mögliche Prüfpunkte untersucht. Es gibt noch keine
+reproduzierte konkrete Ursache am Gerät und keine veröffentlichte Reparatur
+für diese neue Rückmeldung; keine entsprechenden Laufzeit-/Hardwaretests behaupten.
 
 ## Bereits abgeschlossen und weiter zu erhalten
 
