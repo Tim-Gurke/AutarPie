@@ -748,12 +748,36 @@ Wetterangaben sehen möchte. Die Auswahl ist ausdrücklich Teil der geplanten
 Erweiterung, keine Behauptung über den derzeit veröffentlichten Funktionsumfang.
 
 - Über den gemeinsamen Kacheleditor beziehungsweise **Wetterkachel bearbeiten**
-  einzelne Anzeigeoptionen anbieten: **Temperaturmittel**, **Temperaturminimum**
-  und **Temperaturmaximum** jeweils getrennt; Wetter-/Bewölkungssymbole und
-  Bewölkungsgrad; Niederschlagsmenge und gegebenenfalls Wahrscheinlichkeit;
-  Windgeschwindigkeit und Böen; Sonnenstunden sowie vorhandene passende
-  Solar-/Akku-/Extrasangaben. Nicht zu einem untrennbaren „Alles oder nichts“
-  bündeln.
+  **jede einzelne Wetter-/Energieangabe mit eigenem An-/Aus-Schalter** anbieten.
+  Tims erneute Präzisierung vom 28.11.2026: kein gemeinsamer Schalter für
+  Wettersymbol und Bewölkungsgrad, ebenso kein gemeinsamer Schalter für Wind und
+  Böen. Dasselbe Prinzip gilt für alle anderen Angaben.
+
+| Einzeln wählbarer Bestandteil | Eigener Schalter |
+|---|---|
+| Wetter-/Bewölkungssymbol | Ja |
+| Bewölkungsgrad in % | Ja, unabhängig vom Symbol |
+| Temperaturmittel | Ja |
+| Temperaturminimum | Ja |
+| Temperaturmaximum | Ja |
+| Niederschlagsmenge | Ja |
+| Niederschlagswahrscheinlichkeit, soweit unterstützt | Ja, unabhängig von der Menge |
+| Windgeschwindigkeit | Ja |
+| Böengeschwindigkeit, soweit unterstützt | Ja, unabhängig vom Windwert |
+| Sonnenstunden | Ja |
+| Sonneneinstrahlung, soweit für die Ansicht verfügbar | Ja |
+| Solarertrag, soweit für die Ansicht verfügbar | Ja |
+| Akkustand/-balken, soweit für die Ansicht verfügbar | Ja |
+| „Mit Extras“-Akkustand/-balken, soweit für die Ansicht verfügbar | Ja, unabhängig vom normalen Akkustand |
+
+- Rein optische Kategorien in der Bearbeitung sind möglich, dürfen aber keine
+  Auswahlkopplung erzwingen. Ein einzelner Schalter verändert nur seinen
+  Bestandteil. Symbol ohne Bewölkungsgrad und Bewölkungsgrad ohne Symbol müssen
+  ebenso möglich sein wie Wind ohne Böen und Böen ohne Wind.
+- Werte, Beschriftung/Einheit und ihre zugehörige grafische Darstellung passend
+  zum einzelnen gewählten Bestandteil behandeln. Keine versteckte Kopplung an
+  ein anderes Datenfeld oder automatisches Wiedereinschalten ausgeblendeter
+  Angaben beim Umschalten, Neuladen oder Wechsel der Ansicht.
 - So sind nur ein Temperaturwert, nur Min/Max oder alle drei Angaben möglich.
   Die zugehörigen grafischen Elemente/Skalen sollen der Auswahl folgen.
   Einzelne Werte bleiben in Details zugänglich, soweit passende Daten vorliegen.
@@ -783,8 +807,11 @@ Erweiterung, keine Behauptung über den derzeit veröffentlichten Funktionsumfan
   erhöhte Unsicherheit der Langfristvorschau nachvollziehbar. Ausgewählte Inhalte
   müssen sich an Kachelbreite und Schriftgröße ohne Überlagerung anpassen.
 
-Zusätzlich prüfen: alle sinnvollen Kombinationen für Mittel/Min/Max; unabhängige
-Tages-/Wochen- und Dashboardauswahl; Speicherung/Wiederanlauf und Sicherung;
+Zusätzlich prüfen: alle vier An-/Aus-Kombinationen für Symbol/Bewölkungsgrad,
+Wind/Böen und Niederschlagsmenge/-wahrscheinlichkeit; sämtliche Kombinationen
+von Mittel/Min/Max; unabhängige Energieangaben; kein Schalter verändert ein anderes
+Feld; unabhängige Tages-/Wochen- und Dashboardauswahl; Speicherung/Wiederanlauf
+und Sicherung ohne ungewolltes Wiedereinschalten;
 fehlende Felder oder reine Wochenmittel; unveränderte Daten-/Lernbasis;
 kleine Kachel, große Schrift, Farb-/Layoutbestand und zugängliche Bearbeitung.
 
